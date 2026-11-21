@@ -113,6 +113,21 @@ FF8_EDITS = [
      '}\n'
      '#define ff8_movie_cam_buffer (*ff8_movie_cam_buffer_get())'),
 
+    # Arrays handed to a game function (load_field_models reads FIELD_VRAM_POS_LENGTH entries):
+    # the bridge's bounce copies one struct for a host pointer, so they live in guest memory.
+    ('ff8/vram.cpp', '\tVramPos tex_vram_pos[FIELD_VRAM_POS_LENGTH] = {}, pal_vram_pos[FIELD_VRAM_POS_LENGTH] = {};',
+     '\t// FF8Recomp: guest memory (the game reads the whole arrays), cleared for each call\n'
+     '\tstatic VramPos *ff8r_vram_pos_arrays = nullptr;\n'
+     '\tif (!ff8r_vram_pos_arrays) ff8r_vram_pos_arrays = (VramPos *)guest_calloc(2 * FIELD_VRAM_POS_LENGTH, sizeof(VramPos));\n'
+     '\tif (!ff8r_vram_pos_arrays) guest::fatal("ff8_field_open_chara_one: guest heap exhausted", 0);\n'
+     '\tVramPos *tex_vram_pos = ff8r_vram_pos_arrays, *pal_vram_pos = ff8r_vram_pos_arrays + FIELD_VRAM_POS_LENGTH;\n'
+     '\tmemset(ff8r_vram_pos_arrays, 0, 2 * FIELD_VRAM_POS_LENGTH * sizeof(VramPos));'),
+
+    # TEMPORARY (bring-up): what the field model loader gets
+    ('ff8/vram.cpp', '\tchara_one_pcb_data = pcb_data;\n\tchara_one_pcb_size = pcb_data_size;\n',
+     '\tchara_one_pcb_data = pcb_data;\n\tchara_one_pcb_size = pcb_data_size;\n'
+     '\tfprintf(stderr, "[ff8r] chara_one cur=0x%X models=%p dir=%p \'%s\' pcb=%p size=%d/%d\\n", current_data_pointer, models_infos, (const void *)dir_name, dir_name ? dir_name : "(null)", (const void *)pcb_data, allocated_size, pcb_data_size);\n'),
+
     # FFNx tables the game reads through FFNx's patches: in the fixed guest block
     ('ff8/battle/ai.cpp', 'static uint8_t ff8_ai_index_table[FF8_AI_INDEX_TABLE_SIZE];',
      'static uint8_t (&ff8_ai_index_table)[FF8_AI_INDEX_TABLE_SIZE] = ffnx_guest_static_zero<uint8_t, FF8_AI_INDEX_TABLE_SIZE>();   // FF8Recomp: guest block'),

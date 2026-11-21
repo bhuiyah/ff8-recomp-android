@@ -1,34 +1,34 @@
-"""Function seeds for the catalog from FFNx's 1.02 US address table.
+"""Function seeds for the catalog from FFNx's patch manifests (FF8).
 
-FFNx names ~80 game functions by address in src/externals_102_us.h. Entries cast to a data
-pointer type (char*, DWORD*, struct*) or outside .text are data and are skipped.
-Writes analysis/seeds.json: [{"address": "0x...", "name": "...", "source": "ffnx"}].
+FFNx names FF8's functions by walking code from the entry point, so recursive descent from
+the entry reaches nearly all of them. But FFNx also replaces some functions that start in the
+middle of what the catalog saw as one function (a body the compiler shares, or code reached
+only by falling through): such a replace_function site has to be a function entry, or the
+hook cannot be installed (the run reports it as "mid-function"). Every replace_function site
+in config/ffnx_manifests/*.json (tools/refresh_manifests.sh) becomes a seed.
 
+Writes analysis/seeds.json: [{"address": "0x...", "name": "...", "source": "ffnx-manifest"}].
 usage: py -I tools/ffnx_seeds.py
 """
+import glob
 import json
 import os
-import re
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = os.path.join(ROOT, 'external', 'FFNx', 'src', 'externals_102_us.h')
 OUT = os.path.join(ROOT, 'analysis', 'seeds.json')
-TEXT_START, TEXT_END = 0x401000, 0x401000 + 0x3B5000   # ff7_en .text
-
-LINE = re.compile(r'^\s*(\w+)\.(\w+)\s*=\s*(\([^;]*\))?\s*(0x[0-9A-Fa-f]+)\s*;')
+TEXT_START, TEXT_END = 0x401000, 0xB69000   # ff8_en .text (src/host/game_image.h)
 
 
 def main():
-    seeds = []
-    for line in open(SRC, encoding='utf-8'):
-        m = LINE.match(line)
-        if not m:
-            continue
-        table, name, cast, addr = m.group(1), m.group(2), m.group(3) or '', int(m.group(4), 16)
-        is_data_cast = cast and '(*)' not in cast and cast.strip() not in ('(WNDPROC)',)
-        if is_data_cast or not (TEXT_START <= addr < TEXT_END):
-            continue
-        seeds.append({'address': f'0x{addr:08X}', 'name': f'{table}.{name}', 'source': 'ffnx'})
+    sites = set()
+    for path in sorted(glob.glob(os.path.join(ROOT, 'config', 'ffnx_manifests', '*.json'))):
+        for h in json.load(open(path, encoding='utf-8')).get('hooks', []):
+            if h.get('kind') == 'replace_function':
+                a = int(h['site'], 16)
+                if TEXT_START <= a < TEXT_END:
+                    sites.add(a)
+    seeds = [{'address': f'0x{a:08X}', 'name': f'ffnx_hook_{a:08X}', 'source': 'ffnx-manifest'}
+             for a in sorted(sites)]
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     json.dump(seeds, open(OUT, 'w', encoding='utf-8'), indent=1)
     print(f'{len(seeds)} seeds -> {os.path.relpath(OUT, ROOT)}')
