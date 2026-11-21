@@ -106,3 +106,8 @@ repository.
   config/catalog.json.gz (addresses only) and the FF8 manifest.
 - Launcher: FF8 text; achievements, cloud saves, boosters, mods, save import and the second
   screen are hidden until they are made for FF8. New icon (tools/make_icon.py).
+- M3 on the Thor: the public APK (103 MB, no game code; kit 1d33859641f71923) built the game from
+  the imported ff8_en.exe in 875 s (634 MB of C, 4 compiles at once at ~80 C) and played it:
+  world map, battles to the EXP screen, music. An APK update with the same kit keeps the build.
+  (Building the kit needs config/clang-device.profdata.gz, git-ignored, copied from FF7Recomp:
+  without it build_device_clang.sh rebuilds clang for ~40 minutes.)
