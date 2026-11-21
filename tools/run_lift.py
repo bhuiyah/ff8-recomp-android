@@ -234,6 +234,14 @@ def cmd_lift(exe, catalog, outdir, split=400, names_path=None, prefix="", manife
     os.makedirs(outdir, exist_ok=True)
 
     def write(name, text):
+        # An unchanged file keeps its timestamp, so a re-lift recompiles only what changed.
+        dest = os.path.join(outdir, name)
+        try:
+            with open(dest, newline="\n") as fh:
+                if fh.read() == text:
+                    return
+        except OSError:
+            pass
         tmp = os.path.join(outdir, name + ".tmp")
         with open(tmp, "w", newline="\n") as fh:
             fh.write(text)

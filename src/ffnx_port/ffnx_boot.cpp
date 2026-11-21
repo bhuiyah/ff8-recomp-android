@@ -30,3 +30,13 @@ extern "C" int ff7_ffnx_attach(void) {
     std::fprintf(stderr, "[ffnx] DllMain returned %d\n", (int)ok);
     return ok ? 0 : 1;
 }
+
+// FF8: FFNx's path redirection for the Steam 2013 exe's file opens (dotemuCreateFileA:
+// "CD:\FF8\DATA\DISK1" -> <app path>\data\disk\DISK1, ...), for src/hle/ff7_af3dn.c (C).
+bool ff8_steam_redirection(const char *lpFileName, char *newPath, bool *isZzzFile);   // FFNx ff8/file.cpp
+bool ff8_fs_last_fopen_is_redirected();
+extern "C" int ffnx_ff8_steam_redirection(const char *name, char *out) {
+    if (ff8_fs_last_fopen_is_redirected()) return 0;
+    out[0] = 0;
+    return ff8_steam_redirection(name, out, nullptr) ? 1 : 0;
+}

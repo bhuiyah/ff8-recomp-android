@@ -1,0 +1,14 @@
+--- a/tools/lift/lift32.py
++++ b/tools/lift/lift32.py
+@@ -2004,6 +2004,11 @@
+         elif m == 'rdtsc':
+             lines.append(f"{{ uint64_t _t = __rdtsc(); eax = (uint32_t)_t; edx = (uint32_t)(_t >> 32); }} {comment}")
+ 
++        elif m == 'smsw':
++            # CR0's low word as a Windows user process sees it: PE, MP, ET, NE set; EM (bit 2)
++            # clear, i.e. an FPU is present (FF8's CRT tests EM to choose FPU emulation).
++            lines.append(f"{self._fmt_write(ops[0], '0x0033u')}; {comment}")
++
+         elif m in ('jecxz', 'jcxz'):
+             t = ops[0].imm if ops and ops[0].type == X86_OP_IMM else None
+             reg = 'ecx' if m == 'jecxz' else 'LO16(ecx)'

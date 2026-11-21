@@ -16,6 +16,7 @@
 #include <string.h>
 #include "win32hle.h"
 #include "ff7_hle.h"
+#include "guest_alloc.h"
 
 #define ERROR_SUCCESS 0u
 #define W8(p)  (*(uint8_t *)(uintptr_t)(p))
@@ -84,9 +85,60 @@ static void d_RegQueryValueExA(void) {
         if (cb == 256) ret = 1;          /* FFNx: the Steam build asks repeatedly; 1 -> 2 internally */
     }
     else if (!strcmp(name, "Options"))     W8(data) = 0;
+    /* FF8 (FFNx's dotemuRegQueryValueExA, FF8 branch). FFNx sets only the low byte of the DWORD
+     * values; the whole DWORD is written here so no stack garbage rides along (see #55 above). */
+    else if (!strcmp(name, "MIDIGUID")) {
+        static const uint32_t microsoft_synthesizer[4] = { 0x58C2B4D0, 0x11D146E7, 0xA000AC89, 0x294105C9 };
+        memcpy(out, microsoft_synthesizer, 16);
+    }
+    else if (!strcmp(name, "GraphicsGUID") || !strcmp(name, "SoundGUID")) memset(out, 0, 16);
+    else if (!strcmp(name, "SoundOptions"))   { if (cb >= 4) W32(data) = 0x00000000; else W8(data) = 0x00; }
+    else if (!strcmp(name, "InstallOptions")) { if (cb >= 4) W32(data) = 0x000000FF; else W8(data) = 0xFF; }
+    else if (!strcmp(name, "MidiOptions"))    { if (cb >= 4) W32(data) = 0x00000001; else W8(data) = 0x01; }
+    else if (!strcmp(name, "Graphics"))       { if (cb >= 4) W32(data) = 0x00100021; else W8(data) = 0x21; }
     else fprintf(stderr, "[reg] unknown value %s, answered as empty\n", name);
     RET(ret, 6);
 }
+
+/* ---- FF8's file functions from AF3DN.P (FFNx common.cpp dotemuCreateFileA & co) ---------- */
+
+/* A kernel32 shim's function by name, to run it on the current guest frame (same arguments). */
+extern const win32hle_shim win32hle_kernel32_ext[], win32hle_kernel32_crt[], ff7_kernel32[];
+static recomp_func_t shim_fn(const char *name) {
+    const win32hle_shim *tables[] = { ff7_kernel32, win32hle_kernel32_ext, win32hle_kernel32_crt };
+    for (unsigned t = 0; t < sizeof tables / sizeof *tables; t++)
+        for (const win32hle_shim *s = tables[t]; s->name; s++)
+            if (!strcmp(s->name, name)) return s->fn;
+    hle_fatal("ff7_af3dn: no %s shim to forward to", name);
+    return NULL;
+}
+
+/* FFNx's redirection (src/ffnx_port/ffnx_boot.cpp); weak: the headless runner has no FFNx. */
+int ffnx_ff8_steam_redirection(const char *name, char *out) __attribute__((weak));
+
+/* (name, access, share, sa, disposition, flags, template): FFNx's Steam redirection first
+ * (CD:\...\DISKn -> <app path>\data\disk\DISKn), then CreateFileA itself. */
+static void d_CreateFileA(void) {
+    static char *redirected;   /* guest buffer: the path the game's call now names */
+    const char *name = ASTR(0);
+    char path[260];
+    if (name && ffnx_ff8_steam_redirection && ffnx_ff8_steam_redirection(name, path)) {
+        if (!redirected) redirected = (char *)guest_malloc(260);
+        snprintf(redirected, 260, "%s", path);
+        if (getenv("FF7_PATH_TRACE")) fprintf(stderr, "[dotemu] CreateFileA %s -> %s\n", name, redirected);
+        MEM32(g_esp + 4) = (uint32_t)(uintptr_t)redirected;   /* argument 0 */
+    }
+    shim_fn("CreateFileA")();
+}
+
+/* "CD:" is the game's disc: a CD-ROM drive (DRIVE_CDROM 5), as FFNx answers. */
+static void d_GetDriveTypeA(void) {
+    const char *root = ASTR(0);
+    if (root && !strcmp(root, "CD:")) RET(5u, 1);
+    shim_fn("GetDriveTypeA")();
+}
+
+static void d_DeleteFileA(void) { shim_fn("DeleteFileA")(); }
 
 /* new_dll_graphics_driver is the renderer itself: src/ffnx_bridge/ffnx_driver.cpp exports
  * it (registered by ff7_hle_register before this table). */
@@ -98,5 +150,8 @@ const win32hle_shim ff7_af3dn[] = {
     { "dotemuRegDeleteValueA", d_RegDeleteValueA },
     { "dotemuRegSetValueExA", d_RegSetValueExA },
     { "dotemuRegQueryValueExA", d_RegQueryValueExA },
+    { "dotemuCreateFileA", d_CreateFileA },
+    { "dotemuGetDriveTypeA", d_GetDriveTypeA },
+    { "dotemuDeleteFileA", d_DeleteFileA },
     { NULL, NULL }
 };

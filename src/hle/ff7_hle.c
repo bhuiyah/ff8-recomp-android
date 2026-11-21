@@ -26,5 +26,6 @@ void ff7_hle_register(void) {
     win32hle_register(ff7_dsound);
     win32hle_register(ff7_msacm);
     win32hle_register(ff7_dinput);
+    win32hle_register(ff8_win32);
     hle_set_pump_hook(ff7_timers_poll);   /* an empty message queue also runs due timers */
 }

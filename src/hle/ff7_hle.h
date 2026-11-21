@@ -31,6 +31,7 @@ extern const win32hle_shim ff7_ddraw[];
 extern const win32hle_shim ff7_dsound[];
 extern const win32hle_shim ff7_msacm[];
 extern const win32hle_shim ff7_dinput[];
+extern const win32hle_shim ff8_win32[];   /* src/hle/ff8_win32.c */
 int ff7_virtual_init(uint32_t lo, uint32_t hi);   /* the VirtualAlloc range (ff7_boot.c picks it) */
 void ff7_virtual_range(uint32_t *lo, uint32_t *hi);
 /* Save states (src/host/ff7_savestate.c) */

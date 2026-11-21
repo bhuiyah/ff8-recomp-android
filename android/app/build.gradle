@@ -16,7 +16,11 @@ android {
     // Release signing: the key stays off the repository, in ~/.ff8recomp/keystore.properties
     // (storeFile, storePassword, keyAlias, keyPassword) or the file named by FF8_KEYSTORE_PROPERTIES.
     // Without it a release build is left unsigned.
-    def ksFile = file(System.getenv('FF8_KEYSTORE_PROPERTIES') ?: "${System.getProperty('user.home')}/.ff8recomp/keystore.properties")
+    // As FF9Recomp does, FF8Recomp signs with FF7Recomp's release key when it has none of its own.
+    def home = System.getProperty('user.home')
+    def ksFile = file(System.getenv('FF8_KEYSTORE_PROPERTIES') ?:
+            (file("${home}/.ff8recomp/keystore.properties").isFile() ? "${home}/.ff8recomp/keystore.properties"
+                                                                     : "${home}/.ff7recomp/keystore.properties"))
     def ks = new Properties()
     if (ksFile.isFile()) ksFile.withInputStream { ks.load(it) }
     signingConfigs {

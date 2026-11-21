@@ -73,6 +73,7 @@ add_library(ff7_core STATIC
   "${FF7HLE}/ff7_dsound.c"
   "${FF7HLE}/ff7_msacm.c"
   "${FF7HLE}/ff7_dinput.c"
+  "${FF7HLE}/ff8_win32.c"
   "${BRIDGE}/ffnx_driver.cpp"
   "${BRIDGE}/ffnx_display.cpp"
   # 7th Heaven mod overlay (IRO archives, mod.xml, the profile; src/mods/mods.h)
