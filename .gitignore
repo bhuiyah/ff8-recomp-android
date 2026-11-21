@@ -1,0 +1,26 @@
+# User-supplied game files, analysis output and generated code are never committed.
+/game/*
+!/game/README.md
+/analysis/
+/generated/
+/external/
+/build*/
+/out/
+/logs/
+/tools/bin/
+*.apk
+*.aab
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/app/.cxx/
+android/.idea/
+__pycache__/
+# The device clang's PGO profile (tools/train_device_clang.sh): local only, it records the
+# build machine's source paths.
+/config/clang-device.profdata.gz
+
+# Handoff sheets from FF7Recomp and FF9Recomp: their pictures contain game art. Never commit.
+/ff7-handoff/
+/ff9-handoff/

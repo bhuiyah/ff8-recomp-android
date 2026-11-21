@@ -1,0 +1,68 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.ff7recomp'
+    compileSdk 35
+    ndkVersion '28.2.13676358'
+    defaultConfig {
+        applicationId 'com.ff7recomp'
+        minSdk 29
+        targetSdk 35
+        versionCode 106
+        versionName '1.1.37'
+        ndk { abiFilters 'arm64-v8a' }
+        externalNativeBuild { cmake { arguments '-DANDROID_STL=c++_static', "-DFF7_BUNDLE_GAME=${project.findProperty('bundleGame') ?: 'OFF'}" } }
+    }
+    // Release signing: the key stays off the repository, in ~/.ff7recomp/keystore.properties
+    // (storeFile, storePassword, keyAlias, keyPassword) or the file named by FF7_KEYSTORE_PROPERTIES.
+    // Without it a release build is left unsigned.
+    def ksFile = file(System.getenv('FF7_KEYSTORE_PROPERTIES') ?: "${System.getProperty('user.home')}/.ff7recomp/keystore.properties")
+    def ks = new Properties()
+    if (ksFile.isFile()) ksFile.withInputStream { ks.load(it) }
+    signingConfigs {
+        if (ks['storeFile']) {
+            release {
+                storeFile file(ks['storeFile'])
+                storePassword ks['storePassword']
+                keyAlias ks['keyAlias']
+                keyPassword ks['keyPassword']
+            }
+        }
+    }
+    buildTypes {
+        // The lifted game is ~10 M lines of C: build it optimised even for debug APKs.
+        debug { jniDebuggable true }
+        release {
+            minifyEnabled false
+            if (ks['storeFile']) signingConfig signingConfigs.release
+        }
+    }
+    externalNativeBuild { cmake { path file('src/main/cpp/CMakeLists.txt'); version '3.30.5' } }
+    // FFNx's run-time files (tools/stage_apk_assets.sh) ship in the APK as assets/ffnx.
+    // The on-device build kit (tools/build_device_kit.sh): clang, Python, the lifter and the
+    // runtime's archives, as jniLibs (executed from the native library folder, so extracted:
+    // useLegacyPackaging) and assets/kit.zip.
+    sourceSets { main {
+        assets.srcDirs += ["${rootDir}/../build/apk-assets", "${rootDir}/../build/device-kit/assets"]
+        jniLibs.srcDirs += ["${rootDir}/../build/device-kit/jni"]
+    } }
+    packaging { jniLibs { useLegacyPackaging true } }
+    // kit.zip is already compressed
+    androidResources { noCompress += ['zip'] }
+}
+
+dependencies {
+    // Steam achievements (SteamLink.java): JavaSteam (MIT) signs in by QR code and sends unlocks;
+    // ZXing (Apache-2.0) draws the QR code.
+    implementation 'in.dragonbra:javasteam:1.8.0'
+    implementation 'com.google.protobuf:protobuf-java:4.31.1'   // JavaSteam's, for its message classes
+    implementation 'com.google.zxing:core:3.5.3'
+    // The game's files and saves from Steam (SteamFiles.java): JavaSteam's depot download decrypts
+    // with BouncyCastle (MIT) and unpacks chunks with XZ (public domain) or zstd-jni (BSD);
+    // kotlinx-coroutines (Apache-2.0) is the type of JavaSteam's content-server calls.
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.77'
+    implementation 'org.tukaani:xz:1.9'
+    implementation 'com.github.luben:zstd-jni:1.5.7-4@aar'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.10.2'
+    // Catalog mods ship as .7z (and .zip): Commons Compress reads them, XZ provides LZMA/LZMA2.
+}
