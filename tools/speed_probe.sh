@@ -25,9 +25,9 @@ blue() { local p; p=$("$ADB" shell "screencap | dd bs=1 skip=$OFF count=4 2>/dev
 for mode in $MODES; do
   uncrop=false; [ "$AR" != 0 ] && uncrop=true
   SHOW_FPS=true FPS_LIMITER=$mode ASPECT_RATIO=$AR UNCROP=$uncrop bash "$ROOT/tools/deploy_ffnx.sh" > /dev/null
-  "$ADB" shell am force-stop com.ff7recomp
+  "$ADB" shell am force-stop com.ff8recomp
   "$ADB" shell input keyevent KEYCODE_WAKEUP
-  "$ADB" shell am start -n com.ff7recomp/.GameActivity > /dev/null
+  "$ADB" shell am start -n com.ff8recomp/.GameActivity > /dev/null
   sleep 22; key BUTTON_START; sleep 6; newgame; sleep 12; key BUTTON_START
   t0=$(date +%s%3N)
   found=""
@@ -39,4 +39,4 @@ for mode in $MODES; do
   "$ADB" exec-out screencap -p > "$ROOT/build/speed_mode$mode.png"
   echo "mode $mode aspect $AR: text box after ${found:-(not seen in 60) }s"
 done
-"$ADB" shell am force-stop com.ff7recomp
+"$ADB" shell am force-stop com.ff8recomp

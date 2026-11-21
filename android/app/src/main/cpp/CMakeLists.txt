@@ -1,4 +1,4 @@
-# libff7launcher.so for com.ff7recomp (and, for development, libff7.so: the lifted game, its
+# libff7launcher.so for com.ff8recomp (and, for development, libff7.so: the lifted game, its
 # runtime, the FFNx bridge and bgfx).
 cmake_minimum_required(VERSION 3.20)
 project(FF7App C CXX)

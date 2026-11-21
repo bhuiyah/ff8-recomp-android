@@ -7,7 +7,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$(dirname "${BASH_SOURCE[0]}")/env.sh"   # ADB
-DEV=/sdcard/Android/data/com.ff7recomp/files/game
+DEV=/sdcard/Android/data/com.ff8recomp/files/game
 STAGE="$ROOT/build/ffnx-runtime"
 MISC="$ROOT/external/FFNx/misc"
 

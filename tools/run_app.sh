@@ -6,17 +6,17 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$(dirname "${BASH_SOURCE[0]}")/env.sh"   # ADB
 APK="$ROOT/android/app/build/outputs/apk/debug/app-debug.apk"
-FILES=/sdcard/Android/data/com.ff7recomp/files
+FILES=/sdcard/Android/data/com.ff8recomp/files
 SECS="${1:-20}"
 export MSYS_NO_PATHCONV=1
 if [ "${2:-}" != "--no-install" ]; then
   "$ADB" install -r -g "$(cygpath -w "$APK")" | tail -1
 fi
 "$ADB" shell input keyevent KEYCODE_WAKEUP   # a sleeping screen never creates the surface
-"$ADB" shell am force-stop com.ff7recomp
+"$ADB" shell am force-stop com.ff8recomp
 "$ADB" shell rm -f "$FILES/ff7.log" "$FILES/game/FFNx.log"
 "$ADB" logcat -c
-"$ADB" shell am start -n com.ff7recomp/.GameActivity > /dev/null
+"$ADB" shell am start -n com.ff8recomp/.GameActivity > /dev/null
 sleep "$SECS"
 n=$(ls -d "$ROOT"/logs/app-[0-9]*/ 2>/dev/null | sed 's|/$||; s/.*app-//' | sort -n | tail -1); out="$ROOT/logs/app-$((${n:-0} + 1))"
 mkdir -p "$out"

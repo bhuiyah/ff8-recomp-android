@@ -13,7 +13,7 @@ key() { "$ADB" shell input keyevent --longpress "KEYCODE_$1"; }
 install=""
 for vsync in true false; do
   SHOW_FPS=true FPS_LIMITER=4 bash "$ROOT/tools/deploy_ffnx.sh" > /dev/null
-  "$ADB" shell "sed -i 's/^enable_vsync = .*/enable_vsync = $vsync/' /sdcard/Android/data/com.ff7recomp/files/game/FFNx.toml"
+  "$ADB" shell "sed -i 's/^enable_vsync = .*/enable_vsync = $vsync/' /sdcard/Android/data/com.ff8recomp/files/game/FFNx.toml"
   ( sleep 22; key BUTTON_START; sleep 6; key DPAD_UP; sleep 1; key BUTTON_B; sleep 12; key BUTTON_START
     sleep 20
     echo "=== vsync=$vsync"
@@ -22,6 +22,6 @@ for vsync in true false; do
   bash "$ROOT/tools/run_app.sh" 70 $install > /dev/null 2>&1
   install="--no-install"
   wait
-  "$ADB" shell am force-stop com.ff7recomp
+  "$ADB" shell am force-stop com.ff8recomp
 done
 echo "screens: build/fps_vsync_true.png build/fps_vsync_false.png (FPS counter top left)"

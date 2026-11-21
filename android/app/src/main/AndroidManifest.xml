@@ -27,7 +27,7 @@
     </queries>
 
     <application
-        android:label="FF7Recomp"
+        android:label="FF8Recomp"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
         android:hasCode="true"
@@ -79,9 +79,9 @@
             android:exported="true"
             android:permission="android.permission.DUMP">
             <intent-filter>
-                <action android:name="com.ff7recomp.test.GET" />
-                <action android:name="com.ff7recomp.test.SET" />
-                <action android:name="com.ff7recomp.test.STOP" />
+                <action android:name="com.ff8recomp.test.GET" />
+                <action android:name="com.ff8recomp.test.SET" />
+                <action android:name="com.ff8recomp.test.STOP" />
             </intent-filter>
         </receiver>
         <!-- Pixel Guide's installer answer (GuideInstaller), in the game's process -->

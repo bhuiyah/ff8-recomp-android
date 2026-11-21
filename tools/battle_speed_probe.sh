@@ -30,9 +30,9 @@ wait_for() {      # wait_for <x> <y> <test on r g b> <timeout ms>
 }
 for mode in $MODES; do
   SHOW_FPS=true FPS_LIMITER=$mode ASPECT_RATIO=0 UNCROP=false bash "$ROOT/tools/deploy_ffnx.sh" > /dev/null   # 4:3: the pixel positions below
-  "$ADB" shell am force-stop com.ff7recomp
+  "$ADB" shell am force-stop com.ff8recomp
   "$ADB" shell input keyevent KEYCODE_WAKEUP
-  "$ADB" shell am start -n com.ff7recomp/.GameActivity > /dev/null
+  "$ADB" shell am start -n com.ff8recomp/.GameActivity > /dev/null
   sleep 22; key BUTTON_START; sleep 6; newgame; sleep 12; key BUTTON_START
   sleep 34; key BUTTON_B; sleep 3; key BUTTON_B; sleep 3
   for i in $(seq 1 24); do key DPAD_UP; done
@@ -52,4 +52,4 @@ for mode in $MODES; do
   fi
   "$ADB" exec-out screencap -p > "$ROOT/build/battle_speed_mode$mode.png"
 done
-"$ADB" shell am force-stop com.ff7recomp
+"$ADB" shell am force-stop com.ff8recomp

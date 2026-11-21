@@ -1,4 +1,4 @@
-// ff7_android_main.cpp - JNI glue for com.ff7recomp.GameActivity.
+// ff7_android_main.cpp - JNI glue for com.ff8recomp.GameActivity.
 //
 // The activity hands over its Surface (as an ANativeWindow, for bgfx/Vulkan) and the game
 // folder; the lifted game then runs on its own thread via ff7_boot_and_run. stdout/stderr
@@ -243,7 +243,7 @@ extern "C" int ff7_platform_pad_state(unsigned index, ff7_pad_state *out) {
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_ff7recomp_GameActivity_nativeQuit(JNIEnv *, jclass) {
+Java_com_ff8recomp_GameActivity_nativeQuit(JNIEnv *, jclass) {
     g_quit.store(true);
 }
 
@@ -282,7 +282,7 @@ extern "C" void ff7_platform_rumble(int amplitude, int ms) {
 // The next request as (ms << 8) | amplitude (amplitude 0: stop), or -1 after timeout_ms
 // without one (the thread checks whether it should go on).
 extern "C" JNIEXPORT jint JNICALL
-Java_com_ff7recomp_GameActivity_nativeRumbleWait(JNIEnv *, jclass, jint timeout_ms) {
+Java_com_ff8recomp_GameActivity_nativeRumbleWait(JNIEnv *, jclass, jint timeout_ms) {
     std::unique_lock<std::mutex> lk(g_rumble_lock);
     if (!g_rumble_cv.wait_for(lk, std::chrono::milliseconds(timeout_ms), [] { return g_rumble_pending; })) return -1;
     g_rumble_pending = false;
@@ -297,7 +297,7 @@ extern "C" int ff7_platform_keyboard_state(unsigned char keys[256]) {
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_ff7recomp_GameActivity_nativePad(JNIEnv *, jclass, jint buttons, jint lt, jint rt,
+Java_com_ff8recomp_GameActivity_nativePad(JNIEnv *, jclass, jint buttons, jint lt, jint rt,
                                           jint lx, jint ly, jint rx, jint ry) {
     std::lock_guard<std::mutex> lk(g_pad_lock);
     g_pad.buttons = (unsigned short)buttons;
@@ -308,7 +308,7 @@ Java_com_ff7recomp_GameActivity_nativePad(JNIEnv *, jclass, jint buttons, jint l
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_ff7recomp_GameActivity_nativeSetCompanionSurface(JNIEnv *env, jclass, jobject surface, jint w, jint h) {
+Java_com_ff8recomp_GameActivity_nativeSetCompanionSurface(JNIEnv *env, jclass, jobject surface, jint w, jint h) {
     std::lock_guard<std::mutex> lk(g_win_lock);
     retire_locked(g_companion);         // bgfx may still hold it: released a few frames later
     g_companion = surface ? ANativeWindow_fromSurface(env, surface) : nullptr;
@@ -317,7 +317,7 @@ Java_com_ff7recomp_GameActivity_nativeSetCompanionSurface(JNIEnv *env, jclass, j
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_ff7recomp_GameActivity_nativeSetSurface(JNIEnv *env, jclass, jobject surface, jint w, jint h) {
+Java_com_ff8recomp_GameActivity_nativeSetSurface(JNIEnv *env, jclass, jobject surface, jint w, jint h) {
     std::unique_lock<std::mutex> lk(g_win_lock);
     retire_locked(g_window);            // bgfx may still hold it: released a few frames later
     g_window = surface ? ANativeWindow_fromSurface(env, surface) : nullptr;
@@ -332,7 +332,7 @@ Java_com_ff7recomp_GameActivity_nativeSetSurface(JNIEnv *env, jclass, jobject su
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_ff7recomp_GameActivity_nativeStart(JNIEnv *env, jclass, jstring game_dir, jstring log_dir) {
+Java_com_ff8recomp_GameActivity_nativeStart(JNIEnv *env, jclass, jstring game_dir, jstring log_dir) {
     // Once per process: if Android recreates GameActivity while the game runs (a display-size or
     // font-scale change, ...), the new activity only hands the running game its new surface
     // (nativeSetSurface); a second game thread would re-initialise the allocator under the
@@ -378,7 +378,7 @@ extern "C" int ff7_companion_json(char *out, int cap) __attribute__((weak));
 extern "C" void ff7_companion_command(int cmd) __attribute__((weak));
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_com_ff7recomp_CompanionView_nativeState(JNIEnv *env, jclass) {
+Java_com_ff8recomp_CompanionView_nativeState(JNIEnv *env, jclass) {
     // the tabs' lists (items, materia, enemy details) make it a few KB; the UI thread and the
     // top screen's booster icons both call this
     static thread_local char buf[65536];
@@ -387,13 +387,13 @@ Java_com_ff7recomp_CompanionView_nativeState(JNIEnv *env, jclass) {
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_ff7recomp_CompanionView_nativeCommand(JNIEnv *, jclass, jint cmd) {
+Java_com_ff8recomp_CompanionView_nativeCommand(JNIEnv *, jclass, jint cmd) {
     if (ff7_companion_command) ff7_companion_command(cmd);
 }
 
 // a short button press from the bottom screen (XInput bits), on top of the real pad
 extern "C" JNIEXPORT void JNICALL
-Java_com_ff7recomp_CompanionView_nativeTap(JNIEnv *, jclass, jint buttons) {
+Java_com_ff8recomp_CompanionView_nativeTap(JNIEnv *, jclass, jint buttons) {
     ff7_platform_pad_inject((unsigned short)buttons);
 }
 
@@ -403,16 +403,16 @@ extern "C" void ff7_companion_battle_tap(float x, float y) __attribute__((weak))
 extern "C" void ff7_companion_battle_back() __attribute__((weak));
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_ff7recomp_CompanionView_nativeSetArea(JNIEnv *, jclass, jint top, jint bottom) {
+Java_com_ff8recomp_CompanionView_nativeSetArea(JNIEnv *, jclass, jint top, jint bottom) {
     if (ff7_companion_set_area) ff7_companion_set_area(top, bottom);
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_ff7recomp_CompanionView_nativeBattleTap(JNIEnv *, jclass, jfloat x, jfloat y) {
+Java_com_ff8recomp_CompanionView_nativeBattleTap(JNIEnv *, jclass, jfloat x, jfloat y) {
     if (ff7_companion_battle_tap) ff7_companion_battle_tap(x, y);
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_ff7recomp_CompanionView_nativeBattleBack(JNIEnv *, jclass) {
+Java_com_ff8recomp_CompanionView_nativeBattleBack(JNIEnv *, jclass) {
     if (ff7_companion_battle_back) ff7_companion_battle_back();
 }

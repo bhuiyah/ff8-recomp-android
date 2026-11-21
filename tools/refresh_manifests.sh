@@ -11,7 +11,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$(dirname "${BASH_SOURCE[0]}")/env.sh"   # ADB, JAVA_HOME
-FILES=/sdcard/Android/data/com.ff7recomp/files
+FILES=/sdcard/Android/data/com.ff8recomp/files
 M="$ROOT/config/ffnx_manifests"   # committed: FFNx's own patch bytes, no game bytes
 MODES="${1:-1 2 3 4 4b}"
 ASPECTS="${2:-0 2}"
@@ -31,7 +31,7 @@ for mode in $MODES; do
   "$ADB" shell rm -f "$FILES/ffnx_manifest.json"
   bash "$ROOT/tools/run_app.sh" 40 $install > /dev/null 2>&1 || true
   install="--no-install"
-  "$ADB" shell am force-stop com.ff7recomp
+  "$ADB" shell am force-stop com.ff8recomp
   name="ffnx_manifest_l$mode"; [ "$ar" != 0 ] && name="${name}_ar$ar"
   "$ADB" pull "$FILES/ffnx_manifest.json" "$(cygpath -w "$M/$name.json")" > /dev/null
   echo "mode $mode aspect $ar: $(grep -c '"offset"' "$M/$name.json") code writes"

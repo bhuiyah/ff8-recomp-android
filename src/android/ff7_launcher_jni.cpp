@@ -112,11 +112,11 @@ extern "C" void ff7_un7z_progress(unsigned long long *done, unsigned long long *
 
 /** Stop the running unpack (its nativeUn7z returns "cannot unpack: cancelled"). */
 extern "C" JNIEXPORT void JNICALL
-Java_com_ff7recomp_ModDownloader_nativeUn7zCancel(JNIEnv *, jclass) { ff7_un7z_cancel(); }
+Java_com_ff8recomp_ModDownloader_nativeUn7zCancel(JNIEnv *, jclass) { ff7_un7z_cancel(); }
 
 /** The running unpack's progress: { bytes unpacked, bytes in all }. */
 extern "C" JNIEXPORT jlongArray JNICALL
-Java_com_ff7recomp_ModDownloader_nativeUn7zProgress(JNIEnv *env, jclass) {
+Java_com_ff8recomp_ModDownloader_nativeUn7zProgress(JNIEnv *env, jclass) {
     unsigned long long d, t;
     ff7_un7z_progress(&d, &t);
     jlong v[2] = { (jlong)d, (jlong)t };
@@ -127,7 +127,7 @@ Java_com_ff7recomp_ModDownloader_nativeUn7zProgress(JNIEnv *env, jclass) {
 
 /** Unpack a .7z download into outDir (src/android/un7z.c): null on success, else the error. */
 extern "C" JNIEXPORT jstring JNICALL
-Java_com_ff7recomp_ModDownloader_nativeUn7z(JNIEnv *env, jclass, jstring jarchive, jstring joutdir) {
+Java_com_ff8recomp_ModDownloader_nativeUn7z(JNIEnv *env, jclass, jstring jarchive, jstring joutdir) {
     const char *a = env->GetStringUTFChars(jarchive, nullptr);
     const char *o = env->GetStringUTFChars(joutdir, nullptr);
     char err[512];
@@ -138,7 +138,7 @@ Java_com_ff7recomp_ModDownloader_nativeUn7z(JNIEnv *env, jclass, jstring jarchiv
 }
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_com_ff7recomp_ModLibrary_nativeModInfo(JNIEnv *env, jclass, jstring jpath) {
+Java_com_ff8recomp_ModLibrary_nativeModInfo(JNIEnv *env, jclass, jstring jpath) {
     const char *p = env->GetStringUTFChars(jpath, nullptr);
     std::string json = mod_json(p);
     env->ReleaseStringUTFChars(jpath, p);
@@ -152,7 +152,7 @@ Java_com_ff7recomp_ModLibrary_nativeModInfo(JNIEnv *env, jclass, jstring jpath) 
 static std::mutex g_overlay;
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_com_ff7recomp_ModLibrary_nativeConflicts(JNIEnv *env, jclass, jstring jprofile) {
+Java_com_ff8recomp_ModLibrary_nativeConflicts(JNIEnv *env, jclass, jstring jprofile) {
     const char *p = env->GetStringUTFChars(jprofile, nullptr);
     std::lock_guard<std::mutex> lk(g_overlay);
     char *json = ff7_mods_conflicts_json(p);
@@ -166,7 +166,7 @@ Java_com_ff7recomp_ModLibrary_nativeConflicts(JNIEnv *env, jclass, jstring jprof
 // profile's enabled mods: the replacing file (an IRO entry is extracted into cacheDir), or
 // null where no mod replaces it. Sfx.java uses it for FFNx's external sounds (sfx/...).
 extern "C" JNIEXPORT jobjectArray JNICALL
-Java_com_ff7recomp_Sfx_nativeModFiles(JNIEnv *env, jclass, jstring jprofile, jstring jcache, jobjectArray jrels) {
+Java_com_ff8recomp_Sfx_nativeModFiles(JNIEnv *env, jclass, jstring jprofile, jstring jcache, jobjectArray jrels) {
     const char *p = env->GetStringUTFChars(jprofile, nullptr);
     const char *c = env->GetStringUTFChars(jcache, nullptr);
     jsize n = env->GetArrayLength(jrels);
