@@ -84,3 +84,25 @@ repository.
 - Note: voice.cpp still truncates `&execute_opcode_table[..]` with `(uint32_t)` in its
   voice-acting setup (warnings, only with voice mods); the shared files are not built with
   -Werror=pointer-to-int-cast yet.
+
+## 2026-11-21 Toward a public 0.1: music, FF8 game files, launcher
+- Music. The 2013 release plays DirectMusic segments (Data/Music/dmusic/*.sgt) with one DLS
+  collection (FF8.dls, DLS1, mostly 8-bit 22 kHz samples). Android has none of it, so FFNx's
+  external-music path is on for the 2013 release too: FFNx already replaces every FF8 music call
+  (play, crossfade, battle swap, resume, Eyes On Me, the FH concert segments) and only asks for a
+  file by name. src/ffnx_port/dmusic resolves the name ("battle" -> 005s-battle.sgt; "s" over
+  "xg" variants; Data/Music/stream/*.wav go to vgmstream) and plays segments: sequence track
+  (evtl 20-byte items, curl 28-byte DX6 curves), tempo (tetr), band (bins: patch, pchannel,
+  flags), segh DX6 = repeats, length, play start, loop start, loop end. DLS ptbl offsets count
+  from after the wvpl form type. Units: wsmp gain 1/655360 dB, EG times timecents*65536, sustain
+  0.1 % * 65536, EG1 decay = time for the full 96 dB. All 92 segments render on the PC
+  (tools/sgt_render.cpp); on the Thor intro, world map and battle music play and switch.
+- An audit of FF7-only native paths found FFNx's override/call-site tables sized to FF7's .text
+  (0x7B6000): FF8 hooks above it were refused (the "six call sites that could not be hooked").
+  Now GAME_TEXT_HI; two former mid-function jmps (0xB664A0, 0xB66560) are plain entry overrides.
+- Game files: FF8_EN.exe (wrapped, SHA-1 03230c11...) is unwrapped on import in Java
+  (SteamStub.java, flags 0x26: only the entry point changes) to ff8_en.exe (d0f2ae94...).
+  Steam download: app 39150, Windows English depots, FF8_EN.exe + Data. The kit carries
+  config/catalog.json.gz (addresses only) and the FF8 manifest.
+- Launcher: FF8 text; achievements, cloud saves, boosters, mods, save import and the second
+  screen are hidden until they are made for FF8. New icon (tools/make_icon.py).

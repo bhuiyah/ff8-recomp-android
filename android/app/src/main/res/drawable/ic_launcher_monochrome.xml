@@ -1,17 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- FF8Recomp launcher icon (themed-icon silhouette): a gunblade planted under a night sky with a large moon
-     (drawn as vectors, not taken from the game). Written by tools/make_icon.py;
+<!-- FF8Recomp launcher icon (themed-icon silhouette): a white feather drifting across a large moon on a
+     dusky orange sky (drawn as vectors, not taken from the game). Written by tools/make_icon.py;
      edit that, not this. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <group android:pivotX="54" android:pivotY="58" android:rotation="180" android:scaleX="0.86" android:scaleY="0.86" android:translateX="-12" android:translateY="-4">
-        <path android:fillColor="#FFFFFFFF" android:pathData="M46.5,63 L46.5,22 L54,12 L61.5,22 L61.5,63 Z"/>
-        <path android:fillColor="#FFFFFFFF" android:pathData="M43,63 h22 a2,2 0 0,1 2,2 v6 a2,2 0 0,1 -2,2 h-22 a2,2 0 0,1 -2,-2 v-6 a2,2 0 0,1 2,-2 Z M51,73 h7 l-1.5,13 h-6.5 Z"/>
+    <group android:translateX="58" android:translateY="50">
+        <path android:fillColor="#FFFFFFFF" android:pathData="M-21,0 a21,21 0 1,0 42,0 a21,21 0 1,0 -42,0 Z"/>
     </group>
-    <group android:translateX="70" android:translateY="36">
-        <path android:fillColor="#FFFFFFFF" android:pathData="M-15,0 a15,15 0 1,0 30,0 a15,15 0 1,0 -30,0 Z"/>
+    <group android:rotation="-50" android:scaleX="1.3" android:scaleY="1.3" android:translateX="36" android:translateY="80">
+        <path android:fillColor="#FFFFFFFF" android:pathData="M6,0 L6,-0 L8.86,-3.78 L11.71,-5.85 L14.57,-6.1 L17.43,-6.53 L20.29,-7.2 L23.14,-6.33 L26,-4.39 L28.86,-3.32 L31.71,-2.64 L34.57,-0.72 L37.43,-0 L40.29,-0 L43.14,-0.6 L46,-0 L46,0 L43.14,0 L40.29,0.57 L37.43,0.13 L34.57,0 L31.71,2.03 L28.86,4.17 L26,4.88 L23.14,5.41 L20.29,6.84 L17.43,7.5 L14.57,6.31 L11.71,4.85 L8.86,3.71 L6,0.5 Z"/>
     </group>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M0,84 Q30,77 54,80 T108,78 V108 H0 Z"/>
 </vector>

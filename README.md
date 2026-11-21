@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/images/icon.svg" width="144" alt="FF8Recomp's icon: a gunblade planted under a night sky with a large moon"></p>
+<p align="center"><img src="docs/images/icon.svg" width="144" alt="FF8Recomp's icon: a white feather drifting across a large moon on a dusky orange sky"></p>
 
 # FF8Recomp
 

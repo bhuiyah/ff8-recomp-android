@@ -39,6 +39,14 @@ Edition is first-class from the start, not bolted on later:
   one edition has (FFNx options vs. the Remastered's own options and boosters).
 - **Launcher:** picks the edition on Game files; the info bar shows which one is active.
 
+## Where it stands (2026-11-21)
+
+M0-M2 done for the 2013 release: it boots, plays fields, the world map, menus and battles to
+victory on the Thor, with its music (our own DirectMusic player, src/ffnx_port/dmusic). M3's
+APK without game code builds the game on the device. 0.1.0 is the first public build; M4
+(mods), M6 (achievements, cloud saves) and M7 (second screen) are hidden in the launcher until
+they are made for FF8. The Remastered track (R0-R4) has not started.
+
 ## Milestones
 
 2013 first, because FFNx and FF7Recomp's pipeline already fit it. The Remastered follows as its

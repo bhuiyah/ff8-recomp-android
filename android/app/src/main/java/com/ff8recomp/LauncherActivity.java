@@ -74,10 +74,10 @@ public class LauncherActivity extends Activity {
     }
     // FF7-style menus: blue gradient windows with a light double border, white text with a drop
     // shadow, cyan labels, a pointing-glove cursor (HandCursor.java) on the menu.
-    private static final int BG = 0xFF03050C, ACCENT = 0xFF7FD8FF, TEXT = 0xFFF4F6FF, DIM = 0xFFB4C0E4;
-    private static final int WIN_TOP = 0xFF3B5CB4, WIN_BOTTOM = 0xFF0E1C64;          // windows
-    private static final int BTN_TOP = 0xFF2C4594, BTN_BOTTOM = 0xFF101E5E;          // buttons
-    private static final int HOT_TOP = 0xFF6286E6, HOT_BOTTOM = 0xFF2A43A0;          // focused / on
+    private static final int BG = 0xFF0B0604, ACCENT = 0xFFFFD08A, TEXT = 0xFFFFF7EE, DIM = 0xFFF0D2B4;   // FF8: warm orange
+    private static final int WIN_TOP = 0xFFD7731C, WIN_BOTTOM = 0xFF6E2A07;          // windows
+    private static final int BTN_TOP = 0xFFA9531A, BTN_BOTTOM = 0xFF4F1C06;          // buttons
+    private static final int HOT_TOP = 0xFFFFA34A, HOT_BOTTOM = 0xFFC25A14;          // focused / on
     private final java.util.Map<String, Button> nav = new java.util.HashMap<>();
 
     private GameInstall install;
@@ -3045,11 +3045,11 @@ public class LauncherActivity extends Activity {
     private android.graphics.drawable.Drawable window(int top, int bottom, int cornerDp) {
         GradientDrawable fill = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[] { top, bottom });
         fill.setCornerRadius(dp(cornerDp));
-        fill.setStroke(dp(2), 0xFFE2E6F0);
+        fill.setStroke(dp(2), 0xFFFBEBDD);
         GradientDrawable inner = new GradientDrawable();
         inner.setColor(0);
         inner.setCornerRadius(Math.max(0, dp(cornerDp) - dp(2)));
-        inner.setStroke(Math.max(1, dp(1)), 0xFF4C5576);
+        inner.setStroke(Math.max(1, dp(1)), 0xFF8A4B22);
         android.graphics.drawable.LayerDrawable l = new android.graphics.drawable.LayerDrawable(
                 new android.graphics.drawable.Drawable[] { fill, inner });
         l.setLayerInset(1, dp(2), dp(2), dp(2), dp(2));
@@ -3065,7 +3065,7 @@ public class LauncherActivity extends Activity {
         b.setTextSize(smallScreen ? 13 : 16);
         b.setSingleLine(true);
         b.setTextColor(new android.content.res.ColorStateList(
-                new int[][] { { -android.R.attr.state_enabled }, {} }, new int[] { 0xFF7F88AE, TEXT }));
+                new int[][] { { -android.R.attr.state_enabled }, {} }, new int[] { 0xFFC39A7C, TEXT }));
         shadow(b);
         b.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
         b.setBackground(null);
@@ -3097,14 +3097,14 @@ public class LauncherActivity extends Activity {
         if (v instanceof CheckBox || v instanceof RadioButton) {
             android.widget.CompoundButton c = (android.widget.CompoundButton) v;
             c.setButtonTintList(new android.content.res.ColorStateList(
-                    new int[][] { { android.R.attr.state_checked }, {} }, new int[] { ACCENT, 0xFFE2E6F0 }));
+                    new int[][] { { android.R.attr.state_checked }, {} }, new int[] { ACCENT, 0xFFFBEBDD }));
             c.setTextColor(TEXT);
             shadow(c);
             // a clear mark on the one the controller is on (a faint ripple was all there was:
             // mod options could not be told apart with a D-pad, GitHub #47)
             GradientDrawable hot = new GradientDrawable();
             hot.setColor(0x40FFFFFF);
-            hot.setStroke(Math.max(1, dp(1)), 0xFFE2E6F0);
+            hot.setStroke(Math.max(1, dp(1)), 0xFFFBEBDD);
             hot.setCornerRadius(dp(6));
             android.graphics.drawable.StateListDrawable sl = new android.graphics.drawable.StateListDrawable();
             sl.addState(new int[] { android.R.attr.state_focused }, hot);
@@ -3115,7 +3115,7 @@ public class LauncherActivity extends Activity {
             EditText e = (EditText) v;
             e.setTextColor(TEXT);
             e.setHintTextColor(DIM);
-            e.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFE2E6F0));
+            e.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFFBEBDD));
         } else if (v instanceof ViewGroup) {
             ViewGroup g = (ViewGroup) v;
             for (int i = 0; i < g.getChildCount(); i++) theme(g.getChildAt(i));
@@ -3161,7 +3161,7 @@ public class LauncherActivity extends Activity {
         b.setAllCaps(false);
         b.setTextSize(smallScreen ? 15 : 17);
         b.setTextColor(new android.content.res.ColorStateList(
-                new int[][] { { -android.R.attr.state_enabled }, {} }, new int[] { 0xFF8088A8, Color.WHITE }));
+                new int[][] { { -android.R.attr.state_enabled }, {} }, new int[] { 0xFFC39A7C, Color.WHITE }));
         shadow(b);
         b.setStateListAnimator(null);
         android.graphics.drawable.StateListDrawable sl = new android.graphics.drawable.StateListDrawable();
