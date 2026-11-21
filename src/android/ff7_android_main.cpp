@@ -150,6 +150,9 @@ extern "C" void *ff7_platform_companion_window(int *width, int *height) {
 }
 
 // ---- controls: GameActivity folds key and motion events into one XInput-style pad.
+// FFNx's flag: FF8 is running (weak: builds without FFNx). FF7's fixed addresses do not apply.
+extern "C++" uint32_t ff8 __attribute__((weak));
+static bool running_ff8() { return &ff8 && ff8; }
 namespace {
 std::mutex g_pad_lock;
 ff7_pad_state g_pad{};
@@ -205,12 +208,15 @@ extern "C" int ff7_platform_pad_state(unsigned index, ff7_pad_state *out) {
     }
     // the launcher's presses mean menu / OK / cancel: on the buttons the game now has for them (#34)
     if (g_inject) {
-        const unsigned short to = ff7_pad_remap(g_inject, (const volatile uint32_t *)(uintptr_t)FF7_PAD_MAP);
+        // FF7's button-mapping table (FF7_PAD_MAP is an FF7 address); FF8 takes the press as is
+        const unsigned short to = running_ff8() ? g_inject : ff7_pad_remap(g_inject, (const volatile uint32_t *)(uintptr_t)FF7_PAD_MAP);
         static unsigned short logged;
         if (to != g_inject && logged != g_inject) { logged = g_inject; std::fprintf(stderr, "[pad] press %04X sent as %04X (the game's button mapping)\n", g_inject, to); }
         out->buttons |= to;
     }
-    // Customize's waits (#42; see k_cfg_wait)
+    // Customize's waits (#42; see k_cfg_wait): FF7's Config menu at an FF7 address, which in
+    // FF8 is the game's own data (reading it masked presses, and the reset below wrote it)
+    if (!running_ff8()) {
     volatile uint32_t *cfg = (volatile uint32_t *)(uintptr_t)k_cfg_wait;
     uint32_t wait = *cfg;
     if (wait != 0 && g_cfg_prev == 0) {
@@ -234,6 +240,7 @@ extern "C" int ff7_platform_pad_state(unsigned index, ff7_pad_state *out) {
     out->buttons &= (unsigned short)~g_cfg_mask;
     if (g_cfg_mask_lt) out->left_trigger = 0;
     if (g_cfg_mask_rt) out->right_trigger = 0;
+    }
     if (g_quit.exchange(false)) {
         const uint32_t hwnd = hle_first_hwnd();
         std::fprintf(stderr, "[ff7] leaving the game: WM_CLOSE to window 0x%X\n", hwnd);

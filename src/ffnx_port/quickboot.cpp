@@ -22,6 +22,7 @@
 #include "globals.h"
 #include "log.h"
 #include "ff7/defs.h"
+#include "ff8.h"
 #include "ff7_savestate.h"
 
 extern "C" void ff7_platform_pad_inject(unsigned short buttons);   // src/android (the pad the game reads)
@@ -126,7 +127,7 @@ void finish(const char *why) {
 // One press: held ~80 ms, then released, at most every `gap` ms.
 void press(unsigned short b, int64_t t, int gap) {
     if (t - g_last_press >= gap) { ff7_platform_pad_inject(b); g_last_press = t; }
-    else if (t - g_last_press >= 80) ff7_platform_pad_inject(0);
+    else if (t - g_last_press >= (ff8 ? 250 : 80)) ff7_platform_pad_inject(0);   // FF8 polls less often (15 FPS screens)
 }
 
 }  // namespace
@@ -142,20 +143,34 @@ void quickboot_frame() {
     }
     if (g_target < 0 || g_done) return;
     const int64_t t = now_ms();
-    if (t - g_started > 40000) { finish("gave up (40 s)"); return; }
+    if (t - g_started > (ff8 ? 120000 : 40000)) { finish("gave up"); return; }   // FF8: its logo comes later
     if (ff7_platform_pad_buttons()) { finish("stopped by a button press"); return; }
 
     struct game_mode *m = getmode_cached();
     const uint32_t mode = m ? m->driver_mode : ~0u;
-    if (mode != g_mode) { g_mode = mode; g_mode_since = t; ff7_platform_pad_inject(0); }
+    if (mode != g_mode) { g_mode = mode; g_mode_since = t; ff7_platform_pad_inject(0); ffnx_info("quickboot: mode %d\n", (int)mode); }
     const int64_t in_mode = t - g_mode_since;
 
     switch (mode) {
     case MODE_CREDITS:
-        if (in_mode > 300) press(PAD_START, t, 250);
+        if (ff8) { if (in_mode > 1000) press(0x1000, t, 1500); }   // FF8: the Squaresoft logo, confirm (XInput B)
+        else if (in_mode > 300) press(PAD_START, t, 250);
         break;
     case MODE_MAIN_MENU: {
         if (in_mode < 800) break;                            // the menu fading in
+        if (ff8) {
+            // FF8: a state loads only where the game runs at the depth it was saved at (the
+            // field, not the title: "host stack differs"), so "resume" and "newgame" both start
+            // a new game: the cursor comes up on Continue, Up is NEW GAME, then confirm (XInput
+            // B). The opening movie is skipped in the field below. "continue" is left to the
+            // player (FF7's title cursor address does not apply).
+            if (g_target == 1) { finish("FF8: Continue is the player's choice"); break; }
+            if (in_mode < 1500) break;
+            if (g_title_presses == 0) { press(PAD_UP, t, 0); g_title_presses = 1; }
+            else if (g_title_presses == 1 && t - g_last_press > 700) { press(0x1000, t, 0); g_title_presses = 2; }
+            else if (t - g_last_press >= 250) ff7_platform_pad_inject(0);
+            break;
+        }
         const uint8_t cursor = *(volatile uint8_t *)(uintptr_t)TITLE_CURSOR;
         if (g_title_presses == 0) {
             if (cursor != g_flow) press(PAD_UP, t, 300);
@@ -170,10 +185,19 @@ void quickboot_frame() {
     }
     case MODE_FIELD:
         ff7_platform_pad_inject(0);
-        if (ff7_externals.movie_object && ff7_externals.movie_object->is_playing) {
-            if (t - g_last_skip > 500) { ff7_skip_movies(); g_last_skip = t; }
+        if (ff8 ? (ff8_externals.movie_object && ff8_externals.movie_object->movie_is_playing)
+                : (ff7_externals.movie_object && ff7_externals.movie_object->is_playing)) {
+            if (t - g_last_skip > 500) { if (ff8) ff8_skip_movies(); else ff7_skip_movies(); g_last_skip = t; }
         } else if ((g_last_skip && t - g_last_skip > 1500) || in_mode > 6000) {
-            if (g_target == 2) {                             // resume: a game is running now
+            if (g_target == 2 && ff8) {
+                // FF8: the field loop must be back at the depth the state was saved at; just
+                // after the opening movie it is not yet ("host stack differs"). Ask, and ask
+                // again 2 s after a refusal, until it loads (or the time runs out).
+                static int64_t asked;
+                const int r = asked ? ff7_savestate_load_result() : -1;
+                if (r == 1) finish("in the field, the save state loaded");
+                else if (r == -1 && t - asked > 2000) { ff7_savestate_request(1, g_resume_slot); asked = t; }
+            } else if (g_target == 2) {                      // resume: a game is running now
                 ff7_savestate_request(1, g_resume_slot);
                 finish("in the field, loading the save state");
             } else {
@@ -182,7 +206,9 @@ void quickboot_frame() {
         }
         break;
     default:
-        ff7_platform_pad_inject(0);
+        // FF8's Squaresoft logo waits for a button before the title menu: confirm (XInput B)
+        if (ff8 && in_mode > 1000) press(0x1000, t, 1500);
+        else ff7_platform_pad_inject(0);
         break;
     }
 }

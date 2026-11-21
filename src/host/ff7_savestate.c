@@ -509,6 +509,9 @@ static void *save_worker(void *arg) {
     return NULL;
 }
 
+/* The last load's outcome: 0 pending, 1 loaded, -1 refused (quickboot retries). */
+static volatile int g_load_result;
+
 static void *load_worker(void *arg) {
     job_t *j = arg;
     const char *why = NULL;
@@ -519,6 +522,7 @@ static void *load_worker(void *arg) {
         char msg[256];
         snprintf(msg, sizeof msg, "Cannot load the state: %s", why);
         notify(msg);
+        g_load_result = -1;
         pthread_mutex_lock(&g_lock); g_busy = 0; pthread_mutex_unlock(&g_lock);
     } else {
         pthread_mutex_lock(&g_lock);
@@ -552,7 +556,10 @@ static void slot_note(int k) {
     notify(msg);
 }
 
+int ff7_savestate_load_result(void) { return g_load_result; }
+
 void ff7_savestate_request(int load, const char *slot) {
+    if (load) g_load_result = 0;
     pthread_mutex_lock(&g_lock);
     if (g_busy) { pthread_mutex_unlock(&g_lock); notify("A save or load is still working"); return; }
     g_busy = 1;
@@ -686,6 +693,7 @@ void ff7_savestate_frame(void) {
         }
         if (why && strstr(why, "host stack differs") && strcmp(h.build, build_id()))
             why = "it was made by another version of FF7Recomp; save the state again in this version";
+        g_load_result = why ? -1 : 1;
         if (why) snprintf(msg, sizeof msg, "Cannot load the state: %s", why);
         else {
             apply(raw, n);

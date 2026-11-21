@@ -271,6 +271,9 @@ static void verify_code_writes_locked() {
 }
 
 void quickboot_frame();   // quickboot.cpp
+}  // namespace ffnx_recomp
+extern uint32_t ff8;   // FFNx common.cpp: FF8 is running
+namespace ffnx_recomp {
 extern "C" void ff7_companion_frame();   // companion.cpp
 
 // Check FFNx's code writes now, not at the next frame: code that runs before the first frame
@@ -282,7 +285,10 @@ void verify_code_writes() {
 
 void step_code() {
     quickboot_frame();
-    ff7_companion_frame();
+    // The second screen, boosters and achievements read FF7's game state; FF8's are to come
+    // (docs/ROADMAP.md M7), so FF8 runs without them for now.
+
+    if (!ff8) ff7_companion_frame();
     std::lock_guard<std::mutex> lk(g_lock);
     if (g_verified < g_code_writes.size()) verify_code_writes_locked();
     const uint64_t k = g_step_frame++;
@@ -418,3 +424,6 @@ extern "C" int ffnx_recomp_write_manifest(const char *path) {
     std::fclose(f);
     return 0;
 }
+
+// FF8: the per-frame step from FFNx's frame counter (common.cpp; FF7's comes from ff7_limit_fps).
+extern "C" void ffnx_recomp_step_code_c() { ffnx_recomp::step_code(); }

@@ -13,6 +13,8 @@ void ff7_savestate_frame(void);
 
 /* Ask for a save (load = 0) or a load into/from a slot ("quick", "slot1", ...). */
 void ff7_savestate_request(int load, const char *slot);
+/* The last load request's outcome: 0 pending, 1 loaded, -1 refused. */
+int ff7_savestate_load_result(void);
 
 /* State the rest of the program keeps outside guest memory (the FFNx port's graphics and
  * audio): `save` appends bytes with `put`, `restore` gets them back, `after_load` runs once

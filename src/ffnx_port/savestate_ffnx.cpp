@@ -19,6 +19,8 @@
 #include "log.h"
 #include "renderer.h"
 #include "ff7/defs.h"
+#include "macro.h"   // VOBJ / VREF: FF7's or FF8's struct layouts
+#include "ff8.h"
 #include "ff7/field/enter.h"
 #include "ff7/widescreen.h"
 #include "audio.h"
@@ -60,9 +62,9 @@ int ss_save(void *, ff7_ss_writer put, void *buf) {
 void ss_before_load(void *) {
     std::set<uint32_t> gone;
     for (uint32_t a : g_sets) {
-        struct ff7_texture_set *ts = (struct ff7_texture_set *)(uintptr_t)a;
-        struct gl_texture_set *gl = ts->ogl.gl_set;
-        uint32_t *handles = ts->texturehandle;
+        VOBJ(texture_set, ts, (uintptr_t)a);   // FF7's or FF8's layout
+        struct gl_texture_set *gl = VREF(ts, ogl.gl_set);
+        uint32_t *handles = VREF(ts, texturehandle);
         if (!gl || !handles) continue;
         for (uint32_t i = 0; i < gl->textures; i++) gone.insert(handles[i]);
         gone.insert(gl->default_texture_id);
@@ -87,8 +89,8 @@ void ss_restore(void *, const void *data, size_t n) {
 void ss_after_load(void *) {
     int sets = 0, uploads = 0;
     for (uint32_t a : g_restored) {
-        struct ff7_texture_set *ts = (struct ff7_texture_set *)(uintptr_t)a;
-        struct gl_texture_set *gl = ts->ogl.gl_set;
+        VOBJ(texture_set, ts, (uintptr_t)a);   // FF7's or FF8's layout
+        struct gl_texture_set *gl = VREF(ts, ogl.gl_set);
         g_sets.insert(a);
         if (!gl) continue;
         // the maps' bytes are another moment's host pointers: start them afresh (leaking
@@ -99,19 +101,19 @@ void ss_after_load(void *) {
         // the shared stand-in for palettes a texture mod has no image for: freed above (or
         // another process's), so the uploads below must make a new one, not hand this back
         gl->default_texture_id = 0;
-        uint32_t *handles = ts->texturehandle;
-        struct tex_header *generic = ts->tex_header;
+        uint32_t *handles = VREF(ts, texturehandle);
+        struct tex_header *generic = (struct tex_header *)VREF(ts, tex_header);
         if (!handles || !generic) continue;
-        struct ff7_tex_header *th = (struct ff7_tex_header *)generic;
-        const uint32_t keep = th->palette_index;
+        VOBJ(tex_header, th, generic);
+        const uint32_t keep = VREF(th, palette_index);
         std::vector<uint32_t> had;
         for (uint32_t i = 0; i < gl->textures; i++) if (handles[i]) { had.push_back(i); handles[i] = 0; }
         for (uint32_t i : had) {
-            th->palette_index = i;
-            common_load_texture((struct texture_set *)ts, generic, ts->texture_format);
+            VRASS(th, palette_index, i);
+            common_load_texture((struct texture_set *)VPTR(ts), generic, VREF(ts, texture_format));
             uploads++;
         }
-        th->palette_index = keep;
+        VRASS(th, palette_index, keep);
         sets++;
     }
     g_restored.clear();
@@ -138,6 +140,7 @@ void scene_restore(void *, const void *data, size_t n) {
 void scene_after_load(void *) {
     // the mode the state was saved in: FFNx's cached mode only catches up next frame
     const int mode = g_scene_have ? g_scene_loaded.mode : ff7_ss_driver_mode();
+    if (g_scene_have && ff8) g_scene_have = false;   // FF8: its music is restarted by the game (ff7_play_midi is FF7's)
     if (g_scene_have) {
         const SceneState &s = g_scene_loaded;
         const uint32_t was = nxAudioEngine.currentMusicId(0);
@@ -150,7 +153,7 @@ void scene_after_load(void *) {
         }
         g_scene_have = false;
     }
-    if (mode == MODE_FIELD) {          // ff7/field/enter.h, without the game's part
+    if (mode == MODE_FIELD && !ff8) {  // ff7/field/enter.h, without the game's part (FF7's field state)
         using namespace ff7::field;
         ff7_handle_KAWAI_reset();
         field_3d_world_pos = {INVALID_VALUE, INVALID_VALUE};
@@ -226,13 +229,19 @@ extern "C" int ff7_ss_driver_mode(void) {
 }
 
 extern "C" int ff7_ss_can_save(const char **why) {
-    if (ff7_externals.movie_object && ff7_externals.movie_object->is_playing) { *why = "a movie is playing"; return 0; }
-    switch (ff7_ss_driver_mode()) {
+    if (ff8) {
+        if (ff8_externals.movie_object && ff8_externals.movie_object->movie_is_playing) { *why = "a movie is playing"; return 0; }
+    } else if (ff7_externals.movie_object && ff7_externals.movie_object->is_playing) { *why = "a movie is playing"; return 0; }
+    const int mode = ff7_ss_driver_mode();
+    switch (mode) {
     case MODE_FIELD: case MODE_WORLDMAP: case MODE_BATTLE: case MODE_MENU: case MODE_MAIN_MENU:
         return 1;
-    default:
-        *why = "the game is between scenes";
+    default: {
+        static char msg[64];
+        std::snprintf(msg, sizeof msg, "the game is between scenes (mode %d)", mode);
+        *why = msg;
         return 0;
+    }
     }
 }
 
@@ -242,7 +251,8 @@ extern "C" int ff7_ss_can_save(const char **why) {
 // quickboot's "resume" first starts the game (Continue or New Game), then loads it.
 extern "C" int ff7_ss_can_load(int saved_mode, const char **why) {
     const int now = ff7_ss_driver_mode();
-    if ((now == MODE_MAIN_MENU || now == MODE_CREDITS) && saved_mode != now) {
+    // FF8: the title screen is fine (tools/quickboot resumes there); FF7 crashed there (#21)
+    if (!ff8 && (now == MODE_MAIN_MENU || now == MODE_CREDITS) && saved_mode != now) {
         *why = "the title screen is up: start or continue a game first, then load the state";
         return 0;
     }
@@ -255,6 +265,17 @@ extern "C" int ff7_ss_can_load(int saved_mode, const char **why) {
 // control codes). Outside fields the mode is named; with no place name yet, the field's own
 // name. And the game's play-time counter.
 extern "C" void ff7_ss_location(char *out, unsigned n, uint32_t *play_seconds) {
+    if (ff8) {   // FF8: the field's name and the mode (FF8's savemap text is its own encoding)
+        *play_seconds = 0;
+        if (!n) return;
+        const char *f = get_current_field_name();
+        switch (ff7_ss_driver_mode()) {
+        case MODE_BATTLE: std::snprintf(out, n, "Battle"); return;
+        case MODE_WORLDMAP: std::snprintf(out, n, "World map"); return;
+        case MODE_MENU: case MODE_MAIN_MENU: std::snprintf(out, n, "Menu"); return;
+        default: std::snprintf(out, n, "%s", f ? f : "Field"); return;
+        }
+    }
     struct savemap *sm = ff7_externals.savemap;
     *play_seconds = sm ? sm->seconds : 0;
     if (!n) return;

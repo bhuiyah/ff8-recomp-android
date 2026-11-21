@@ -141,6 +141,14 @@ FF8_EDITS = [
     ('ff8_opengl.cpp', 'replace_function(ff8_externals._open, ff8_open);',
      'replace_function(ff8_externals._open, +[](const char *path, int oflag, int pmode) -> int { return ff8_open(path, oflag, pmode); });   // FF8Recomp'),
 
+    # FF7's per-frame step (quickboot, the second screen, stepped code values) runs from FF7's
+    # frame limiter; FF8's runs here, once a frame
+    ('common.cpp', '\n\tframe_counter++;\n\n',
+     '\n\tframe_counter++;\n\tif (ff8) ffnx_recomp_step_code_c();   // FF8Recomp: src/ffnx_port/patch_recomp.cpp\n\n'),
+    ('common.cpp', 'char basedir[BASEDIR_LENGTH];\n',
+     'char basedir[BASEDIR_LENGTH];\n'
+     'extern "C" void ffnx_recomp_step_code_c();   // FF8Recomp: per-frame step (src/ffnx_port/patch_recomp.cpp)\n'),
+
     # ---- user data (FF8's saves, ff8input.cfg, temp files; Steam's save metadata): on Windows
     # Documents\Square Enix\FINAL FANTASY VIII Steam\user_<steam id>. Here the game folder's
     # save/ (save/user_0 for save files, the same shape); src/hle/ff7_af3dn.c hands these host
