@@ -86,6 +86,64 @@ FF8_EDITS = [
     ('fake_dd.cpp', '\t*surface = (LPDIRECTDRAWSURFACE)&_fake_dd_temp_surface;',
      '\t*(uint32_t *)surface = ffnx_fake_dd_va(&_fake_dd_temp_surface);   // FF8Recomp: a 4-byte cell'),
 
+    # The game's CRT FILE (its own fopen/_fsopen): a guest object FFNx only passes along. Not
+    # FILE, which the bridge treats as FFNx's host FILE handles (FF7's LGP files).
+    ('ff8.h', '\tgfn<FILE *(const char*, const char*, int)> _fsopen;',
+     '\tgfn<struct ff8_crt_FILE *(const char*, const char*, int)> _fsopen;   // FF8Recomp: the game\'s CRT FILE'),
+    ('ff8_data.cpp', '(FILE *(*)(const char*, const char*, int))get_relative_call(ff8_externals.fopen, 0xA);',
+     'decltype(ff8_externals._fsopen)::from_va(get_relative_call(ff8_externals.fopen, 0xA));'),
+    ('ff8/file.h', 'FILE *ff8_fopen(const char *fileName, const char *mode);',
+     'struct ff8_crt_FILE *ff8_fopen(const char *fileName, const char *mode);   // FF8Recomp: the game\'s CRT FILE'),
+    ('ff8/file.cpp', 'FILE *ff8_fopen(const char *fileName, const char *mode)\n',
+     'struct ff8_crt_FILE *ff8_fopen(const char *fileName, const char *mode)\n'),
+    ('ff8/file.cpp', '\t\tFILE *file = ff8_externals._fsopen(next_direct_file, mode, shflag);',
+     '\t\tauto *file = ff8_externals._fsopen(next_direct_file, mode, shflag);'),
+    ('ff8/file.cpp', '\tFILE *file = ff8_externals._fsopen(is_redirected ? _filename : fileName, mode, shflag);',
+     '\tauto *file = ff8_externals._fsopen(is_redirected ? _filename : fileName, mode, shflag);'),
+
+    # Movie camera data: the game walks it through movie_object->camdata_pointer. 2 MB, too big
+    # for the guest block: guest heap, allocated on first use (the guest heap is up by then).
+    ('movies.cpp', 'uint8_t ff8_movie_cam_buffer[2*1024*1024]; // 2MB',
+     '// FF8Recomp: the game reads the camera data itself: guest heap, allocated on first use\n'
+     'static uint8_t (*ff8_movie_cam_buffer_get())[2*1024*1024] {\n'
+     '\tstatic uint8_t (*p)[2*1024*1024] = nullptr;\n'
+     '\tif (!p) p = (uint8_t (*)[2*1024*1024])guest_calloc(1, 2*1024*1024);\n'
+     '\tif (!p) guest::fatal("ff8_movie_cam_buffer: guest heap exhausted", 2*1024*1024);\n'
+     '\treturn p;\n'
+     '}\n'
+     '#define ff8_movie_cam_buffer (*ff8_movie_cam_buffer_get())'),
+
+    # FFNx tables the game reads through FFNx's patches: in the fixed guest block
+    ('ff8/battle/ai.cpp', 'static uint8_t ff8_ai_index_table[FF8_AI_INDEX_TABLE_SIZE];',
+     'static uint8_t (&ff8_ai_index_table)[FF8_AI_INDEX_TABLE_SIZE] = ffnx_guest_static_zero<uint8_t, FF8_AI_INDEX_TABLE_SIZE>();   // FF8Recomp: guest block'),
+    ('ff8/battle/ai.cpp', 'static uint32_t ff8_ai_jump_table[FF8_AI_JUMP_TABLE_SIZE];',
+     'static uint32_t (&ff8_ai_jump_table)[FF8_AI_JUMP_TABLE_SIZE] = ffnx_guest_static_zero<uint32_t, FF8_AI_JUMP_TABLE_SIZE>();   // FF8Recomp: guest block'),
+    ('ff8/fonts.cpp', 'uint8_t font_character_width_local_field[452];',
+     'uint8_t (&font_character_width_local_field)[452] = ffnx_guest_static_zero<uint8_t, 452>();   // FF8Recomp: guest block'),
+
+    # the game's CRT _open(path, flags, ...) is cdecl: a fixed 3-argument thunk reads the
+    # optional mode (an extra stack word is harmless; the caller pops)
+    ('ff8_opengl.cpp', 'replace_function(ff8_externals._open, ff8_open);',
+     'replace_function(ff8_externals._open, +[](const char *path, int oflag, int pmode) -> int { return ff8_open(path, oflag, pmode); });   // FF8Recomp'),
+
+    # ---- user data (FF8's saves, ff8input.cfg, temp files; Steam's save metadata): on Windows
+    # Documents\Square Enix\FINAL FANTASY VIII Steam\user_<steam id>. Here the game folder's
+    # save/ (save/user_0 for save files, the same shape); src/hle/ff7_af3dn.c hands these host
+    # paths back to the game as C:\FF8\... paths.
+    ('common.cpp', 'void get_userdata_path(PCHAR buffer, size_t bufSize, bool isSavegameFile)\n{\n\tPWSTR outPath = NULL;\n',
+     'void get_userdata_path(PCHAR buffer, size_t bufSize, bool isSavegameFile)\n{\n'
+     '#ifdef FFNX_ANDROID\n'
+     '\t// FF8Recomp: <game folder>/save, and save/user_0 for save files\n'
+     '\tif (!getcwd(buffer, bufSize)) buffer[0] = 0;\n'
+     '\tstrncat(buffer, isSavegameFile ? "/save/user_0" : "/save", bufSize - strlen(buffer) - 1);\n'
+     '\t{ std::error_code ec; std::filesystem::create_directories(buffer, ec); }\n'
+     '\treturn;\n'
+     '#endif\n'
+     '\tPWSTR outPath = NULL;\n'),
+    ('metadata.cpp', "    userID.assign(strrchr(userPath, '_') + 1);",
+     "    const char *user_sep = strrchr(userPath, '_');   // FF8Recomp: no user_<id> folder means id 0\n"
+     "    userID.assign(user_sep ? user_sep + 1 : \"0\");"),
+
     # ---- ff8_data.cpp: the zoom function's own type (guest cells for its double pointers)
     ('ff8_data.cpp',
      'ff8_externals.world_calc_zoom_sub_50F900 = guest::gfn<int16_t(int16_t *, int16_t **, uint32_t **)>::from_va(',

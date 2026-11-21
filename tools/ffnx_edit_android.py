@@ -2016,6 +2016,29 @@ def rewrite_ff8_pointer_reads():
     return n
 
 
+VOID_FN_CAST_RE = re.compile(r'(replace_(?:function|call|call_function)\([^;]*?,\s*)\(\s*void\s*\*\s*\)\s*&?([a-z_][A-Za-z0-9_]*)\s*\)')
+
+
+def rewrite_ff8_void_fn_casts():
+    """FF8 code hands native replacements to the patch API as (void *)fn (MSVC converts
+    function pointers to void *). Untyped, a native function has no guest thunk (patch.h stops
+    the run); without the cast the typed overload makes one. Only plain names: (void *)game
+    addresses (ff8_externals.x, integers) stay as they are. Only FFNx's FF8 files."""
+    n = 0
+    for dirpath, _, files in os.walk(SRC):
+        rel_dir = os.path.relpath(dirpath, SRC).replace(os.sep, '/')
+        for f in files:
+            if not f.endswith('.cpp') or not (rel_dir.startswith('ff8') or f.startswith('ff8_')):
+                continue
+            path = os.path.join(dirpath, f)
+            raw = open(path, 'rb').read().decode('utf-8', errors='surrogateescape')
+            new, k = VOID_FN_CAST_RE.subn(lambda m: f'{m.group(1)}{m.group(2)})', raw)
+            if k:
+                open(path, 'wb').write(new.encode('utf-8', errors='surrogateescape'))
+                n += k
+    return n
+
+
 def apply_edit(edit):
     """'applied', 'present' (already applied) or None (no match yet)."""
     rel, old, new = edit[:3]
@@ -2050,6 +2073,9 @@ def main():
         pending = left
         if not pending:
             break
+    void_fns = rewrite_ff8_void_fn_casts()
+    if void_fns:
+        print(f'{void_fns} FF8 (void *) native replacements given their types')
     pp_reads = rewrite_ff8_pointer_reads()
     if pp_reads:
         print(f'{pp_reads} FF8 pointer reads from game memory made 4-byte guest loads')

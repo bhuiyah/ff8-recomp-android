@@ -1,0 +1,26 @@
+--- a/runtime/win32hle/kernel32_ext.c
++++ b/runtime/win32hle/kernel32_ext.c
+@@ -64,6 +64,8 @@
+     uint32_t i = h - FH_BASE;
+     return (h >= FH_BASE && i < MAXF) ? g_files[i] : NULL;
+ }
++/* 1 if h is an open file handle (GetFileType tells files from the console handles). */
++int hle_file_is_open(uint32_t h) { return file_of(h) != NULL; }
+ static int file_close(uint32_t h) {
+     uint32_t i = h - FH_BASE;
+     if (h >= FH_BASE && i < MAXF && g_files[i]) { fclose(g_files[i]); g_files[i] = NULL; return 1; }
+--- a/runtime/win32hle/kernel32_crt.c
++++ b/runtime/win32hle/kernel32_crt.c
+@@ -20,7 +20,11 @@
+     RET(n == 0xFFFFFFF6u ? 0x13u : n == 0xFFFFFFF5u ? 0x12u : 0x11u, 1); /* ERR/OUT/IN */
+ }
+ static void k_SetStdHandle(void) { RET(1, 2); }
+-static void k_GetFileType(void)  { RET(2u, 1); }   /* FILE_TYPE_CHAR (a console) */
++/* An open file is FILE_TYPE_DISK (1); anything else (the std handles) FILE_TYPE_CHAR (2), a
++ * console. The CRT treats a FILE_TYPE_CHAR handle as a device and ends a text-mode read at
++ * Ctrl-Z: FF8's archive index menu.fi has a 0x1A at offset 217 and came back cut there. */
++int hle_file_is_open(uint32_t h);
++static void k_GetFileType(void)  { RET(hle_file_is_open(A32(0)) ? 1u : 2u, 1); }
+ static void k_SetHandleCount(void){ RET(A32(0), 1); }
+ 
+ /* --- codepage / locale (the CRT's __setargv / _setmbcp path) --- */

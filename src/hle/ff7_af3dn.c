@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "win32hle.h"
 #include "ff7_hle.h"
 #include "guest_alloc.h"
@@ -124,7 +125,16 @@ static void d_CreateFileA(void) {
     char path[260];
     if (name && ffnx_ff8_steam_redirection && ffnx_ff8_steam_redirection(name, path)) {
         if (!redirected) redirected = (char *)guest_malloc(260);
-        snprintf(redirected, 260, "%s", path);
+        /* FFNx's user-data paths are host paths under the game folder (get_userdata_path):
+         * the game names them under its install root, which ff7_paths.c maps back. */
+        char cwd[512];
+        size_t cl = getcwd(cwd, sizeof cwd) ? strlen(cwd) : 0;
+        if (cl && !strncmp(path, cwd, cl) && (path[cl] == '/' || path[cl] == 0)) {
+            snprintf(redirected, 260, "%s%s", FF7_GUEST_ROOT, path + cl);
+            for (char *c = redirected; *c; c++) if (*c == '/') *c = '\\';
+        } else {
+            snprintf(redirected, 260, "%s", path);
+        }
         if (getenv("FF7_PATH_TRACE")) fprintf(stderr, "[dotemu] CreateFileA %s -> %s\n", name, redirected);
         MEM32(g_esp + 4) = (uint32_t)(uintptr_t)redirected;   /* argument 0 */
     }

@@ -492,10 +492,8 @@ BOOL MoveFileExA(LPCSTR from, LPCSTR to, DWORD flags);
 #define _S_IREAD S_IRUSR
 #define _S_IWRITE S_IWUSR
 #define _SH_DENYNO 0x40
-#define _O_CREAT O_CREAT
-#define _O_TRUNC O_TRUNC
-#define _O_WRONLY O_WRONLY
-#define _O_RDWR O_RDWR
+// _O_*: MSVC's values, from io.h (FF8 passes them to the game's own CRT)
+#include "io.h"
 #include <cstdio>
 #ifndef FFNX_HAVE_FOPEN_S
 #define FFNX_HAVE_FOPEN_S
