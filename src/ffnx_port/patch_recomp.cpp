@@ -69,7 +69,20 @@ uint32_t replace_function_va(uint32_t offset, uint32_t host_va, const char *what
     if (hooks_enabled()) {
         int rc = ff7_override_install(offset, host_va);
         installed = rc == 0;
-        if (rc == -1) ffnx_warning("replace_function: 0x%08X is not a lifted function entry; hook recorded only\n", offset);
+        if (rc == -1 && in_text(offset)) {
+            // Not a function entry: FFNx jumps there from code it wrote into the middle of a
+            // game function (FF8's texture_reload_fix1/2: an epilogue, then replace_function
+            // right after it, a tail call into FFNx). On Windows replace_function writes
+            // `jmp rel32` there; so does this, and the re-lift's patched-code variant (from
+            // the manifest) runs it, as for replace_call_function above.
+            uint8_t jmp[5] = { 0xE9 };
+            int32_t rel = static_cast<int32_t>(host_va - offset - 5);
+            std::memcpy(jmp + 1, &rel, 4);
+            note_code_write(offset, 5, "replace_function (mid-function jmp)");
+            std::memcpy(reinterpret_cast<uint8_t *>(static_cast<uintptr_t>(offset)), jmp, 5);
+        } else if (rc == -1) {
+            ffnx_warning("replace_function: 0x%08X is not a lifted function entry; hook recorded only\n", offset);
+        }
         if (rc == -2) ffnx_error("replace_function: override table full at 0x%08X\n", offset);
     }
     return record_hook(what, offset, host_va, installed);
