@@ -56,6 +56,9 @@ final class Reports {
         List<File> out = new ArrayList<>();
         File[] fs = new File(Storage.root(c), "game/save").listFiles();
         if (fs != null) for (File f : fs) if (f.isFile() && f.getName().toLowerCase(Locale.ROOT).endsWith(".ff7")) out.add(f);
+        // FF8: game/save/user_0/slotN_saveNN.ff8 (FFNx's userdata path)
+        File[] f8 = new File(Storage.root(c), "game/save/user_0").listFiles();
+        if (f8 != null) for (File f : f8) if (f.isFile() && f.getName().toLowerCase(Locale.ROOT).endsWith(".ff8")) out.add(f);
         out.sort((a, b) -> a.getName().compareTo(b.getName()));
         return out;
     }
@@ -85,7 +88,7 @@ final class Reports {
         if (old != null) for (File f : old) f.delete();   // one report at a time
         dir.mkdirs();
         String stamp = new SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(new Date());
-        File zip = new File(dir, "FF7Recomp-report-" + stamp + ".zip");
+        File zip = new File(dir, "FF8Recomp-report-" + stamp + ".zip");
         File root = Storage.root(c);
         try (ZipOutputStream z = new ZipOutputStream(new java.io.FileOutputStream(zip))) {
             put(z, "report.txt", summary(c).getBytes(StandardCharsets.UTF_8));
@@ -130,8 +133,8 @@ final class Reports {
     static Uri issueUrl(Context c) {
         String body = "**What happened**\n<!-- What you did, what you expected, what you saw instead. -->\n\n\n"
                 + "**Device**\n- Device and chip: " + device() + "\n- Android version: " + Build.VERSION.RELEASE
-                + "\n- FF7Recomp version: " + version(c) + "\n\n"
-                + "**Report**\n<!-- Drag the FF7Recomp-report zip from your Downloads folder here. -->\n\n";
+                + "\n- FF8Recomp version: " + version(c) + "\n\n"
+                + "**Report**\n<!-- Drag the FF8Recomp-report zip from your Downloads folder here. -->\n\n";
         return Uri.parse(ISSUES).buildUpon().appendQueryParameter("labels", "bug").appendQueryParameter("body", body).build();
     }
 
@@ -139,7 +142,7 @@ final class Reports {
 
     static String summary(Context c) {
         StringBuilder s = new StringBuilder();
-        s.append("FF7Recomp problem report, ").append(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss Z", Locale.US).format(new Date())).append("\n\n");
+        s.append("FF8Recomp problem report, ").append(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss Z", Locale.US).format(new Date())).append("\n\n");
         s.append("App: ").append(version(c)).append("\n");
         s.append("Device: ").append(device()).append(" (").append(Build.DEVICE).append(")\n");
         s.append("Android: ").append(Build.VERSION.RELEASE).append(" (API ").append(Build.VERSION.SDK_INT).append(")\n");

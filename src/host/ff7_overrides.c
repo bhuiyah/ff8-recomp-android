@@ -15,9 +15,10 @@
 #include <string.h>
 #include "recomp_types.h"
 #include "win32hle.h"
+#include "game_image.h"
 
-#define TEXT_LO 0x00401000u
-#define TEXT_HI 0x007B6000u
+#define TEXT_LO GAME_TEXT_LO
+#define TEXT_HI GAME_TEXT_HI        /* the game's .text (FF8: up to 0xB69000; FF7 stopped at 0x7B6000) */
 #define SHIM_LO 0x7F000000u          /* win32hle synthetic shim VAs (host code) */
 
 uint32_t ff7_override_bits[(TEXT_HI - TEXT_LO + 31u) / 32u];

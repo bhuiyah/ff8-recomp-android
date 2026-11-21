@@ -284,6 +284,27 @@ FF8_EDITS = [
      '\tuint32_t *chara_one_model_data = (uint32_t *)ff8_externals.dword_24FEE48;   // FF8Recomp: guest cells\n'
      '\tuint32_t *model_data = guest::ptr_of<uint32_t>(chara_one_model_data[model_id_2]);'),
 
+    # ---- music: Android has no DirectMusic. The 2013 release's music goes through FFNx's own
+    # audio engine (use_external_music, as for the Remastered), which finds the game's own
+    # segments and streams by name and plays segments with src/ffnx_port/dmusic (FF8.dls).
+    ('common.cpp',
+     '\t\t\t\t// Steam edition contains movies unpacked\n\t\t\t\tenable_ffmpeg_videos = true;\n\n\t\t\t\t// Eyes on me patch\n',
+     '\t\t\t\t// Steam edition contains movies unpacked\n\t\t\t\tenable_ffmpeg_videos = true;\n\n'
+     '\t\t\t\t// FF8Recomp: no DirectMusic on Android: FFNx plays the music (src/ffnx_port/dmusic)\n'
+     '\t\t\t\tuse_external_music = true;\n\n\t\t\t\t// Eyes on me patch\n'),
+    ('audio.cpp', '\t\tif (fileExists(_out)) {\n\t\t\treturn true;\n\t\t}\n\t}\n',
+     '\t\tif (fileExists(_out)) {\n\t\t\treturn true;\n\t\t}\n\t}\n\n'
+     '\t// FF8Recomp: the 2013 release\'s own music files by name (src/ffnx_port/dmusic/sgt_source.cpp)\n'
+     '\tif (ff8 && !ff8_remastered_edition && _type == NxAudioEngineLayer::NXAUDIOENGINE_MUSIC && ffnx_ff8_music_file(_out, MAX_PATH, _key)) return true;\n'),
+    ('audio.cpp', '\t\tif (_openpsf_loaded && SoLoud::OpenPsf::is_our_path(filename)) {',
+     '\t\tif (ff8) music = ffnx_ff8_load_segment(filename);   // FF8Recomp: DirectMusic segments (src/ffnx_port/dmusic)\n\n'
+     '\t\tif (music == nullptr && _openpsf_loaded && SoLoud::OpenPsf::is_our_path(filename)) {'),
+    ('audio.cpp', '\nNxAudioEngine nxAudioEngine;\n',
+     '\n// FF8Recomp: src/ffnx_port/dmusic/sgt_source.cpp\n'
+     'extern "C" bool ffnx_ff8_music_file(char *out, size_t out_size, const char *key);\n'
+     'SoLoud::AudioSource *ffnx_ff8_load_segment(const char *path);\n\n'
+     'NxAudioEngine nxAudioEngine;\n'),
+
     # ---- exe_data.cpp: the same, for the card-name table (ff8_get_card_name replaces a game
     # function) and the draw-point messages
     ('exe_data.cpp', '*(uint8_t **)ff8_externals.card_name_positions',

@@ -1,19 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- FF7Recomp launcher icon (themed-icon silhouette): the Buster Sword planted under a burning sky, a turquoise
-     meteor falling (drawn as vectors, not taken from the game). Written by tools/make_icon.py;
+<!-- FF8Recomp launcher icon (themed-icon silhouette): a gunblade planted under a night sky with a large moon
+     (drawn as vectors, not taken from the game). Written by tools/make_icon.py;
      edit that, not this. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <group android:pivotX="54" android:pivotY="58" android:rotation="180" android:scaleX="0.88" android:scaleY="0.88" android:translateX="-11" android:translateY="-4">
-        <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd" android:pathData="M45,62 L45,15 L63,27 L63,62 Z M48.5,51 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0 Z M48.5,57 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0 Z"/>
-        <path android:fillColor="#FFFFFFFF" android:pathData="M43.5,62 h21 v4.5 h-21 Z M51.5,66.5 h5 v12.5 h-5 Z M50.5,79 h7 v2.5 a1.5,1.5 0 0,1 -1.5,1.5 h-4 a1.5,1.5 0 0,1 -1.5,-1.5 Z"/>
+    <group android:pivotX="54" android:pivotY="58" android:rotation="180" android:scaleX="0.86" android:scaleY="0.86" android:translateX="-12" android:translateY="-4">
+        <path android:fillColor="#FFFFFFFF" android:pathData="M46.5,63 L46.5,22 L54,12 L61.5,22 L61.5,63 Z"/>
+        <path android:fillColor="#FFFFFFFF" android:pathData="M43,63 h22 a2,2 0 0,1 2,2 v6 a2,2 0 0,1 -2,2 h-22 a2,2 0 0,1 -2,-2 v-6 a2,2 0 0,1 2,-2 Z M51,73 h7 l-1.5,13 h-6.5 Z"/>
     </group>
-    <group android:translateX="70" android:translateY="38">
-        <group android:rotation="135">
-            <path android:fillColor="#FFFFFFFF" android:pathData="M11.24,0 L10.61,3.86 L8.23,6.9 L5.96,10.32 L1.84,10.42 L-1.87,10.63 L-5.15,8.93 L-9.41,7.9 L-10.86,3.95 L-11.97,0 L-11.21,-4.08 L-7.5,-6.3 L-5.67,-9.82 L-2.11,-11.96 L1.79,-10.13 L5.85,-10.13 L7.73,-6.48 L11.36,-4.13 Z"/>
-        </group>
+    <group android:translateX="70" android:translateY="36">
+        <path android:fillColor="#FFFFFFFF" android:pathData="M-15,0 a15,15 0 1,0 30,0 a15,15 0 1,0 -30,0 Z"/>
     </group>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M0,84 Q30,76 54,80 T108,78 V108 H0 Z"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M0,84 Q30,77 54,80 T108,78 V108 H0 Z"/>
 </vector>

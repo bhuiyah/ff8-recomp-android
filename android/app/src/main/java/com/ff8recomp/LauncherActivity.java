@@ -29,12 +29,37 @@ import android.widget.TextView;
 import java.io.File;
 
 /**
- * The app's entry point (7th Heaven's role): game files, mods (order, on/off, options),
+ * The app's entry point: game files, mods (order, on/off, options; FF8: hidden for now),
  * settings, Play. Driven by the Thor's pad (D-pad moves focus, A confirms, B goes back,
  * Start plays) or by touch. The game runs in its own process (GameActivity, ":game"), so
  * quitting it lands back here and Play can start a fresh one.
  */
 public class LauncherActivity extends Activity {
+    // ---- features carried over from FF7Recomp that do not fit FF8 yet: off, so the player never
+    // sees them (the code stays for when they are ported)
+    /** FF8: not yet. Achievements page (FF7's achievement list; FFNx's achievement code is FF7's).
+     *  Steam sign-in itself stays: Download from Steam uses it. */
+    static final boolean ACHIEVEMENTS = false;
+    /** FF8: not yet. Steam Cloud save sync (FF7's save files and cloud folder). */
+    static final boolean CLOUD_SAVES = false;
+    /** FF8: not yet. Game boosters: speed, random battles, battle enhancement, save anywhere,
+     *  gil / EXP / AP (src/ffnx_port/boosters.cpp pokes FF7's memory). boosters.txt gets neutral values. */
+    static final boolean BOOSTERS = false;
+    /** FF8: not yet. Mods, Get mods, Downloads and the mod catalogs (7th Heaven's catalogs are FF7 mods). */
+    static final boolean MODS = false;
+    /** FF8: not yet. Import / Export saves (PsxSaves: FF7 PC saves and PlayStation FF7 memory cards). */
+    static final boolean SAVE_IMPORT = false;
+    /** FF8: not yet. The launcher's menu sounds (Sfx: FF7's sound IDs and data/sound files). */
+    static final boolean MENU_SOUNDS = false;
+    /** FF8: not yet. The second screen's panels (CompanionView: FF7's party, materia, limit, map)
+     *  and the layouts built on them (portrait, split, side by side, swap screens). */
+    static final boolean SECOND_SCREEN = false;
+    /** FF8: not yet. Controller extras that follow FF7's state: FFNx's analogue controls, hold
+     *  confirm to repeat in battles, rumble (src/ffnx_port/rumble.cpp). */
+    static final boolean FF7_CONTROLLER_EXTRAS = false;
+    /** FF8's frame limiter (FFNx ff8_fps_limiter) goes to 60 FPS at most: no 120 FPS or "60, battles at 30". */
+    private static final int FPS_DEFAULT = 1;
+
     private static final int PICK_GAME = 1, PICK_IRO = 2, PICK_FOLDER = 3, PICK_PSX = 4, PICK_STORAGE = 5;
     /** Settings > Storage > Custom folder sent the player to grant All files access: pick the folder when they are back. */
     private boolean wantStorageFolder;
@@ -206,6 +231,7 @@ public class LauncherActivity extends Activity {
     }
 
     private void loadSounds() {
+        if (!MENU_SOUNDS) return;   // sfx stays null: sound() plays nothing
         if (sfx != null && sfx.isReady() && sfx.profileStamp == library.profile.lastModified()) {
             sfx.enabled = prefs.getBoolean("menu_sounds", true);
             return;
@@ -232,7 +258,7 @@ public class LauncherActivity extends Activity {
                 // how it ended, when it did not go on to the build and is not waiting for Continue
                 String m = JobService.status;
                 if (!GameBuild.running && JobService.pending(LauncherActivity.this) == null && m != null && !m.isEmpty()) {
-                    toastDialog(m + ((m.contains("no ff7_en") || m.contains("was not found")) ? "\n\n" + GAMENATIVE_HINT : ""));
+                    toastDialog(m + ((m.contains("no FF8_EN.exe") || m.contains("was not found")) ? "\n\n" + GAMENATIVE_HINT : ""));
                     JobService.status = "";
                 }
             }
@@ -294,7 +320,7 @@ public class LauncherActivity extends Activity {
         prefs = getSharedPreferences("launcher", MODE_PRIVATE);
         if (Storage.sdMissing(this))
             new android.os.Handler(getMainLooper()).post(() -> toastDialog("Your game files are on the SD card, which is "
-                    + "not inserted. Insert it and open FF7Recomp again (Settings > Storage moves them back to internal "
+                    + "not inserted. Insert it and open FF8Recomp again (Settings > Storage moves them back to internal "
                     + "storage)."));
         String customProblem = Storage.customProblem(this);
         if (customProblem != null)
@@ -311,7 +337,7 @@ public class LauncherActivity extends Activity {
         LinearLayout side = new LinearLayout(this);
         side.setOrientation(LinearLayout.VERTICAL);
         side.setPadding(0, 0, smallScreen ? dp(8) : dp(14), 0);
-        TextView title = text("FINAL FANTASY VII", smallScreen ? 13 : 17, TEXT);
+        TextView title = text("FINAL FANTASY VIII", smallScreen ? 13 : 17, TEXT);
         title.setTypeface(Typeface.create("serif", Typeface.BOLD));
         title.setLetterSpacing(0.04f);
         title.setSingleLine(true);
@@ -326,12 +352,14 @@ public class LauncherActivity extends Activity {
         playButton.setTextSize(smallScreen ? 16 : 19);
         playButton.setTypeface(Typeface.DEFAULT_BOLD);
         menu.addView(playButton);
-        menu.addView(menuItem("Mods", "mods"));
-        menu.addView(menuItem("Get mods", "catalog"));
-        downloadsButton = menuItem("Downloads", "downloads");
-        menu.addView(downloadsButton);
+        if (MODS) {
+            menu.addView(menuItem("Mods", "mods"));
+            menu.addView(menuItem("Get mods", "catalog"));
+            downloadsButton = menuItem("Downloads", "downloads");
+            menu.addView(downloadsButton);
+        }
         menu.addView(menuItem("Save states", "states"));
-        menu.addView(menuItem("Achievements", "achievements"));
+        if (ACHIEVEMENTS) menu.addView(menuItem("Achievements", "achievements"));
         settingsButton = menuItem("Settings", "settings");
         menu.addView(settingsButton);
         menu.addView(menuItem("Game files", "game"));
@@ -370,9 +398,9 @@ public class LauncherActivity extends Activity {
         theme(root);
         cursorOnFocus(getWindow().getDecorView());
         hideSystemBars();
-        show(ready() ? "mods" : "game");
+        show(ready() && MODS ? "mods" : "game");
         // catalogs older than a day are fetched quietly in the background (as 7th Heaven does)
-        new Thread(() -> { catalog.refresh(false); runOnUiThread(this::refresh); }).start();
+        if (MODS) new Thread(() -> { catalog.refresh(false); runOnUiThread(this::refresh); }).start();
         playButton.requestFocus();
     }
 
@@ -457,6 +485,9 @@ public class LauncherActivity extends Activity {
         queueSig = queueSignature();
         // the same page again (a mod switched on or off, a setting changed): keep its scroll
         // position, not back to the top (GitHub #32)
+        // a page that is switched off (FF8: not yet) shows Game files instead
+        if (!MODS && (page.equals("mods") || page.equals("catalog") || page.equals("downloads"))
+                || !ACHIEVEMENTS && page.equals("achievements")) page = "game";
         final int keepY = page.equals(shownPage) ? scrollY : 0;
         shownPage = page;
         switch (page) {
@@ -554,7 +585,7 @@ public class LauncherActivity extends Activity {
     private View modsPage() {
         LinearLayout col = column();
         col.addView(heading("Mods"));
-        TextView how = text("FF7Recomp loads the mods that are on, top first: when two change the same file, the higher one wins. "
+        TextView how = text("FF8Recomp loads the mods that are on, top first: when two change the same file, the higher one wins. "
                 + "▲▼ change the order. Get mods finds more; Add a mod file takes a .iro, .zip or .7z from Nexus Mods or another site.", 13, DIM);
         how.setPadding(0, dp(2), 0, dp(4));
         col.addView(how);
@@ -1189,28 +1220,34 @@ public class LauncherActivity extends Activity {
         StringBuilder s = new StringBuilder();
         s.append(!install.hasGame() ? "Game: not imported yet"
                 : GameBuild.running ? "Game: building for this device, " + GameBuild.percent + "%"
-                : build.built() ? "Game: ready" : "Game: not built for this device yet")
-                .append("\nMods: ").append(library.enabledCount()).append(" of ").append(library.mods.size()).append(" enabled");
-        if (!catalog.updates().isEmpty()) s.append("\nMod updates: ").append(catalog.updates().size());
-        if (Updater.available != null) s.append("\nFF7Recomp ").append(Updater.available.version).append(" available (Settings)");
-        DownloadQueue.Item run = queue.running();
-        int waiting = queue.pendingCount() - (run != null ? 1 : 0);
-        if (run != null) s.append("\n").append(run.mod.name).append(": ").append(queueLabel(run, false));
-        if (waiting > 0) s.append("\n").append(waiting).append(" more queued");
-        s.append("\nFrame rate: ").append(fpsName(prefs.getInt("fps", 3))).append(boosterSpeed() > 1 ? ", " + boosterSpeed() + "× speed" : "");
-        if (prefs.getBoolean("no_encounters", false) || prefs.getBoolean("battle_plus", false))
+                : build.built() ? "Game: ready" : "Game: not built for this device yet");
+        if (MODS) {
+            s.append("\nMods: ").append(library.enabledCount()).append(" of ").append(library.mods.size()).append(" enabled");
+            if (!catalog.updates().isEmpty()) s.append("\nMod updates: ").append(catalog.updates().size());
+        }
+        if (Updater.available != null) s.append("\nFF8Recomp ").append(Updater.available.version).append(" available (Settings)");
+        if (MODS) {
+            DownloadQueue.Item run = queue.running();
+            int waiting = queue.pendingCount() - (run != null ? 1 : 0);
+            if (run != null) s.append("\n").append(run.mod.name).append(": ").append(queueLabel(run, false));
+            if (waiting > 0) s.append("\n").append(waiting).append(" more queued");
+        }
+        s.append("\nFrame rate: ").append(fpsName(fpsMode())).append(boosterSpeed() > 1 ? ", " + boosterSpeed() + "× speed" : "");
+        if (BOOSTERS && (prefs.getBoolean("no_encounters", false) || prefs.getBoolean("battle_plus", false)))
             s.append("\nBoosters: ").append(prefs.getBoolean("no_encounters", false) ? "no random battles" : "")
                     .append(prefs.getBoolean("no_encounters", false) && prefs.getBoolean("battle_plus", false) ? ", " : "")
                     .append(prefs.getBoolean("battle_plus", false) ? "battle enhancement" : "");
         status.setText(s.toString().replace("\n", "   ·   "));
-        int n = queue.pendingCount();
-        downloadsButton.setText(n > 0 ? "Downloads (" + n + ")" : "Downloads");
-        // an FF7Recomp update is out: a gold dot beside Settings, where the update button is
+        if (downloadsButton != null) {
+            int n = queue.pendingCount();
+            downloadsButton.setText(n > 0 ? "Downloads (" + n + ")" : "Downloads");
+        }
+        // an FF8Recomp update is out: a gold dot beside Settings, where the update button is
         if (Updater.available != null) {
             android.text.SpannableString t = new android.text.SpannableString("Settings  ●");
             t.setSpan(new android.text.style.ForegroundColorSpan(0xFFFFD24A), t.length() - 1, t.length(), 0);
             settingsButton.setText(t);
-            settingsButton.setContentDescription("Settings, FF7Recomp " + Updater.available.version + " available");
+            settingsButton.setContentDescription("Settings, FF8Recomp " + Updater.available.version + " available");
         } else {
             settingsButton.setText("Settings");
             settingsButton.setContentDescription(null);
@@ -1427,7 +1464,7 @@ public class LauncherActivity extends Activity {
         LinearLayout col = column();
         col.addView(heading("Updates"));
         Updater.Release up = Updater.available;
-        if (Updater.status.isEmpty()) Updater.status = "FF7Recomp " + Updater.installedVersion(this);
+        if (Updater.status.isEmpty()) Updater.status = "FF8Recomp " + Updater.installedVersion(this);
         updateLine = text(updateText(), 15, up != null ? ACCENT : DIM);
         col.addView(updateLine);
         col.addView(space(8));
@@ -1442,15 +1479,22 @@ public class LauncherActivity extends Activity {
         col.addView(ub);
         col.addView(text("Installed: " + Updater.installedVersion(this) + "   ·   from github.com/" + Updater.REPO, 13, DIM));
         col.addView(space(18));
-        CheckBox ms = new CheckBox(this);
-        ms.setText("Menu sounds (FF7's own, from your game files)");
-        ms.setTextSize(16);
-        ms.setChecked(prefs.getBoolean("menu_sounds", true));
-        ms.setOnCheckedChangeListener((b, on) -> { prefs.edit().putBoolean("menu_sounds", on).apply(); loadSounds(); });
-        col.addView(ms);
-        col.addView(space(10));
+        if (MENU_SOUNDS) {
+            CheckBox ms = new CheckBox(this);
+            ms.setText("Menu sounds (the game's own, from your game files)");
+            ms.setTextSize(16);
+            ms.setChecked(prefs.getBoolean("menu_sounds", true));
+            ms.setOnCheckedChangeListener((b, on) -> { prefs.edit().putBoolean("menu_sounds", on).apply(); loadSounds(); });
+            col.addView(ms);
+            col.addView(space(10));
+        }
+        if (!ACHIEVEMENTS) {   // the Steam sign-in lives here while the Achievements page is off
+            col.addView(heading("Steam"));
+            steamAccountSection(col);
+            col.addView(space(10));
+        }
         col.addView(heading("Language"));
-        col.addView(text("The game's text and menus. Mods that replace text (field scripts, battle commands) keep their own language.", 14, DIM));
+        col.addView(text("The game's text and menus. FF8Recomp runs the English release (FF8_EN.exe) for now.", 14, DIM));
         RadioGroup lg = new RadioGroup(this);
         int curLang = prefs.getInt("game_language", 1);
         for (String[] l : GameInstall.LANGUAGES) {
@@ -1472,7 +1516,7 @@ public class LauncherActivity extends Activity {
             col.addView(heading("Storage"));
             col.addView(text("Where your game files, mods, saves and save states are kept. Moving them takes a few "
                     + "minutes; the built game itself always stays in internal storage. A custom folder (for example "
-                    + "/sdcard/FF7Recomp) is easy to back up or sync, and needs Android's \"All files access\".", 14, DIM));
+                    + "/sdcard/FF8Recomp) is easy to back up or sync, and needs Android's \"All files access\".", 14, DIM));
             RadioGroup sg = new RadioGroup(this);
             int place = Storage.place(this);
             File custom = Storage.customRoot(this);
@@ -1505,8 +1549,10 @@ public class LauncherActivity extends Activity {
         col.addView(space(10));
         col.addView(heading("Frame rate"));
         RadioGroup g = new RadioGroup(this);
-        int cur = prefs.getInt("fps", 3);
-        for (int mode : new int[] { 0, 1, 2, 5, 3, 4 }) {   // 5: 60 FPS with battles at 30 (#64)
+        int cur = fpsMode();
+        // FF8 (FFNx ff8_fps_limiter): Original, Default, 30 FPS battles, 60 FPS. FF7's 5 (60 FPS
+        // with battles at 30, #64) and 4 (120 FPS) do not exist for FF8.
+        for (int mode : new int[] { 0, 1, 2, 3 }) {
             RadioButton rb = new RadioButton(this);
             rb.setId(View.generateViewId());
             // one line: the name, then a short dim note
@@ -1526,13 +1572,13 @@ public class LauncherActivity extends Activity {
         // Performance: render scale and frame skipping (heat and battery on smaller devices)
         col.addView(space(16));
         col.addView(heading("Performance"));
-        col.addView(text("How hard the GPU works. Balanced renders at the screen's resolution and, when the game is "
-                + "sped up, draws only the frames normal speed would. 120 FPS above doubles the work at normal speed.", 14, DIM));
+        col.addView(text(BOOSTERS ? "How hard the GPU works. Balanced renders at the screen's resolution and, when the game is "
+                + "sped up, draws only the frames normal speed would." : "How hard the GPU works. Balanced renders at the screen's resolution.", 14, DIM));
         RadioGroup pg = new RadioGroup(this);
         String[] perfNames = {
             "Cooler: a lower resolution, for weaker devices or long sessions",
             "Balanced: the screen's resolution (recommended)",
-            "Best quality: the resolution mods ask for, every frame drawn when sped up",
+            BOOSTERS ? "Best quality: the resolution mods ask for, every frame drawn when sped up" : "Best quality: no limit on the resolution",
         };
         int curPerf = prefs.getInt("perf", 1);
         for (int p = 0; p < perfNames.length; p++) {
@@ -1547,52 +1593,54 @@ public class LauncherActivity extends Activity {
             if (p == curPerf) rb.setChecked(true);
         }
         col.addView(pg);
-        // Game boosters (docs/ROADMAP.md M8): how each game starts; in game the bottom screen's
-        // Speed / Battles / Battle+ buttons and FFNx's L3 shortcuts change them.
-        col.addView(space(16));
-        col.addView(heading("Game boosters"));
-        col.addView(text("How the game starts. In game: the bottom screen's Speed, Battles and Battle+ buttons, or L3 then "
-                + "R1/L1 (speed), A (random battles), B (battle enhancement). Icons in the top-right corner show what is on.", 14, DIM));
-        RadioGroup sg = new RadioGroup(this);
-        sg.setOrientation(smallScreen ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
-        int curSpeed = boosterSpeed();
-        for (int sp = 1; sp <= 3; sp++) {
-            RadioButton rb = new RadioButton(this);
-            rb.setText(sp + "× speed   ");
-            rb.setTextColor(TEXT);
-            rb.setTextSize(16);
-            rb.setId(View.generateViewId());
-            final int v = sp;
-            rb.setOnClickListener(x -> { prefs.edit().putInt("speed", v).putBoolean("turbo", v > 1).apply(); refresh(); });
-            sg.addView(rb);
-            if (sp == curSpeed) rb.setChecked(true);
+        if (BOOSTERS) {
+            // Game boosters (docs/ROADMAP.md M8): how each game starts; in game the bottom screen's
+            // Speed / Battles / Battle+ buttons and FFNx's L3 shortcuts change them.
+            col.addView(space(16));
+            col.addView(heading("Game boosters"));
+            col.addView(text("How the game starts. In game: the bottom screen's Speed, Battles and Battle+ buttons, or L3 then "
+                    + "R1/L1 (speed), A (random battles), B (battle enhancement). Icons in the top-right corner show what is on.", 14, DIM));
+            RadioGroup sg = new RadioGroup(this);
+            sg.setOrientation(smallScreen ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
+            int curSpeed = boosterSpeed();
+            for (int sp = 1; sp <= 3; sp++) {
+                RadioButton rb = new RadioButton(this);
+                rb.setText(sp + "× speed   ");
+                rb.setTextColor(TEXT);
+                rb.setTextSize(16);
+                rb.setId(View.generateViewId());
+                final int v = sp;
+                rb.setOnClickListener(x -> { prefs.edit().putInt("speed", v).putBoolean("turbo", v > 1).apply(); refresh(); });
+                sg.addView(rb);
+                if (sp == curSpeed) rb.setChecked(true);
+            }
+            col.addView(sg);
+            CheckBox noBattles = new CheckBox(this);
+            noBattles.setText("No random battles\nScripted battles and bosses still happen.");
+            noBattles.setTextColor(TEXT);
+            noBattles.setTextSize(16);
+            noBattles.setChecked(prefs.getBoolean("no_encounters", false));
+            noBattles.setOnCheckedChangeListener((b, on) -> prefs.edit().putBoolean("no_encounters", on).apply());
+            col.addView(noBattles);
+            CheckBox bplus = new CheckBox(this);
+            bplus.setText("Battle enhancement\nThe party's HP and MP stay full in battle, and the Limit gauge is full.");
+            bplus.setTextColor(TEXT);
+            bplus.setTextSize(16);
+            bplus.setChecked(prefs.getBoolean("battle_plus", false));
+            bplus.setOnCheckedChangeListener((b, on) -> prefs.edit().putBoolean("battle_plus", on).apply());
+            col.addView(bplus);
+            CheckBox saveAny = new CheckBox(this);
+            saveAny.setText("Save anywhere" + "\n" + "Save from the menu outside save points too. Keep a second save file: a save made in the "
+                    + "middle of an event can leave you stuck.");
+            saveAny.setTextColor(TEXT);
+            saveAny.setTextSize(16);
+            saveAny.setChecked(prefs.getBoolean("save_anywhere", false));
+            saveAny.setOnCheckedChangeListener((b, on) -> prefs.edit().putBoolean("save_anywhere", on).apply());
+            col.addView(saveAny);
+            multiplierRow(col, "Gil from battles", "gil");
+            multiplierRow(col, "EXP from battles", "exp");    // GitHub #32
+            multiplierRow(col, "AP from battles (materia growth)", "ap");
         }
-        col.addView(sg);
-        CheckBox noBattles = new CheckBox(this);
-        noBattles.setText("No random battles\nScripted battles and bosses still happen.");
-        noBattles.setTextColor(TEXT);
-        noBattles.setTextSize(16);
-        noBattles.setChecked(prefs.getBoolean("no_encounters", false));
-        noBattles.setOnCheckedChangeListener((b, on) -> prefs.edit().putBoolean("no_encounters", on).apply());
-        col.addView(noBattles);
-        CheckBox bplus = new CheckBox(this);
-        bplus.setText("Battle enhancement\nThe party's HP and MP stay full in battle, and the Limit gauge is full.");
-        bplus.setTextColor(TEXT);
-        bplus.setTextSize(16);
-        bplus.setChecked(prefs.getBoolean("battle_plus", false));
-        bplus.setOnCheckedChangeListener((b, on) -> prefs.edit().putBoolean("battle_plus", on).apply());
-        col.addView(bplus);
-        CheckBox saveAny = new CheckBox(this);
-        saveAny.setText("Save anywhere" + "\n" + "Save from the menu outside save points too. Keep a second save file: a save made in the "
-                + "middle of an event can leave you stuck.");
-        saveAny.setTextColor(TEXT);
-        saveAny.setTextSize(16);
-        saveAny.setChecked(prefs.getBoolean("save_anywhere", false));
-        saveAny.setOnCheckedChangeListener((b, on) -> prefs.edit().putBoolean("save_anywhere", on).apply());
-        col.addView(saveAny);
-        multiplierRow(col, "Gil from battles", "gil");
-        multiplierRow(col, "EXP from battles", "exp");    // GitHub #32
-        multiplierRow(col, "AP from battles (materia growth)", "ap");
         col.addView(space(16));
         col.addView(heading("Display"));
         RadioGroup ar = new RadioGroup(this);
@@ -1666,7 +1714,7 @@ public class LauncherActivity extends Activity {
         }
         col.addView(rg);
         CheckBox crt = new CheckBox(this);
-        crt.setText("CRT filter\nScanlines and a phosphor mask, like an old TV (on the second screen too)");
+        crt.setText("CRT filter\nScanlines and a phosphor mask, like an old TV" + (SECOND_SCREEN ? " (on the second screen too)" : ""));
         crt.setTextColor(TEXT);
         crt.setTextSize(16);
         crt.setChecked(prefs.getBoolean("crt_filter", false));
@@ -1674,64 +1722,66 @@ public class LauncherActivity extends Activity {
         col.addView(crt);
         col.addView(space(16));
         ffnxSections(col);
-        col.addView(heading("Screen"));
-        CheckBox second = new CheckBox(this);
-        second.setText("Use the second screen\nOn dual-screen devices such as the AYN Thor: party, enemy HP and the touch deck. Off: the second screen is free for other apps, such as a guide (tap the game screen to give the controller back to the game)");
-        second.setTextColor(TEXT);
-        second.setTextSize(16);
-        second.setChecked(prefs.getBoolean("bottom_screen", true));
-        second.setOnCheckedChangeListener((b, on) -> prefs.edit().putBoolean("bottom_screen", on).apply());
-        col.addView(second);
-        CheckBox deckBox = new CheckBox(this);
-        deckBox.setText("Second screen buttons\nMenu, Save, Load, Speed, Battles and Battle+ along the bottom. "
-                + "Off: the panels fill the screen and the controller does everything");
-        deckBox.setTextColor(TEXT);
-        deckBox.setTextSize(16);
-        deckBox.setChecked(prefs.getBoolean("bottom_buttons", true));
-        deckBox.setOnCheckedChangeListener((b, on) -> prefs.edit().putBoolean("bottom_buttons", on).apply());
-        col.addView(deckBox);
-        CheckBox swapBox = new CheckBox(this);
-        swapBox.setText("Swap screens\nThe game on the second screen and the panels on the main one. "
-                + "For devices whose main screen is the small one, such as the Ayaneo Pocket DS");
-        swapBox.setTextColor(TEXT);
-        swapBox.setTextSize(16);
-        swapBox.setChecked(prefs.getBoolean("swap_screens", false));
-        swapBox.setOnCheckedChangeListener((b, on) -> prefs.edit().putBoolean("swap_screens", on).apply());
-        col.addView(swapBox);
-        RadioGroup or = new RadioGroup(this);
-        String[][] orientations = {
-            { "0", "Landscape", "The game fills the screen" },
-            { "1", "Portrait (phones)", "The game on top; below it the party, location and enemy HP, a touch deck "
-                    + "(menu, save/load state, speed) and the on-screen controls" },
-            { "2", "Split (foldables, tablets)", "Held either way: the game on top and the second screen's panels below it, "
-                    + "with the on-screen controls at their sides when they show. Screens without room below the game "
-                    + "(a foldable's cover screen) play in landscape" },
-            { "3", "Side by side (wide screens)", "The game at the left and the second screen's panels (party, menu, save/load "
-                    + "state, speed) at its right, on one screen. Best with the 4:3 picture, which leaves the most room; "
-                    + "held upright it is like Split" },
-        };
-        int curLayout = prefs.getBoolean("side", false) ? 3 : prefs.getBoolean("split", false) ? 2 : prefs.getBoolean("portrait", false) ? 1 : 0;
-        for (String[] o : orientations) {
-            RadioButton rb = new RadioButton(this);
-            rb.setId(View.generateViewId());
-            rb.setText(o[1] + "\n" + o[2]);
-            rb.setTextColor(TEXT);
-            rb.setTextSize(16);
-            final int v = Integer.parseInt(o[0]);
-            rb.setOnClickListener(x -> prefs.edit().putBoolean("portrait", v == 1).putBoolean("split", v == 2).putBoolean("side", v == 3).apply());
-            or.addView(rb);
-            if (v == curLayout) rb.setChecked(true);
+        if (SECOND_SCREEN) {
+            col.addView(heading("Screen"));
+            CheckBox second = new CheckBox(this);
+            second.setText("Use the second screen\nOn dual-screen devices such as the AYN Thor: party, enemy HP and the touch deck. Off: the second screen is free for other apps, such as a guide (tap the game screen to give the controller back to the game)");
+            second.setTextColor(TEXT);
+            second.setTextSize(16);
+            second.setChecked(prefs.getBoolean("bottom_screen", true));
+            second.setOnCheckedChangeListener((b, on) -> prefs.edit().putBoolean("bottom_screen", on).apply());
+            col.addView(second);
+            CheckBox deckBox = new CheckBox(this);
+            deckBox.setText("Second screen buttons\nMenu, Save, Load, Speed, Battles and Battle+ along the bottom. "
+                    + "Off: the panels fill the screen and the controller does everything");
+            deckBox.setTextColor(TEXT);
+            deckBox.setTextSize(16);
+            deckBox.setChecked(prefs.getBoolean("bottom_buttons", true));
+            deckBox.setOnCheckedChangeListener((b, on) -> prefs.edit().putBoolean("bottom_buttons", on).apply());
+            col.addView(deckBox);
+            CheckBox swapBox = new CheckBox(this);
+            swapBox.setText("Swap screens\nThe game on the second screen and the panels on the main one. "
+                    + "For devices whose main screen is the small one, such as the Ayaneo Pocket DS");
+            swapBox.setTextColor(TEXT);
+            swapBox.setTextSize(16);
+            swapBox.setChecked(prefs.getBoolean("swap_screens", false));
+            swapBox.setOnCheckedChangeListener((b, on) -> prefs.edit().putBoolean("swap_screens", on).apply());
+            col.addView(swapBox);
+            RadioGroup or = new RadioGroup(this);
+            String[][] orientations = {
+                { "0", "Landscape", "The game fills the screen" },
+                { "1", "Portrait (phones)", "The game on top; below it the party, location and enemy HP, a touch deck "
+                        + "(menu, save/load state, speed) and the on-screen controls" },
+                { "2", "Split (foldables, tablets)", "Held either way: the game on top and the second screen's panels below it, "
+                        + "with the on-screen controls at their sides when they show. Screens without room below the game "
+                        + "(a foldable's cover screen) play in landscape" },
+                { "3", "Side by side (wide screens)", "The game at the left and the second screen's panels (party, menu, save/load "
+                        + "state, speed) at its right, on one screen. Best with the 4:3 picture, which leaves the most room; "
+                        + "held upright it is like Split" },
+            };
+            int curLayout = prefs.getBoolean("side", false) ? 3 : prefs.getBoolean("split", false) ? 2 : prefs.getBoolean("portrait", false) ? 1 : 0;
+            for (String[] o : orientations) {
+                RadioButton rb = new RadioButton(this);
+                rb.setId(View.generateViewId());
+                rb.setText(o[1] + "\n" + o[2]);
+                rb.setTextColor(TEXT);
+                rb.setTextSize(16);
+                final int v = Integer.parseInt(o[0]);
+                rb.setOnClickListener(x -> prefs.edit().putBoolean("portrait", v == 1).putBoolean("split", v == 2).putBoolean("side", v == 3).apply());
+                or.addView(rb);
+                if (v == curLayout) rb.setChecked(true);
+            }
+            col.addView(or);
+            CheckBox sideLeftBox = new CheckBox(this);
+            sideLeftBox.setText("Side by side: panels on the left\nThe panels at the game's left instead of its right. "
+                    + "In the game, the button at the top of the panels hides them; the tab at the screen's edge brings them back");
+            sideLeftBox.setTextColor(TEXT);
+            sideLeftBox.setTextSize(16);
+            sideLeftBox.setChecked(prefs.getBoolean("side_left", false));
+            sideLeftBox.setOnCheckedChangeListener((b, on) -> prefs.edit().putBoolean("side_left", on).apply());
+            col.addView(sideLeftBox);
+            col.addView(space(16));
         }
-        col.addView(or);
-        CheckBox sideLeftBox = new CheckBox(this);
-        sideLeftBox.setText("Side by side: panels on the left\nThe panels at the game's left instead of its right. "
-                + "In the game, the button at the top of the panels hides them; the tab at the screen's edge brings them back");
-        sideLeftBox.setTextColor(TEXT);
-        sideLeftBox.setTextSize(16);
-        sideLeftBox.setChecked(prefs.getBoolean("side_left", false));
-        sideLeftBox.setOnCheckedChangeListener((b, on) -> prefs.edit().putBoolean("side_left", on).apply());
-        col.addView(sideLeftBox);
-        col.addView(space(16));
         col.addView(heading("On-screen controls"));
         RadioGroup tc = new RadioGroup(this);
         String[][] touchModes = {
@@ -1753,54 +1803,57 @@ public class LauncherActivity extends Activity {
         }
         col.addView(tc);
         col.addView(button("Size and layout…", v -> startActivity(new Intent(this, TouchLayoutActivity.class))));
-        col.addView(space(16));
-        col.addView(heading("Controller"));
-        CheckBox analog = new CheckBox(this);
-        analog.setText("Analog stick\nTilt the left stick a little to walk, all the way to run. In battles the right stick turns "
-                + "the camera and L2/R2 zoom it (FFNx's analogue controls)");
-        analog.setTextColor(TEXT);
-        analog.setTextSize(16);
-        analog.setChecked(prefs.getBoolean("analog_controls", false));
-        analog.setOnCheckedChangeListener((b, on) -> prefs.edit().putBoolean("analog_controls", on).apply());
-        col.addView(analog);
-        CheckBox fire = new CheckBox(this);   // GitHub #33
-        fire.setText("Hold confirm to repeat in battles\nHolding the confirm button keeps picking, about five times a "
-                + "second, like auto-fire. Outside battles it presses once, as in the original");
-        fire.setTextColor(TEXT);
-        fire.setTextSize(16);
-        fire.setChecked(prefs.getBoolean("autofire", false));
-        fire.setOnCheckedChangeListener((b, on) -> prefs.edit().putBoolean("autofire", on).apply());
-        col.addView(fire);
-        // Rumble (src/ffnx_port/rumble.cpp): FF7 has none of its own, so it follows the game
-        RadioGroup rumbleGroup = new RadioGroup(this);
-        String[][] rumbles = {
-            { "0", "No rumble", "As the original: the game never vibrates" },
-            { "1", "Light rumble", "Field quakes and explosions, and in battles every hit: the ones you land and the ones you take" },
-            { "2", "Strong rumble", "The same, at full strength" },
-        };
-        int curRumble = prefs.getInt("rumble", 0);
-        for (String[] t : rumbles) {
-            RadioButton rb = new RadioButton(this);
-            rb.setId(View.generateViewId());
-            rb.setText(t[1] + "\n" + t[2]);
-            rb.setTextColor(TEXT);
-            rb.setTextSize(16);
-            final int v = Integer.parseInt(t[0]);
-            rb.setOnClickListener(x -> prefs.edit().putInt("rumble", v).apply());
-            rumbleGroup.addView(rb);
-            if (v == curRumble) rb.setChecked(true);
+        if (FF7_CONTROLLER_EXTRAS) {
+            col.addView(space(16));
+            col.addView(heading("Controller"));
+            CheckBox analog = new CheckBox(this);
+            analog.setText("Analog stick\nTilt the left stick a little to walk, all the way to run. In battles the right stick turns "
+                    + "the camera and L2/R2 zoom it (FFNx's analogue controls)");
+            analog.setTextColor(TEXT);
+            analog.setTextSize(16);
+            analog.setChecked(prefs.getBoolean("analog_controls", false));
+            analog.setOnCheckedChangeListener((b, on) -> prefs.edit().putBoolean("analog_controls", on).apply());
+            col.addView(analog);
+            CheckBox fire = new CheckBox(this);   // GitHub #33
+            fire.setText("Hold confirm to repeat in battles\nHolding the confirm button keeps picking, about five times a "
+                    + "second, like auto-fire. Outside battles it presses once, as in the original");
+            fire.setTextColor(TEXT);
+            fire.setTextSize(16);
+            fire.setChecked(prefs.getBoolean("autofire", false));
+            fire.setOnCheckedChangeListener((b, on) -> prefs.edit().putBoolean("autofire", on).apply());
+            col.addView(fire);
+            // Rumble (src/ffnx_port/rumble.cpp): FF7 has none of its own, so it follows the game
+            RadioGroup rumbleGroup = new RadioGroup(this);
+            String[][] rumbles = {
+                { "0", "No rumble", "As the original: the game never vibrates" },
+                { "1", "Light rumble", "Field quakes and explosions, and in battles every hit: the ones you land and the ones you take" },
+                { "2", "Strong rumble", "The same, at full strength" },
+            };
+            int curRumble = prefs.getInt("rumble", 0);
+            for (String[] t : rumbles) {
+                RadioButton rb = new RadioButton(this);
+                rb.setId(View.generateViewId());
+                rb.setText(t[1] + "\n" + t[2]);
+                rb.setTextColor(TEXT);
+                rb.setTextSize(16);
+                final int v = Integer.parseInt(t[0]);
+                rb.setOnClickListener(x -> prefs.edit().putInt("rumble", v).apply());
+                rumbleGroup.addView(rb);
+                if (v == curRumble) rb.setChecked(true);
+            }
+            col.addView(rumbleGroup);
         }
-        col.addView(rumbleGroup);
         col.addView(space(16));
         col.addView(heading("Start"));
         RadioGroup st = new RadioGroup(this);
         String[][] starts = {
             { "", "Normal", "Credits, title screen and opening movie, as the game plays them" },
             { "newgame", "Straight into a new game", "Skips the credits, picks New Game and skips the opening movie" },
-            { "continue", "Continue straight away", "Skips the credits and loads the first save of the first save file" },
+            // FF8: not yet: "continue" (load the first save straight away; quickboot.cpp leaves
+            // Continue to the player in FF8)
             { "resume", "Resume the current save-state slot", "Starts the game at the moment saved in the current slot (see Save states)" },
         };
-        String curStart = prefs.getString("quickboot", "");
+        String curStart = quickboot();
         for (String[] s : starts) {
             RadioButton rb = new RadioButton(this);
             rb.setId(View.generateViewId());
@@ -1817,10 +1870,12 @@ public class LauncherActivity extends Activity {
         col.addView(space(16));
         col.addView(text("In game: press Start during a movie to skip it. Select+L1 / Select+R1 save and load the game's whole state, "
                 + "Select+Left / Right change the slot. Hold Select+Start to leave the game.", 14, DIM));
-        col.addView(space(16));
-        col.addView(catalogSettings());
-        col.addView(space(16));
-        col.addView(modCacheSettings());
+        if (MODS) {
+            col.addView(space(16));
+            col.addView(catalogSettings());
+            col.addView(space(16));
+            col.addView(modCacheSettings());
+        }
         return scroll(col);
     }
 
@@ -1878,31 +1933,44 @@ public class LauncherActivity extends Activity {
             case 2: return "30 FPS battles";
             case 4: return "120 FPS (experimental)";
             case 5: return "60 FPS, battles at 30";
-            default: return "60 FPS";
+            default: return "60 FPS (experimental)";
         }
     }
 
     private static String fpsDetail(int mode) {
         switch (mode) {
             case 0: return "As shipped";
-            case 1: return "As shipped, smoother pacing";
+            case 1: return "As shipped, smoother pacing (recommended)";
             case 2: return "Battles at 30, the rest as shipped";
             case 4: return "Field at 120; world map and battles at 60";
             case 5: return "Everything at 60 but battles, for devices that slow down in battle";
-            default: return "Everything at 60";
+            default: return "Everything at 60; some scenes may glitch";
         }
     }
 
-    private static final String GAMENATIVE_HINT = "Downloaded FF7 with GameNative? Its internal storage is private to "
+    /** The Frame rate setting for FF8 (FFNx ff8_fps_limiter 0-3): FF7Recomp's 120 FPS (4) and
+     *  "60 FPS, battles at 30" (5) become 60 FPS. */
+    private int fpsMode() {
+        int m = prefs.getInt("fps", FPS_DEFAULT);
+        return m == 4 || m == 5 ? 3 : m < 0 || m > 5 ? FPS_DEFAULT : m;
+    }
+
+    /** The Start setting; "continue" (FF8: not yet) starts normally. */
+    private String quickboot() {
+        String q = prefs.getString("quickboot", "");
+        return "continue".equals(q) ? "" : q;
+    }
+
+    private static final String GAMENATIVE_HINT = "Downloaded FF8 with GameNative? Its internal storage is private to "
             + "GameNative, so other apps cannot read it. Use GameNative's external storage (SD card) option, then pick "
-            + "GameNative/Steam/steamapps/common/FINAL FANTASY VII on the card. Or copy the folder from a PC.";
+            + "GameNative/Steam/steamapps/common/FINAL FANTASY VIII on the card. Or copy the folder from a PC.";
 
     private View gamePage() {
         LinearLayout col = column();
         buildBar = null;
         buildLine = null;
         jobLine = null;
-        col.addView(heading("Your FINAL FANTASY VII"));
+        col.addView(heading("Your FINAL FANTASY VIII"));
         // the Steam download or the import (JobService, GitHub #53): running, or stopped part way
         String pendingJob = JobService.pending(this);
         if (JobService.running != null) {
@@ -1930,10 +1998,11 @@ public class LauncherActivity extends Activity {
             col.addView(space(14));
         }
         if (!install.hasGame()) {
-            col.addView(text("FF7Recomp needs your copy of FINAL FANTASY VII from Steam. Download it here with your "
-                    + "Steam account (about 3.3 GB), or pick the game's folder if you already have it on this device "
-                    + "(the folder that holds \"ff7\"). FF7Recomp then turns the game into a native Android app "
-                    + "on this device.", 15, TEXT));
+            col.addView(text("FF8Recomp needs your copy of FINAL FANTASY VIII from Steam (the 2013 release; the "
+                    + "Remastered edition is not supported yet). Download it here with your Steam account, or pick "
+                    + "the game's folder if you already have it on this device: steamapps/common/FINAL FANTASY VIII, "
+                    + "the folder that holds FF8_EN.exe and Data. FF8Recomp then turns the game into a native "
+                    + "Android app on this device.", 15, TEXT));
             col.addView(space(14));
             col.addView(button(install.steamDownloading().exists() ? "Go on downloading from Steam" : "Download from Steam…",
                     v -> steamDownload()));
@@ -1941,12 +2010,12 @@ public class LauncherActivity extends Activity {
                     + "It goes on with the launcher in the background, with Pause; if it stops, it goes on "
                     + "where it was.", 13, DIM));
             col.addView(space(14));
-            col.addView(button("Find my FF7 folder…", v -> pick(PICK_GAME)));
+            col.addView(button("Find my FF8 folder…", v -> pick(PICK_GAME)));
             col.addView(space(8));
             col.addView(text(GAMENATIVE_HINT, 13, DIM));
         } else if (GameBuild.running) {
-            col.addView(text("Building the game for this device. This happens once: about 8 minutes on an AYN "
-                    + "Thor, longer on slower phones (the bar can stay at 4% for several minutes while the "
+            col.addView(text("Building the game for this device. This happens once and takes several minutes, "
+                    + "longer on slower phones (the bar can stay at 4% for several minutes while the "
                     + "game's code is read). You can leave the launcher; it keeps going in the background. "
                     + "If it is paused or stopped, Continue building goes on where it was.", 15, TEXT));
             col.addView(space(14));
@@ -1988,8 +2057,8 @@ public class LauncherActivity extends Activity {
                     + (build.resumable() ? "\nTry again goes on where it stopped." : "")
                     : build.relinkOnly()
                     ? "The app was updated: link the game with the new engine (a few seconds)."
-                    : "Your game files are here. One more step: build the game for this device (once: about 8 "
-                      + "minutes on an AYN Thor).", 15, GameBuild.error != null ? DIM : TEXT));
+                    : "Your game files are here. One more step: build the game for this device (once: several "
+                      + "minutes).", 15, GameBuild.error != null ? DIM : TEXT));
             col.addView(space(14));
             col.addView(button(GameBuild.error != null ? "Try again" : build.relinkOnly() ? "Update the game" : "Build for this device",
                     v -> startBuild()));
@@ -2004,7 +2073,7 @@ public class LauncherActivity extends Activity {
         if (install.hasGame() && !GameBuild.running) {
             col.addView(space(14));
             android.widget.CheckBox q = new android.widget.CheckBox(this);
-            q.setText("Quiet build: about 14 minutes instead of 8, about 12 °C cooler");
+            q.setText("Quiet build: takes nearly twice as long, but the device stays much cooler");
             q.setChecked(prefs.getBoolean("quiet_build", false));
             q.setOnCheckedChangeListener((b, on) -> prefs.edit().putBoolean("quiet_build", on).apply());
             col.addView(q);
@@ -2112,12 +2181,31 @@ public class LauncherActivity extends Activity {
         return steam;
     }
 
+    /** Settings > Steam while the Achievements page is off (FF8: not yet): the account Download
+     *  from Steam and Repair from Steam use, and Sign out. */
+    private void steamAccountSection(LinearLayout col) {
+        SteamLink s = steam();
+        if (!s.signedIn()) {
+            col.addView(text("Download from Steam (Game files) signs you in once by scanning a QR code with the Steam app "
+                    + "on your phone: you never type your Steam password into FF8Recomp.", 14, DIM));
+            col.addView(space(6));
+            col.addView(small("Sign in with the Steam app…", v -> steamSignIn()));
+            return;
+        }
+        col.addView(text("Signed in as " + s.account(), 16, ACCENT));
+        col.addView(small("Sign out", v -> ff(new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setMessage("Sign out of Steam? Download from Steam and Repair from Steam ask you to sign in again.")
+                .setPositiveButton("Sign out", (d, x) -> { steam().signOut(); refresh(); })
+                .setNegativeButton("Cancel", null)
+                .show())));
+    }
+
     private void steamSection(LinearLayout col) {
         SteamLink s = steam();
         if (!s.signedIn()) {
-            col.addView(text("Earn FINAL FANTASY VII's Steam achievements here, on your Steam account (the Steam "
+            col.addView(text("Earn FINAL FANTASY VIII's Steam achievements here, on your Steam account (the Steam "
                     + "release you built the game from). Sign in once by scanning a QR code with the Steam app on your "
-                    + "phone: you never type your Steam password into FF7Recomp. Unlocks made offline are sent the next "
+                    + "phone: you never type your Steam password into FF8Recomp. Unlocks made offline are sent the next "
                     + "time you are online.", 14, DIM));
             col.addView(space(10));
             col.addView(button("Sign in with the Steam app…", v -> steamSignIn()));
@@ -2141,6 +2229,7 @@ public class LauncherActivity extends Activity {
                 .setNegativeButton("Cancel", null)
                 .show())));
         col.addView(r);
+        if (!CLOUD_SAVES) return;   // FF8: not yet
 
         col.addView(space(16));
         col.addView(heading("Steam Cloud saves"));
@@ -2214,7 +2303,7 @@ public class LauncherActivity extends Activity {
     }
 
     /** Cloud saves (the Steam page): before Play and after the game. */
-    private boolean cloudSaves() { return steam().signedIn() && prefs.getBoolean("cloud_saves", false); }
+    private boolean cloudSaves() { return CLOUD_SAVES && steam().signedIn() && prefs.getBoolean("cloud_saves", false); }
 
     /** Syncs the saves with Steam Cloud; returns what changed (for a message) or null when nothing did. */
     private String syncCloudSaves() {
@@ -2272,12 +2361,15 @@ public class LauncherActivity extends Activity {
                 runOnUiThread(() -> {
                     if (open[0]) dlg.dismiss();
                     refresh();
-                    if (error == null && then != null) {
+                    // without the Achievements page (FF8: not yet), achievements that could not be
+                    // read do not matter: signed in is signed in
+                    boolean inAnyway = !ACHIEVEMENTS && error != null && error.startsWith("signed in") && steam().signedIn();
+                    if ((error == null || inAnyway) && then != null) {
                         then.run();
-                    } else if (error == null) {
-                        int[] c = steam().counts();
+                    } else if (error == null || inAnyway) {
+                        int[] c = ACHIEVEMENTS ? steam().counts() : null;
                         toastDialog("Signed in to Steam as " + steam().account() + "."
-                                + (c != null ? " " + c[0] + " of " + c[1] + " FINAL FANTASY VII achievements unlocked." : ""));
+                                + (c != null ? " " + c[0] + " of " + c[1] + " FINAL FANTASY VIII achievements unlocked." : ""));
                     } else if (then != null && error.startsWith("signed in") && steam().signedIn()) {
                         then.run();   // signed in; only the achievements could not be read yet
                     } else if (!error.equals("cancelled")) {
@@ -2385,7 +2477,7 @@ public class LauncherActivity extends Activity {
             runOnUiThread(() -> {
                 Intent send = new Intent(Intent.ACTION_SEND).setType("application/zip")
                         .putExtra(Intent.EXTRA_STREAM, uri)
-                        .putExtra(Intent.EXTRA_SUBJECT, "FF7Recomp saves")
+                        .putExtra(Intent.EXTRA_SUBJECT, "FF8Recomp saves")
                         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                 send.setClipData(android.content.ClipData.newRawUri(name, uri));
                 try { startActivity(Intent.createChooser(send, "Send the saves")); } catch (Exception ignored) {}
@@ -2510,8 +2602,8 @@ public class LauncherActivity extends Activity {
                 if (share && u != null) {
                     Intent send = new Intent(Intent.ACTION_SEND).setType("application/zip")
                             .putExtra(Intent.EXTRA_STREAM, u)
-                            .putExtra(Intent.EXTRA_SUBJECT, "FF7Recomp problem report")
-                            .putExtra(Intent.EXTRA_TEXT, "FF7Recomp " + Reports.version(this) + " on " + Reports.device())
+                            .putExtra(Intent.EXTRA_SUBJECT, "FF8Recomp problem report")
+                            .putExtra(Intent.EXTRA_TEXT, "FF8Recomp " + Reports.version(this) + " on " + Reports.device())
                             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                     send.setClipData(android.content.ClipData.newRawUri(name, u));
                     try { startActivity(Intent.createChooser(send, "Send the report")); }
@@ -2528,20 +2620,22 @@ public class LauncherActivity extends Activity {
         col.addView(text("In game: Select+L1 saves to the current slot, Select+R1 loads it, Select+Left / Right "
                 + "picks another slot. \"Play from here\" starts the game at that moment.", 14, DIM));
         col.addView(space(10));
-        ViewGroup saveButtons = buttonRow();
-        saveButtons.addView(small("Import saves…", v -> pick(PICK_PSX)));
-        saveButtons.addView(small("Export saves", v -> exportSaves()));
-        col.addView(saveButtons);
-        col.addView(text("Export saves puts all your save files (Save 1-10) in one zip in Downloads, to keep or to "
-                + "move to another device. Import saves takes several files at once, or a zip of them.", 13, DIM));
-        col.addView(text("PC: a save file (save00.ff7…save09.ff7) from the current Steam release (in "
-                + "%LOCALAPPDATA%\\FINAL FANTASY VII Steam Edition on the PC; Steam Cloud saves on the Achievements page "
-                + "can also share them), the 2013 Steam release (Documents\\Square Enix\\FINAL FANTASY VII Steam\\user_…), "
-                + "the original PC release or a 7th Heaven install. PlayStation: a memory card from DuckStation (.mcd), ePSXe (.mcr), "
-                + "RetroArch (.srm), DexDrive (.gme) or PSP (.vmp); DuckStation keeps its cards in "
-                + "Android/data/com.github.stenzek.duckstation/files/memcards. Copy the file somewhere you can pick it "
-                + "(Download, for example) first. The saves go into a new save file (Save 2, Save 3… in the game), so "
-                + "none of yours are overwritten.", 13, DIM));
+        if (SAVE_IMPORT) {
+            ViewGroup saveButtons = buttonRow();
+            saveButtons.addView(small("Import saves…", v -> pick(PICK_PSX)));
+            saveButtons.addView(small("Export saves", v -> exportSaves()));
+            col.addView(saveButtons);
+            col.addView(text("Export saves puts all your save files (Save 1-10) in one zip in Downloads, to keep or to "
+                    + "move to another device. Import saves takes several files at once, or a zip of them.", 13, DIM));
+            col.addView(text("PC: a save file (save00.ff7…save09.ff7) from the current Steam release (in "
+                    + "%LOCALAPPDATA%\\FINAL FANTASY VII Steam Edition on the PC; Steam Cloud saves on the Achievements page "
+                    + "can also share them), the 2013 Steam release (Documents\\Square Enix\\FINAL FANTASY VII Steam\\user_…), "
+                    + "the original PC release or a 7th Heaven install. PlayStation: a memory card from DuckStation (.mcd), ePSXe (.mcr), "
+                    + "RetroArch (.srm), DexDrive (.gme) or PSP (.vmp); DuckStation keeps its cards in "
+                    + "Android/data/com.github.stenzek.duckstation/files/memcards. Copy the file somewhere you can pick it "
+                    + "(Download, for example) first. The saves go into a new save file (Save 2, Save 3… in the game), so "
+                    + "none of yours are overwritten.", 13, DIM));
+        }
         col.addView(space(10));
         int cur = states.current();
         for (int n = 1; n <= SaveStates.SLOTS; n++) {
@@ -2591,9 +2685,8 @@ public class LauncherActivity extends Activity {
             library.language = install.hasLanguage(install.gameLanguage) ? GameInstall.languageCode(install.gameLanguage) : "en";
             library.save();
             install.installRuntime();
-            install.fixFontWidths();   // the current release's narrow m/w widths (GameInstall)
             boolean steamOn = false;
-            if (steam().signedIn()) {
+            if (ACHIEVEMENTS && steam().signedIn()) {
                 progress("Checking Steam achievements");
                 try { steam().sync(); } catch (Exception e) { android.util.Log.w("FF7Steam", "offline: " + SteamLink.message(e)); }
                 steamOn = steam().active();
@@ -2605,33 +2698,40 @@ public class LauncherActivity extends Activity {
                 cloudAfterGame = true;
             }
             install.crtFilter = prefs.getBoolean("crt_filter", false);
-            install.analogControls = prefs.getBoolean("analog_controls", false);
+            install.analogControls = FF7_CONTROLLER_EXTRAS && prefs.getBoolean("analog_controls", false);
             install.resolutionScale = prefs.getInt("resolution", 0);
             install.openGl = prefs.getInt("renderer", 0) == 1;
             install.ffnxOptions = FfnxOptions.chosen(prefs);
             int aspect = prefs.getInt("aspect", 2);   // 3: 16:9 stretched by Android (GameActivity), FFNx renders 16:9
-            install.writeFfnxToml(prefs.getInt("fps", 3) == 5 ? 3 : prefs.getInt("fps", 3), boosterSpeed() > 1, aspect == 3 ? 2 : aspect, prefs.getBoolean("show_fps", false), library.mods,
+            install.writeFfnxToml(fpsMode(), boosterSpeed() > 1, aspect == 3 ? 2 : aspect, prefs.getBoolean("show_fps", false), library.mods,
                                   renderScaleCap());
-            install.writeQuickboot(quickbootOverride != null ? quickbootOverride : prefs.getString("quickboot", ""));
-            install.writeBoosters(boosterSpeed(), prefs.getBoolean("no_encounters", false), prefs.getBoolean("battle_plus", false),
-                                  prefs.getInt("perf", 1) != 2, prefs.getBoolean("save_anywhere", false),
-                                  prefs.getInt("gil", 1), prefs.getInt("exp", 1), prefs.getInt("ap", 1),
-                                  prefs.getBoolean("autofire", false), prefs.getInt("rumble", 0));
+            install.writeQuickboot(quickbootOverride != null ? quickbootOverride : quickboot());
+            // the boosters and controller extras that are off (FF8: not yet) start neutral: 1x speed,
+            // random battles on, no battle enhancement, no save anywhere, 1x gil / EXP / AP, no
+            // hold-to-repeat, no rumble
+            install.writeBoosters(boosterSpeed(), BOOSTERS && prefs.getBoolean("no_encounters", false),
+                                  BOOSTERS && prefs.getBoolean("battle_plus", false),
+                                  prefs.getInt("perf", 1) != 2, BOOSTERS && prefs.getBoolean("save_anywhere", false),
+                                  BOOSTERS ? prefs.getInt("gil", 1) : 1, BOOSTERS ? prefs.getInt("exp", 1) : 1, BOOSTERS ? prefs.getInt("ap", 1) : 1,
+                                  FF7_CONTROLLER_EXTRAS && prefs.getBoolean("autofire", false),
+                                  FF7_CONTROLLER_EXTRAS ? prefs.getInt("rumble", 0) : 0);
             install.writeCompanion("off");   // battle windows stay on the top screen
+            // the second screen's panels off (FF8: not yet): landscape, nothing on another display
+            final boolean panels = SECOND_SCREEN;
             runOnUiThread(() -> startActivity(new Intent(this, GameActivity.class)
                     .putExtra("touch_controls", prefs.getInt("touch_controls", 0))
                     .putExtra("touch_layout", prefs.getString("touch_layout", ""))
                     .putExtra("touch_layout_square", TouchControls.savedLayout(prefs, "touch_layout_square"))   // #66
                     .putExtra("touch_extra", prefs.getBoolean("touch_extra", false))
-                    .putExtra("portrait", prefs.getBoolean("portrait", false))
-                    .putExtra("split", prefs.getBoolean("split", false))
-                    .putExtra("side", prefs.getBoolean("side", false))
+                    .putExtra("portrait", panels && prefs.getBoolean("portrait", false))
+                    .putExtra("split", panels && prefs.getBoolean("split", false))
+                    .putExtra("side", panels && prefs.getBoolean("side", false))
                     .putExtra("side_left", prefs.getBoolean("side_left", false))
-                    .putExtra("bottom_screen", prefs.getBoolean("bottom_screen", true))
+                    .putExtra("bottom_screen", panels && prefs.getBoolean("bottom_screen", true))
                     .putExtra("bottom_buttons", prefs.getBoolean("bottom_buttons", true))
                     .putExtra("crt_filter", prefs.getBoolean("crt_filter", false))
                     .putExtra("aspect", prefs.getInt("aspect", 2))
-                    .putExtra("fps", prefs.getInt("fps", 3)), gameDisplayOptions()));
+                    .putExtra("fps", fpsMode()), gameDisplayOptions()));
             return null;
         });
     }
@@ -2648,7 +2748,7 @@ public class LauncherActivity extends Activity {
 
     /** The display the game goes to when the screens are swapped, or null when they are not. */
     private android.view.Display swapDisplay() {
-        if (!prefs.getBoolean("swap_screens", false) || !prefs.getBoolean("bottom_screen", true)) return null;
+        if (!SECOND_SCREEN || !prefs.getBoolean("swap_screens", false) || !prefs.getBoolean("bottom_screen", true)) return null;
         android.hardware.display.DisplayManager dm = (android.hardware.display.DisplayManager) getSystemService(DISPLAY_SERVICE);
         android.view.Display[] ds = dm.getDisplays(android.hardware.display.DisplayManager.DISPLAY_CATEGORY_PRESENTATION);
         return ds.length > 0 ? ds[0] : null;
@@ -2671,6 +2771,7 @@ public class LauncherActivity extends Activity {
     }
 
     private int boosterSpeed() {
+        if (!BOOSTERS) return 1;
         return prefs.getInt("speed", prefs.getBoolean("turbo", false) ? 2 : 1);
     }
 
@@ -2716,8 +2817,8 @@ public class LauncherActivity extends Activity {
         if (!canMoveStorage()) return;
         if (Storage.allFilesAccess(this)) { pick(PICK_STORAGE); return; }
         ff(new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setMessage("To keep your files in a folder you choose, FF7Recomp needs Android's \"All files access\" "
-                        + "(apps can only use their own Android/data folder without it). Turn it on for FF7Recomp on the "
+                .setMessage("To keep your files in a folder you choose, FF8Recomp needs Android's \"All files access\" "
+                        + "(apps can only use their own Android/data folder without it). Turn it on for FF8Recomp on the "
                         + "next screen, then go back and pick the folder.")
                 .setPositiveButton("Continue", (d, w) -> {
                     wantStorageFolder = true;
@@ -2755,7 +2856,7 @@ public class LauncherActivity extends Activity {
                 return;
             }
             ff(new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                    .setMessage(to.getAbsolutePath() + " already has FF7Recomp's files in it (a backup, or a synced copy). "
+                    .setMessage(to.getAbsolutePath() + " already has FF8Recomp's files in it (a backup, or a synced copy). "
                             + "Use the files there? Your current files stay where they are ("
                             + install.files.getAbsolutePath() + "); delete them yourself once you no longer need them. "
                             + "The launcher restarts.")
@@ -2775,12 +2876,13 @@ public class LauncherActivity extends Activity {
     private void ffnxSections(LinearLayout col) {
         java.util.Map<String, String> last = lastToml();
         col.addView(heading("Sound"));
-        col.addView(text("The game's own volumes, under the device's volume. Default: as the game or a mod sets it.", 14, DIM));
+        col.addView(text("The game's own volumes, under the device's volume. Default: as the game" + (MODS ? " or a mod" : "") + " sets it.", 14, DIM));
         for (FfnxOptions.Opt o : FfnxOptions.SOUND) ffnxRow(col, o, last);
         col.addView(space(16));
         col.addView(heading("Game options"));
-        col.addView(text("FFNx settings (its FFNx.toml, written before each start). A mod may set these too; what you "
-                + "change here wins. A ticked box shows how the game last started.", 14, DIM));
+        col.addView(text(MODS ? "FFNx settings (its FFNx.toml, written before each start). A mod may set these too; what you "
+                + "change here wins. A ticked box shows how the game last started."
+                : "FFNx settings (its FFNx.toml, written before each start). A ticked box shows how the game last started.", 14, DIM));
         for (FfnxOptions.Opt o : FfnxOptions.GAME) ffnxRow(col, o, last);
         col.addView(small("Put Sound and Game options back to the defaults", v -> {
             SharedPreferences.Editor e = prefs.edit();

@@ -33,24 +33,38 @@ final class FfnxOptions {
 
     private static Opt volume(String key, String label, String help) { return new Opt(key, label, help, VOL, VOL_NAMES); }
 
-    static final Opt[] SOUND = {
+    /** FF8: not yet. Keys only FFNx's FF7 code reads (ff7_footsteps, mdef_fix,
+     *  ff7_field_autosize_text_box): FF8 has no equivalent, so they are not offered. */
+    private static final boolean FF7_ONLY = false;
+    /** The voice and ambient options need voice / ambient mods, and mods are off for now
+     *  (LauncherActivity.MODS). */
+    private static final boolean MOD_SOUNDS = LauncherActivity.MODS;
+
+    static final Opt[] SOUND = only(
         volume("external_music_volume", "Music", null),
         volume("external_sfx_volume", "Sound effects", null),
         volume("ffmpeg_video_volume", "Movies", null),
-        volume("external_voice_volume", "Voices", "With a voice-acting mod"),
-        volume("external_ambient_volume", "Ambient sounds", "With an ambient-sound mod"),
-        new Opt("ff7_footsteps", "Footsteps", "A footstep sound as you walk in fields", false),
-        new Opt("enable_voice_music_fade", "Quieter music while a voice plays", "With a voice-acting mod", false),
-        new Opt("enable_voice_auto_text", "Voiced text boxes close by themselves", "With a voice-acting mod: when the line has been spoken", true),
-    };
+        MOD_SOUNDS ? volume("external_voice_volume", "Voices", "With a voice-acting mod") : null,
+        MOD_SOUNDS ? volume("external_ambient_volume", "Ambient sounds", "With an ambient-sound mod") : null,
+        FF7_ONLY ? new Opt("ff7_footsteps", "Footsteps", "A footstep sound as you walk in fields", false) : null,
+        MOD_SOUNDS ? new Opt("enable_voice_music_fade", "Quieter music while a voice plays", "With a voice-acting mod", false) : null,
+        MOD_SOUNDS ? new Opt("enable_voice_auto_text", "Voiced text boxes close by themselves", "With a voice-acting mod: when the line has been spoken", true) : null
+    );
 
-    static final Opt[] GAME = {
+    static final Opt[] GAME = only(
         new Opt("external_music_resume", "Music carries on where it left off",
                 "Back on the world map (and other known areas) the music resumes instead of starting again", true),
-        new Opt("mdef_fix", "Armor counts toward magic defense", "A fix to the original game's formula (FFNx's default)", true),
-        new Opt("ff7_field_autosize_text_box", "Text boxes fit their text", "In fields, dialogue boxes are sized to the text", false),
-        new Opt("enable_bilinear", "Smooth 3D textures", "Bilinear filtering on models' and menus' textures (the original is sharp pixels)", false),
-    };
+        FF7_ONLY ? new Opt("mdef_fix", "Armor counts toward magic defense", "A fix to the original game's formula (FFNx's default)", true) : null,
+        FF7_ONLY ? new Opt("ff7_field_autosize_text_box", "Text boxes fit their text", "In fields, dialogue boxes are sized to the text", false) : null,
+        new Opt("enable_bilinear", "Smooth 3D textures", "Bilinear filtering on models' and menus' textures (the original is sharp pixels)", false)
+    );
+
+    /** The options that are on offer (the nulls are the ones switched off above). */
+    private static Opt[] only(Opt... opts) {
+        java.util.List<Opt> l = new java.util.ArrayList<>();
+        for (Opt o : opts) if (o != null) l.add(o);
+        return l.toArray(new Opt[0]);
+    }
 
     private FfnxOptions() {}
 

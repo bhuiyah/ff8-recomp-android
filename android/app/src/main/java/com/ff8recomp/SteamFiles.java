@@ -62,9 +62,9 @@ import kotlinx.coroutines.future.FutureKt;
 /**
  * The game's files and saves from Steam, over SteamLink's signed-in connection.
  *
- * Download: FINAL FANTASY VII (app 3837340) has one depot; from it come the files the folder
- * import takes (GameInstall.importGame): ff7/resources/ff7_1.02/ff7_en as ff7_en.exe and
- * ff7/workingdir/data (English, French, German and Spanish). Every file is checked against
+ * Download: FINAL FANTASY VIII (the 2013 release, app 39150), its Windows English depots; from
+ * them come the files the folder import takes (GameInstall.importGame): FF8_EN.exe (unwrapped
+ * afterwards into ff8_en.exe) and Data, English only. Every file is checked against
  * Steam's SHA-1; files already here and intact are kept, so a download stopped half way goes on
  * where it was, and running it again repairs damaged files.
  *
@@ -76,7 +76,7 @@ import kotlinx.coroutines.future.FutureKt;
  * wins; a save about to be replaced is first copied to files/steam/cloud-backup.
  */
 final class SteamFiles {
-    private static final String TAG = "FF7SteamFiles";
+    private static final String TAG = "FF8SteamFiles";
 
     static {
         // JavaSteam decrypts depot chunks with the provider named "BC" and loads
@@ -98,24 +98,26 @@ final class SteamFiles {
 
     // ================================================================== game download
 
-    static final String NEED_RERELEASE = "this Steam account does not have FINAL FANTASY VII (the current version, "
-            + "\"FINAL FANTASY VII\" without \"2013 Edition\"). Steam gives it free to everyone who owns the 2013 "
-            + "Edition: add it to your library in Steam, then try again";
+    static final String NEED_RERELEASE = "this Steam account does not have FINAL FANTASY VIII (the 2013 release, "
+            + "\"FINAL FANTASY VIII\" on Steam; the Remastered is another game there and is not supported yet)";
+
+    /** The exe as the depot has it (wrapped), under the game folder. */
+    static final String WRAPPED_EXE = "FF8_EN.exe";
 
     /** A file of the depot and where it goes under the game folder. */
     private static final class Want { FileData f; String to; }
 
-    private static final Pattern LANG = Pattern.compile("ff7/workingdir/data/lang-([a-z]+)/.*");
+    private static final Pattern LANG = Pattern.compile("data/lang-([a-z]+)/.*");
 
     /** Where a depot file goes under the game folder, or null when the game does not need it. */
     static String target(String depotName) {
         String n = depotName.replace('\\', '/');
         String l = n.toLowerCase(Locale.ROOT);
-        if (l.equals("ff7/resources/ff7_1.02/ff7_en")) return "ff7_en.exe";
-        if (!l.startsWith("ff7/workingdir/data/")) return null;
+        if (l.equals("ff8_en.exe")) return WRAPPED_EXE;
+        if (!l.startsWith("data/")) return null;
         java.util.regex.Matcher m = LANG.matcher(l);
-        if (m.matches() && !Arrays.asList("en", "fr", "de", "es").contains(m.group(1))) return null;   // as importGame
-        return "data/" + n.substring("ff7/workingdir/data/".length());
+        if (m.matches() && !m.group(1).equals("en")) return null;                     // as importGame
+        return "Data/" + n.substring("data/".length());
     }
 
     /**
@@ -125,8 +127,8 @@ final class SteamFiles {
     String downloadGame(File game, Progress p, AtomicBoolean cancel) throws Exception {
         p.update("Connecting to Steam");
         try (SteamLink.Session s = link.open()) {
-            if (!SteamLink.owns(s, SteamLink.APP_RERELEASE)) return NEED_RERELEASE;
-            int app = SteamLink.APP_RERELEASE;
+            if (!SteamLink.owns(s, SteamLink.APP_2013)) return NEED_RERELEASE;
+            int app = SteamLink.APP_2013;
             p.update("Reading the game's file list from Steam");
             KeyValue depots = appInfo(s, app).get("depots");
             SteamApps apps = s.client.getHandler(SteamApps.class);
@@ -174,7 +176,7 @@ final class SteamFiles {
                         depotOf.put(w, id);
                     }
                 }
-                if (!wants.containsKey("ff7_en.exe")) throw new IOException("Steam's copy of the game has no ff7/resources/ff7_1.02/ff7_en");
+                if (!wants.containsKey(WRAPPED_EXE.toLowerCase(Locale.ROOT))) throw new IOException("Steam's copy of the game has no FF8_EN.exe");
 
                 // what is already here and intact stays
                 game.mkdirs();
@@ -267,7 +269,7 @@ final class SteamFiles {
     // ================================================================== cloud saves
 
     /** FF7Recomp's own folder in the game's Steam Cloud (Android devices only). */
-    static final String CLOUD_FOLDER = "FF7Recomp";
+    static final String CLOUD_FOLDER = "FF8Recomp";
     /** The PC game's own saves: the account's folder itself. The current PC release writes the
      *  same save files as the 1.02 game (save00.ff7 ... save09.ff7: 15 slots of 4340 bytes, the
      *  same checksum, no metadata.xml), so they are shared as they are. */
@@ -318,8 +320,8 @@ final class SteamFiles {
     SyncResult syncSaves(File saveDir, File state, String cloudFolder) throws Exception {
         SyncResult r = new SyncResult();
         try (SteamLink.Session s = link.open()) {
-            if (!SteamLink.owns(s, SteamLink.APP_RERELEASE)) throw new IOException(NEED_RERELEASE);
-            int app = SteamLink.APP_RERELEASE;
+            if (!SteamLink.owns(s, SteamLink.APP_2013)) throw new IOException(NEED_RERELEASE);
+            int app = SteamLink.APP_2013;
             String sid = Long.toUnsignedString(s.client.getSteamID().convertToUInt64());
             String base = "%WinAppDataLocal%FINAL FANTASY VII Steam Edition/" + sid + "/" + (cloudFolder.isEmpty() ? "" : cloudFolder + "/");
 
@@ -384,7 +386,7 @@ final class SteamFiles {
                 List<String> full = new ArrayList<>();
                 for (String n : upload) full.add(base + n);
                 SteamCloud c = cloud(s);
-                long batch = c.beginAppUploadBatch(app, "FF7Recomp on " + android.os.Build.MODEL, full, Collections.emptyList(), clientId(), 0L)
+                long batch = c.beginAppUploadBatch(app, "FF8Recomp on " + android.os.Build.MODEL, full, Collections.emptyList(), clientId(), 0L)
                         .get(60, TimeUnit.SECONDS).getBatchID();
                 EResult result = EResult.Fail;
                 try {
@@ -416,7 +418,7 @@ final class SteamFiles {
         if (cloudFolder.equals(CLOUD_FOLDER) || cloudFolder.isEmpty()) throw new IllegalArgumentException("real saves are never deleted");
         int n = 0;
         try (SteamLink.Session s = link.open()) {
-            int app = SteamLink.APP_RERELEASE;
+            int app = SteamLink.APP_2013;
             AppFileChangeList l = cloud(s).getAppFileListChange(app).get(60, TimeUnit.SECONDS);
             String marker = ("/" + cloudFolder + "/").toLowerCase(Locale.ROOT);
             List<String> del = new ArrayList<>();
@@ -427,7 +429,7 @@ final class SteamFiles {
             }
             if (del.isEmpty()) return 0;
             SteamCloud c = cloud(s);
-            long batch = c.beginAppUploadBatch(app, "FF7Recomp on " + android.os.Build.MODEL, Collections.emptyList(), del, clientId(), 0L)
+            long batch = c.beginAppUploadBatch(app, "FF8Recomp on " + android.os.Build.MODEL, Collections.emptyList(), del, clientId(), 0L)
                     .get(60, TimeUnit.SECONDS).getBatchID();
             // naming the files in the batch is not enough: each is deleted, as the Steam client does
             in.dragonbra.javasteam.rpc.service.Cloud svc = s.client.getHandler(
@@ -447,7 +449,7 @@ final class SteamFiles {
     String cloudListing() throws Exception {
         StringBuilder sb = new StringBuilder();
         try (SteamLink.Session s = link.open()) {
-            AppFileChangeList l = cloud(s).getAppFileListChange(SteamLink.APP_RERELEASE).get(60, TimeUnit.SECONDS);
+            AppFileChangeList l = cloud(s).getAppFileListChange(SteamLink.APP_2013).get(60, TimeUnit.SECONDS);
             sb.append("change ").append(l.getCurrentChangeNumber()).append(" prefixes ").append(l.getPathPrefixes()).append('\n');
             for (AppFileInfo f : l.getFiles())
                 sb.append(f.getPathPrefixIndex()).append(" | ").append(f.getFilename()).append(" | ").append(f.getRawFileSize())

@@ -241,7 +241,7 @@ final class ModDownloader {
             c.setConnectTimeout(20000);
             c.setReadTimeout(60000);
             c.setInstanceFollowRedirects(false);
-            c.setRequestProperty("User-Agent", "FF7Recomp-Launcher");
+            c.setRequestProperty("User-Agent", "FF8Recomp-Launcher");
             if (from > 0) c.setRequestProperty("Range", "bytes=" + from + "-");
             int code = c.getResponseCode();
             if (code >= 300 && code < 400 && c.getHeaderField("Location") != null) {

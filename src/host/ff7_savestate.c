@@ -692,7 +692,7 @@ void ff7_savestate_frame(void) {
                         (unsigned long long)c.host_depth, c.esp, (unsigned long long)host_depth(), g_esp, h.build, build_id());
         }
         if (why && strstr(why, "host stack differs") && strcmp(h.build, build_id()))
-            why = "it was made by another version of FF7Recomp; save the state again in this version";
+            why = "it was made by another version of FF8Recomp; save the state again in this version";
         g_load_result = why ? -1 : 1;
         if (why) snprintf(msg, sizeof msg, "Cannot load the state: %s", why);
         else {

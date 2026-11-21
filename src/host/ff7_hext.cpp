@@ -239,7 +239,8 @@ extern "C" void ff7_hext_apply_mods(void) {
     // the main menu builds its lock mask from the save data, then always unlocks Quit
     // (and cx, 0xFBFF at 0x6CA3F5). Clearing the Save bit (0x200) there as well unlocks Save
     // everywhere, without changing what is saved.
-    if (FILE *f = std::fopen("../boosters.txt", "rb")) {
+    // FF7 1.02's main menu only: in FF8 that address is other code (the setting is not offered)
+    if (FILE *f = std::strcmp(GAME_EXE_NAME, "ff7_en.exe") ? nullptr : std::fopen("../boosters.txt", "rb")) {
         char line[64];
         bool on = false;
         while (std::fgets(line, sizeof line, f)) on |= !std::strncmp(line, "saveanywhere=on", 15);

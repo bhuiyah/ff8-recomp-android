@@ -59,7 +59,7 @@ public class JobService extends Service {
     static String pending(Context c) { return running != null ? null : prefs(c).getString(KIND, null); }
 
     static String title(String kind) {
-        return STEAM.equals(kind) ? "Downloading FINAL FANTASY VII from Steam" : "Importing FINAL FANTASY VII";
+        return STEAM.equals(kind) ? "Downloading FINAL FANTASY VIII from Steam" : "Importing FINAL FANTASY VIII";
     }
 
     /** Start a job (arg: the import's folder URI, held with a persistable permission). */
@@ -177,7 +177,7 @@ public class JobService extends Service {
                     GameBuild.running = false;
                     Log.w(TAG, "build not started: " + e);
                     build = false;
-                    msg = status = "Your game files are in. Open FF7Recomp to build the game for this device.";
+                    msg = status = "Your game files are in. Open FF8Recomp to build the game for this device.";
                 }
             }
             if (wl.isHeld()) wl.release();

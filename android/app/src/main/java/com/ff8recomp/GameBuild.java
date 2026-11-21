@@ -29,7 +29,8 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 /**
- * Builds the game for this device from the player's own ff7_en.exe (the APK carries no game
+ * Builds the game for this device from the player's own FF8_EN.exe, unwrapped at import as
+ * ff8_en.exe (SteamStub.java; the APK carries no game
  * code; tools/make_device_kit.py has the kit's layout):
  *   1. unpack the kit (assets/kit.zip) into files/kit, once per APK version
  *   2. check the exe is the 1.02 US build
@@ -43,9 +44,12 @@ import java.util.zip.ZipInputStream;
  * the launcher shows it.
  */
 final class GameBuild {
-    private static final String TAG = "FF7Build";
-    /** SHA-1 of the Steam release's ff7/resources/ff7_1.02/ff7_en (1.02 US). */
-    static final String EXE_SHA1 = "ac306ae92615af75ff36bba6347c67ca1284151d";
+    private static final String TAG = "FF8Build";
+    /** SHA-1 of the 2013 Steam release's FF8_EN.exe (1.2 US NV, app 39150) without its SteamStub
+     *  wrapper (SteamStub.unwrap): the program the game is built from. */
+    static final String EXE_SHA1 = "d0f2ae94afb012070534bb13e2b10368e4f00184";
+    /** SHA-1 of the same FF8_EN.exe as Steam ships it (wrapped). */
+    static final String WRAPPED_SHA1 = "03230c11328f8a1f9635435096e1659d9bfd002d";
 
     // ---- shared state (read by the launcher)
     static volatile boolean running;
@@ -140,12 +144,12 @@ final class GameBuild {
             if (ver.isEmpty()) throw new IOException("this APK has no build kit");
             lw.println("kit " + ver);
 
-            set("Checking your FF7", 1);
-            if (!exe.isFile()) throw new IOException("ff7_en.exe is missing: import your game files first");
+            set("Checking your FF8", 1);
+            if (!exe.isFile()) throw new IOException("ff8_en.exe is missing: import your game files first");
             String sha = sha1(exe);
             lw.println("exe " + sha);
             if (!EXE_SHA1.equals(sha))
-                throw new IOException("this ff7_en is not the one the game is built from: import again. " + GameInstall.WHICH_FOLDER);
+                throw new IOException("this ff8_en.exe is not the one the game is built from: import again. " + GameInstall.WHICH_FOLDER);
 
             unpackKit(ver);
 
@@ -234,7 +238,7 @@ final class GameBuild {
        extra shard repeats the lifter's setup (~35 s on a Thor). */
     private static final int SHARDS = 1;
     private static final int CHUNK = 4_000_000;
-    private static final long EXPECTED_C = 520L << 20;   // the lift writes ~520 MB of C
+    private static final long EXPECTED_C = 640L << 20;   // the lift writes ~640 MB of C (FF8)
     private static final Pattern LIFTED = Pattern.compile("\\[\\*\\] (\\d+)/(\\d+) lifted");
 
     /** A running child process; its output goes to the log (whole, when it ends). */

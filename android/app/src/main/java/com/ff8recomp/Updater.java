@@ -24,7 +24,7 @@ import org.json.JSONObject;
  * Updates from the project's GitHub releases: the newest release (pre-releases included, drafts
  * not) whose version is above this APK's, with an .apk asset. Downloaded into the app's cache and
  * installed with PackageInstaller; Android asks the player to confirm (and, the first time, to
- * allow installs from FF7Recomp). An update keeps the game files, mods and saves: it must be signed
+ * allow installs from FF8Recomp). An update keeps the game files, mods and saves: it must be signed
  * with the same key as the installed APK (release builds are; a self-built debug APK cannot take
  * a release update).
  */
@@ -81,7 +81,7 @@ final class Updater {
         lastCheck = System.currentTimeMillis();
         HttpURLConnection c = (HttpURLConnection) new URL(API).openConnection();
         c.setRequestProperty("Accept", "application/vnd.github+json");
-        c.setRequestProperty("User-Agent", "FF7Recomp/" + installedVersion(ctx));
+        c.setRequestProperty("User-Agent", "FF8Recomp/" + installedVersion(ctx));
         c.setConnectTimeout(15000);
         c.setReadTimeout(20000);
         int code = c.getResponseCode();
@@ -128,11 +128,11 @@ final class Updater {
         File dir = new File(ctx.getCacheDir(), "update");
         GameBuild.deleteTree(dir);
         dir.mkdirs();
-        File apk = new File(dir, "FF7Recomp-" + r.version + ".apk");
+        File apk = new File(dir, "FF8Recomp-" + r.version + ".apk");
         percent = 0;
         status = "Downloading " + r.version;
         HttpURLConnection c = (HttpURLConnection) new URL(r.apkUrl).openConnection();
-        c.setRequestProperty("User-Agent", "FF7Recomp/" + installedVersion(ctx));
+        c.setRequestProperty("User-Agent", "FF8Recomp/" + installedVersion(ctx));
         c.setInstanceFollowRedirects(true);
         c.setConnectTimeout(15000);
         c.setReadTimeout(30000);

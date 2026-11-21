@@ -62,11 +62,11 @@ import in.dragonbra.javasteam.types.SteamID;
  * stats back to confirm, and rewrites state.txt. Unlocks made offline wait in pending.txt.
  */
 final class SteamLink {
-    /** FINAL FANTASY VII on Steam: the 2026 re-release (which carries the 1.02 exe in
-     *  ff7/resources/ff7_1.02) and the 2013 release. Their achievement lists differ; FFNx has both. */
-    static final int APP_RERELEASE = 3837340, APP_2013 = 39140;
-    private static final String TAG = "FF7Steam";
-    private static final int LOGIN_ID = 0x0F7F;          // our own session id: other Steam clients stay signed in
+    /** FINAL FANTASY VIII on Steam: the 2013 release (FF8_EN.exe, what FF8Recomp runs) and the
+     *  Remastered (2019; not supported yet). */
+    static final int APP_2013 = 39150, APP_REMASTERED = 1026680;
+    private static final String TAG = "FF8Steam";
+    private static final int LOGIN_ID = 0x0F8F;          // our own session id: other Steam clients (and FF7Recomp) stay signed in
     private static final Object LOCK = new Object();
 
     interface QrListener {
@@ -191,7 +191,7 @@ final class SteamLink {
         try (Session s = new Session()) {
             s.awaitConnected();
             AuthSessionDetails d = new AuthSessionDetails();
-            d.deviceFriendlyName = "FF7Recomp";
+            d.deviceFriendlyName = "FF8Recomp";
             d.persistentSession = true;               // a token that stays valid for later sign-ins
             QrAuthSession qs = new SteamAuthentication(s.client).beginAuthSessionViaQR(d).get(30, TimeUnit.SECONDS);
             qs.setChallengeUrlChanged(new IChallengeUrlChanged() {
@@ -208,7 +208,7 @@ final class SteamLink {
                     exchange(s);
                 } catch (Throwable e) {
                     Log.e(TAG, "first sync failed", e);
-                    err = "signed in, but your FF7 achievements could not be read yet: " + message(e)
+                    err = "signed in, but your FF8 achievements could not be read yet: " + message(e)
                             + ". Press Sync achievements to try again.";
                 }
             }
@@ -281,12 +281,12 @@ final class SteamLink {
         }
     }
 
-    /** Which FF7 this account owns (remembered): the re-release first, then the 2013 release. */
+    /** Which FF8 this account owns (remembered): the 2013 release. */
     private int ownedApp(Session s) throws IOException {
         int known = prefs.getInt("appid", 0);
         if (known != 0) return known;
-        int app = owns(s, APP_RERELEASE) ? APP_RERELEASE : owns(s, APP_2013) ? APP_2013 : 0;
-        if (app == 0) throw new IOException("this Steam account does not own FINAL FANTASY VII on Steam, so it has no FF7 achievements");
+        int app = owns(s, APP_2013) ? APP_2013 : 0;
+        if (app == 0) throw new IOException("this Steam account does not own FINAL FANTASY VIII (2013) on Steam, so it has no FF8 achievements");
         prefs.edit().putInt("appid", app).apply();
         return app;
     }
@@ -333,9 +333,9 @@ final class SteamLink {
             Thread.sleep(2000);
             st = stats(s.client, s.app, me);
         }
-        if (st.getResult() != EResult.OK) throw new IOException("Steam did not return your FF7 achievements (" + st.getResult() + ")");
+        if (st.getResult() != EResult.OK) throw new IOException("Steam did not return your FF8 achievements (" + st.getResult() + ")");
         Map<String, Ach> schema = parseSchema(st.getSchemaKeyValues());
-        if (schema.isEmpty()) throw new IOException("Steam returned no FF7 achievement list");
+        if (schema.isEmpty()) throw new IOException("Steam returned no FF8 achievement list");
         Map<Integer, Integer> values = values(st);
 
         // what the game unlocked: pending.txt, moved aside so the game can keep appending
@@ -352,7 +352,7 @@ final class SteamLink {
         List<String> newly = new ArrayList<>();
         for (String n : waiting) {
             Ach a = schema.get(n);
-            if (a == null) { Log.w(TAG, "not an FF7 Steam achievement: " + n); continue; }
+            if (a == null) { Log.w(TAG, "not an FF8 Steam achievement: " + n); continue; }
             int v = values.containsKey(a.stat) ? values.get(a.stat) : 0;
             if ((v >>> a.bit & 1) != 0) continue;          // already on Steam
             v |= 1 << a.bit;

@@ -114,7 +114,7 @@ final class GuideInstaller {
 
     private static HttpURLConnection open(String url) throws IOException {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
-        c.setRequestProperty("User-Agent", "FF7Recomp");
+        c.setRequestProperty("User-Agent", "FF8Recomp");
         c.setInstanceFollowRedirects(true);
         c.setConnectTimeout(15000);
         c.setReadTimeout(30000);

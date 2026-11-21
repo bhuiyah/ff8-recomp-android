@@ -174,6 +174,8 @@ extern "C" bool ffnx_frame_skip_next(bool movie) {
     // boosters, achievements -- never ran. It runs here instead, once per presented frame. And
     // the speed hack cannot work there (it scales FFNx's clock, which Original does not use):
     // skipping frames for it only made the game look slower (GitHub issue #11).
+    // (FF8: common.cpp steps the per-frame work itself, every frame; the limiter key is ff8_fps_limiter)
+    if (ff8) { g_skip_acc = 0; return false; }
     if (ff7_fps_limiter < FPS_LIMITER_DEFAULT) { ffnx_recomp::step_code(); g_skip_acc = 0; return false; }
     const double speed = gamehacks.getCurrentSpeedhack();
     if (!g_frameskip || movie || speed <= 1.01) { g_skip_acc = 0; return false; }

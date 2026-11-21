@@ -14,7 +14,7 @@ import java.util.Locale;
 /**
  * Where the app keeps its files (the game files, mods, downloads, saves, save states): the app's
  * folder in internal storage (Android/data/com.ff8recomp/files), the same folder on an SD card,
- * or a folder the player picks anywhere on the device or the SD card, e.g. /sdcard/FF7Recomp
+ * or a folder the player picks anywhere on the device or the SD card, e.g. /sdcard/FF8Recomp
  * for backups and Syncthing (Settings > Storage, GitHub #61). The first two need no storage
  * permission; a custom folder needs Android's "All files access". The built game (libff7.so)
  * always stays in the app's private internal storage: Android runs no code from shared storage.
@@ -69,7 +69,7 @@ final class Storage {
     static String customProblem(Context c) {
         File f = customRoot(c);
         if (f == null) return null;
-        if (!allFilesAccess(c)) return "FF7Recomp no longer has \"All files access\", which it needs for " + f.getAbsolutePath();
+        if (!allFilesAccess(c)) return "FF8Recomp no longer has \"All files access\", which it needs for " + f.getAbsolutePath();
         if (!f.isDirectory()) return f.getAbsolutePath() + " is not there (is the SD card it is on inserted?)";
         return null;
     }
@@ -106,7 +106,7 @@ final class Storage {
         return a.equals(b) || a.startsWith(b.endsWith("/") ? b : b + "/");
     }
 
-    /** The folder already holds FF7Recomp's files (a backup, another device's, a synced copy). */
+    /** The folder already holds FF8Recomp's files (a backup, another device's, a synced copy). */
     static boolean looksLikeOurs(File d) {
         for (String k : new String[] { "game", "mods", "savestates" })
             if (new File(d, k).isDirectory()) return true;
@@ -134,7 +134,7 @@ final class Storage {
         if (within(to, from) || within(from, to)) return "Pick a folder outside " + from.getAbsolutePath() + ".";
         String a = to.getAbsolutePath();
         if (a.equals(Environment.getExternalStorageDirectory().getAbsolutePath()) || a.matches("/storage/[^/]+/?"))
-            return "Pick or create a folder for FF7Recomp, not the top of the storage.";
+            return "Pick or create a folder for FF8Recomp, not the top of the storage.";
         return null;
     }
 

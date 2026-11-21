@@ -20,9 +20,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * The game's files in app storage (files/game): the 2026 Steam release's ff7_en (as
- * ff7_en.exe) and its data folder, imported once from a folder the player picks; FFNx's
- * run-time files from the APK; FFNx.toml written from the launcher's settings.
+ * The game's files in app storage (files/game): the 2013 Steam release's FF8_EN.exe, without its
+ * SteamStub wrapper, as ff8_en.exe (SteamStub.java), and its Data folder, imported once from a
+ * folder the player picks or downloaded from Steam; FFNx's run-time files from the APK;
+ * FFNx.toml written from the launcher's settings.
  */
 final class GameInstall {
     interface Progress { void update(String what); }
@@ -123,109 +124,99 @@ final class GameInstall {
     }
 
     /** What to pick, said when the exe found is not the one the game is built from. */
-    /** SHA-1 of the Steam ff7_en after a text-mode copy (every CR LF and lone CR made LF, as an
-     *  FTP transfer in ASCII mode does; GitHub #31). */
-    static final String TEXT_MODE_SHA1 = "31fe8ea66cc70fe01b75b07cce0060bfd0d6347b";
+    static final String WHICH_FOLDER = "FF8Recomp needs FINAL FANTASY VIII as sold on Steam (the 2013 release, English), "
+            + "unpatched: pick the game's main folder, \"FINAL FANTASY VIII\" in Steam's steamapps/common (the one that "
+            + "holds FF8_EN.exe and Data). The Remastered edition (\"FINAL FANTASY VIII - REMASTERED\") is not supported yet";
 
-    static final String WHICH_FOLDER = "FF7Recomp needs FINAL FANTASY VII as sold today (Steam), unpatched: pick "
-            + "the game's main folder, \"FINAL FANTASY VII Steam Edition\" on Steam (the one that holds \"ff7\"). No "
-            + "patch or older version is needed; patched game files are not supported. Own the 2013 version? Steam "
-            + "gives you the new one free: it is \"FINAL FANTASY VII\" in your library, next to \"FINAL FANTASY VII "
-            + "- 2013 Edition\"";
-
-    /** ff7_en.exe of the 2013 Steam release (FINAL FANTASY VII - 2013 Edition), as reported. */
-    static final String SHA1_2013_PREFIX = "1c9a6f4b6f55";
-
-    static final String FROM_2013 = "this is FINAL FANTASY VII - 2013 Edition, the older Steam version. FF7Recomp is "
-            + "built from the new version, which Steam gives free to everyone who owns the 2013 one: in your Steam "
-            + "library (on a PC, or in an Android Steam app such as GameNative or DroidDeck) install \"FINAL FANTASY "
-            + "VII\" (the one without \"2013 Edition\"), then pick its folder here: \"FINAL FANTASY VII Steam Edition\", "
-            + "the one that holds \"ff7\". Your 2013 saves stay where they are";
+    /** The Remastered's folder holds this instead of FF8_EN.exe. */
+    static final String FROM_REMASTERED = "this is FINAL FANTASY VIII - REMASTERED. FF8Recomp runs the 2013 release for "
+            + "now (\"FINAL FANTASY VIII\" on Steam, the one with FF8_EN.exe); the Remastered will follow";
 
     /**
-     * Import from the folder the player picked: the Steam "FINAL FANTASY VII" folder, its ff7
-     * folder, or any folder holding the 1.02 ff7_en(.exe) and data/. The exe is checked before
-     * anything is copied. The Japanese data folder is skipped. Returns null on success,
-     * else what is wrong.
+     * The exe as Steam or the player's copy has it, checked and unwrapped into game/ff8_en.exe.
+     * Returns null, or what is wrong (seen: where it came from, for the message).
+     */
+    private String installExe(File copied, String seen) throws IOException {
+        byte[] d = readAll(new java.io.FileInputStream(copied));
+        String sha = sha1(d);
+        byte[] plain;
+        if (GameBuild.WRAPPED_SHA1.equals(sha)) plain = SteamStub.unwrap(d);
+        else if (GameBuild.EXE_SHA1.equals(sha)) plain = d;               // unwrapped already (tools/import_game.py)
+        else return seen + " (SHA-1 " + sha.substring(0, 12) + "…) is not the FF8_EN.exe the game is built from. "
+                + WHICH_FOLDER + " (If your copy is from Steam and unpatched, please report this number.)";
+        if (!GameBuild.EXE_SHA1.equals(sha1(plain))) return "FF8_EN.exe did not unwrap as expected. Please report this";
+        File out = new File(game, "ff8_en.exe"), tmp = new File(game, "ff8_en.exe.new");
+        try (OutputStream o = new FileOutputStream(tmp)) { o.write(plain); }
+        if (out.exists() && !out.delete()) throw new IOException("cannot replace " + out);
+        if (!tmp.renameTo(out)) throw new IOException("cannot write " + out);
+        return null;
+    }
+
+    private static String sha1(byte[] d) {
+        try {
+            StringBuilder s = new StringBuilder();
+            for (byte b : java.security.MessageDigest.getInstance("SHA-1").digest(d)) s.append(String.format(Locale.ROOT, "%02x", b));
+            return s.toString();
+        } catch (java.security.NoSuchAlgorithmException e) { throw new IllegalStateException(e); }
+    }
+
+    /**
+     * Import from the folder the player picked: Steam's "FINAL FANTASY VIII" folder, or any folder
+     * holding FF8_EN.exe and Data (with lang-en). The exe is checked before anything is copied.
+     * Returns null on success, else what is wrong.
      */
     String importGame(Uri tree, Progress p) throws IOException {
         String root = DocumentsContract.getTreeDocumentId(tree);
-        // the Steam release keeps the original 1.02 exe in ff7/resources/ff7_1.02; its
-        // ff7/workingdir/ff7_en.exe is the re-release's own exe
-        // Steam's places first, then a search of the picked folder (other stores, such as GOG,
-        // may lay the same files out differently): every ff7_en(.exe) is checked by its SHA-1.
         List<Doc> exes = new ArrayList<>();
         List<String> exeWhere = new ArrayList<>();
-        for (String[] at : new String[][] { { "ff7", "resources", "ff7_1.02", "ff7_en" }, { "resources", "ff7_1.02", "ff7_en" },
-                                            { "ff7_en.exe" }, { "ff7_en" } }) {
-            Doc d = path(tree, root, at);
-            if (d != null) { exes.add(d); exeWhere.add(String.join("/", at)); }
-        }
+        Doc atRoot = path(tree, root, "FF8_EN.exe");
+        if (atRoot != null) { exes.add(atRoot); exeWhere.add("FF8_EN.exe"); }
         List<Doc> datas = new ArrayList<>();
-        for (String[] at : new String[][] { { "ff7", "workingdir", "data" }, { "workingdir", "data" }, { "data" } }) {
-            Doc d = path(tree, root, at);
-            if (d != null) datas.add(d);
-        }
+        Doc dataRoot = path(tree, root, "Data");
+        if (dataRoot != null && path(tree, dataRoot.id, "lang-en") != null) datas.add(dataRoot);
         p.update("Looking for the game files");
         scan(tree, root, "", 0, exes, exeWhere, datas);
-        if (exes.isEmpty()) return "no ff7_en game file was found in this folder (Steam keeps it in ff7/resources/ff7_1.02). " + WHICH_FOLDER;
-        if (datas.isEmpty()) return "the game's data folder (with field, menu, ...) was not found in this folder. " + WHICH_FOLDER;
-        Doc data = datas.get(0);
+        if (exes.isEmpty()) {
+            if (path(tree, root, "FFVIII_EFIGS.dll") != null || path(tree, root, "FFVIII.exe") != null) return FROM_REMASTERED;
+            return "no FF8_EN.exe was found in this folder. " + WHICH_FOLDER;
+        }
+        if (datas.isEmpty()) return "the game's Data folder (with lang-en) was not found in this folder. " + WHICH_FOLDER;
         game.mkdirs();
-        p.update("Checking ff7_en");
-        File tmp = new File(game, "ff7_en.exe.new");
-        StringBuilder seen = new StringBuilder();
-        boolean ok = false, textMode = false, is2013 = path(tree, root, new String[] { "FF7_Launcher.exe" }) != null;
+        p.update("Checking FF8_EN.exe");
+        File tmp = new File(game, "FF8_EN.exe.copy");
+        String err = null;
         java.util.Set<String> tried = new java.util.HashSet<>();
-        for (int i = 0; i < exes.size() && !ok; i++) {
+        for (int i = 0; i < exes.size(); i++) {
             if (!tried.add(exes.get(i).id)) continue;
             copyDoc(tree, exes.get(i).id, tmp);
-            String sha = GameBuild.sha1(tmp);
-            ok = GameBuild.EXE_SHA1.equals(sha);
-            if (TEXT_MODE_SHA1.equals(sha)) textMode = true;
-            if (sha.startsWith(SHA1_2013_PREFIX)) is2013 = true;
-            if (!ok) seen.append(seen.length() > 0 ? ", " : "").append(exeWhere.get(i)).append(" (SHA-1 ").append(sha, 0, 12).append("…)");
+            err = installExe(tmp, exeWhere.get(i));
+            if (err == null) break;
         }
-        if (!ok) {
-            tmp.delete();
-            if (textMode)
-                return "ff7_en here is the right file, but it was damaged while being copied: it was sent as text, "
-                        + "which changes its line endings (FTP programs such as FileZilla do this to files without an "
-                        + "extension). Copy the game folder again in binary mode (FileZilla: Transfer > Transfer type > "
-                        + "Binary), or over USB, then import again";
-            if (is2013) return FROM_2013;
-            return "none of the game files found here is the one the game is built from: " + seen + ". " + WHICH_FOLDER
-                    + " (If you have the game from another store, please report these names and numbers.)";
-        }
-        File exeOut = new File(game, "ff7_en.exe");
-        exeOut.delete();
-        if (!tmp.renameTo(exeOut)) throw new IOException("cannot write " + exeOut);
-        copyTree(tree, data.id, new File(game, "data"), p, "data");
-        fixFontWidths();
+        tmp.delete();
+        if (err != null) return err;
+        copyTree(tree, datas.get(0).id, new File(game, "Data"), p, "Data");
         List<String> missing = missingFiles();
         if (!missing.isEmpty())
-            return "the game's data folder here is incomplete, these files are missing: " + String.join(", ", missing)
+            return "the game's Data folder here is incomplete, these files are missing: " + String.join(", ", missing)
                     + ". Check that the game is fully installed (in Steam or GameNative: verify the game files), then import again";
         return null;
     }
 
     /**
      * Downloads the game from Steam (SteamFiles) into the game folder, as importGame would copy it.
-     * Returns null on success, else what is wrong. exeChanged[0]: ff7_en.exe is new (build again).
+     * Returns null on success, else what is wrong. exeChanged[0]: ff8_en.exe is new (build again).
      */
     String downloadFromSteam(SteamLink link, Progress p, java.util.concurrent.atomic.AtomicBoolean cancel, boolean[] exeChanged) throws Exception {
         game.mkdirs();
-        File exe = new File(game, "ff7_en.exe");
+        File exe = new File(game, "ff8_en.exe");
         String before = exe.isFile() ? GameBuild.sha1(exe) : null;
         File mark = steamDownloading();
         if (!mark.isFile()) new FileOutputStream(mark).close();
         String err = new SteamFiles(link).downloadGame(game, p::update, cancel);
         if (err != null) return err;
-        String sha = GameBuild.sha1(exe);
-        if (!GameBuild.EXE_SHA1.equals(sha))
-            return "Steam's copy of ff7_en (SHA-1 " + sha.substring(0, 12) + "…) is not the one the game is built from. Please report this";
-        exeChanged[0] = !sha.equals(before);
-        fixFontWidths();
+        err = installExe(new File(game, SteamFiles.WRAPPED_EXE), "Steam's FF8_EN.exe");
+        if (err != null) return err;
+        exeChanged[0] = !GameBuild.sha1(exe).equals(before);
         List<String> missing = missingFiles();
         if (!missing.isEmpty()) return "these files did not come with the download: " + String.join(", ", missing) + ". Please report this";
         mark.delete();
@@ -234,12 +225,12 @@ final class GameInstall {
 
     /** Folders the search skips: the game's own data (searched as a whole), and big unrelated ones. */
     private static final java.util.Set<String> SKIP = new java.util.HashSet<>(java.util.Arrays.asList(
-            "data", "movies", "music", "music_ogg", "shaders", "mods", "direct", "textures", "voice", "sfx", "ambient",
-            "redist", "__support", "_commonredist", "lang-en", "lang-fr", "lang-de", "lang-es", "lang-ja"));
+            "data", "movies", "music", "sound", "shaders", "mods", "textures", "plugins", "licenses",
+            "redist", "__support", "_commonredist", "lang-en", "lang-fr", "lang-de", "lang-es", "lang-it", "lang-jp"));
 
     /**
-     * Search the picked folder, 5 levels deep, for ff7_en / ff7_en.exe files and the game's data
-     * folder (a "data" folder holding "field" or "lang-en"), appended after the known places.
+     * Search the picked folder, 5 levels deep, for FF8_EN.exe files and the game's Data folder (a
+     * "Data" folder holding "lang-en"), appended after the known places.
      */
     private void scan(Uri tree, String id, String rel, int depth, List<Doc> exes, List<String> exeWhere, List<Doc> datas) {
         if (depth > 5) return;
@@ -247,13 +238,13 @@ final class GameInstall {
             String lower = d.name.toLowerCase(Locale.ROOT);
             String here = rel.isEmpty() ? d.name : rel + "/" + d.name;
             if (!d.dir) {
-                if (lower.equals("ff7_en") || lower.equals("ff7_en.exe")) { exes.add(d); exeWhere.add(here); }
+                if (lower.equals("ff8_en.exe")) { exes.add(d); exeWhere.add(here); }
                 continue;
             }
             if (lower.equals("data")) {
                 for (Doc k : children(tree, d.id)) {
                     String kl = k.name.toLowerCase(Locale.ROOT);
-                    if (k.dir && (kl.equals("field") || kl.equals("lang-en"))) { datas.add(d); break; }
+                    if (k.dir && kl.equals("lang-en")) { if (!datas.contains(d)) datas.add(d); break; }
                 }
                 continue;
             }
@@ -266,9 +257,8 @@ final class GameInstall {
         dst.mkdirs();
         for (Doc d : children(tree, id)) {
             String lower = d.name.toLowerCase(Locale.ROOT);
-            // English, French, German and Spanish (the Japanese edition is another exe)
-            if (rel.equals("data") && d.dir && lower.startsWith("lang-")
-                    && !java.util.Arrays.asList("lang-en", "lang-fr", "lang-de", "lang-es").contains(lower)) continue;
+            // English only: each language of the 2013 release is its own exe (FF8_EN.exe is English)
+            if (rel.equals("Data") && d.dir && lower.startsWith("lang-") && !lower.equals("lang-en")) continue;
             File out = new File(dst, d.name);
             if (d.dir) copyTree(tree, d.id, out, p, rel + "/" + d.name);
             else {
@@ -388,77 +378,23 @@ final class GameInstall {
     /** Settings > Sound and Game options (FfnxOptions): changed FFNx.toml keys, over the mods' values. */
     java.util.Map<String, String> ffnxOptions = new java.util.HashMap<>();
 
-    /** The game's languages: FFNx's game_language, the launcher's name, the data/lang-* folder. */
-    static final String[][] LANGUAGES = {
-        { "1", "English", "en" }, { "2", "Français", "fr" }, { "3", "Deutsch", "de" }, { "4", "Español", "es" },
-    };
+    /** The game's languages: FFNx's game_language, the launcher's name, the Data/lang-* folder.
+     *  FF8's 2013 exes are one per language; FF8_EN.exe is English. */
+    static final String[][] LANGUAGES = { { "1", "English", "en" } };
 
-    /** FFNx game_language (1 English, 2 French, 3 German, 4 Spanish). */
+    /** FFNx game_language (1 English). */
     int gameLanguage = 1;
 
-    /**
-     * The current Steam release's kernel/window.bin (English, French, German, Spanish) gives the
-     * letters m, M, w and W 8 pixels where the font image draws them 11 wide (its own new text
-     * renderer draws another font): the classic game's text runs those letters into the next
-     * ("newcorner", "Followme"). Their widths go back to 11, as in the classic table (and this
-     * release's Japanese file). Idempotent; run at import and before each Play.
-     */
-    void fixFontWidths() {
-        for (String l : new String[] { "en", "fr", "de", "es" }) {
-            File f = new File(game, "data/lang-" + l + "/kernel/window.bin");
-            if (!f.isFile()) continue;
-            try { fixFontWidths(f); } catch (IOException e) { android.util.Log.w("FF7Launcher", "window.bin " + l + ": " + e); }
-        }
-    }
-
-    private static final int[] WIDE = { 0x2D, 0x37, 0x4D, 0x57 };   // M, W, m, w (FF7 text codes)
-
-    static void fixFontWidths(File f) throws IOException {
-        byte[] d = readAll(new java.io.FileInputStream(f));
-        // sections: u16 compressed size, u16 size, u16 type, then gzip data; the widths are the 3rd
-        int at = 0;
-        for (int s = 0; s < 2; s++) {
-            if (at + 6 > d.length) return;
-            at += 6 + ((d[at] & 0xFF) | (d[at + 1] & 0xFF) << 8);
-        }
-        if (at + 6 > d.length) return;
-        int csize = (d[at] & 0xFF) | (d[at + 1] & 0xFF) << 8;
-        if (at + 6 + csize > d.length) return;
-        byte[] widths;
-        try (java.util.zip.GZIPInputStream in = new java.util.zip.GZIPInputStream(new java.io.ByteArrayInputStream(d, at + 6, csize))) {
-            widths = readAll(in);
-        }
-        boolean changed = false;
-        for (int c : WIDE) {
-            if (c >= widths.length) return;
-            if ((widths[c] & 31) == 8) { widths[c] = (byte) ((widths[c] & 0xE0) | 11); changed = true; }
-        }
-        if (!changed) return;
-        java.io.ByteArrayOutputStream z = new java.io.ByteArrayOutputStream();
-        try (java.util.zip.GZIPOutputStream out = new java.util.zip.GZIPOutputStream(z)) { out.write(widths); }
-        byte[] packed = z.toByteArray();
-        if (packed.length > 0xFFFF) return;
-        java.io.ByteArrayOutputStream o = new java.io.ByteArrayOutputStream();
-        o.write(d, 0, at);
-        o.write(packed.length & 0xFF); o.write(packed.length >> 8);
-        o.write(d, at + 2, 4);                                // size and type unchanged
-        o.write(packed, 0, packed.length);
-        o.write(d, at + 6 + csize, d.length - (at + 6 + csize));
-        File tmp = new File(f.getPath() + ".new");
-        try (OutputStream w = new FileOutputStream(tmp)) { w.write(o.toByteArray()); }
-        if (!tmp.renameTo(f)) { tmp.delete(); throw new IOException("cannot replace " + f); }
-    }
-
-    /** The data/lang-xx code of a game_language (en when unknown). */
+    /** The Data/lang-xx code of a game_language (en when unknown). */
     static String languageCode(int language) {
         for (String[] l : LANGUAGES) if (Integer.parseInt(l[0]) == language) return l[2];
         return "en";
     }
 
-    /** Whether the imported game files hold that language's data folder (data/lang-xx). */
+    /** Whether the imported game files hold that language's data folder (Data/lang-xx). */
     boolean hasLanguage(int language) {
         for (String[] l : LANGUAGES)
-            if (Integer.parseInt(l[0]) == language) return new File(game, "data/lang-" + l[2]).isDirectory();
+            if (Integer.parseInt(l[0]) == language) return new File(game, "Data/lang-" + l[2]).isDirectory();
         return false;
     }
 
@@ -471,6 +407,9 @@ final class GameInstall {
         // FPS chosen the game keeps its 60 FPS timing, which at 2x is shown at 120 FPS.
         if (turbo && fpsLimiter > 3) fpsLimiter = 3;
         toml = set(toml, "ff7_fps_limiter", Integer.toString(fpsLimiter));
+        // FF8 reads its own key (FFNx cfg.cpp): 0 original, 1 default, 2 30 FPS battles, 3 60 FPS;
+        // FFNx clamps it at 3 (no 120 FPS for FF8)
+        toml = set(toml, "ff8_fps_limiter", Integer.toString(Math.min(fpsLimiter, 3)));
         toml = set(toml, "speedhack_min", turbo ? "2.0" : "1.0");
         toml = set(toml, "show_fps", showFps ? "true" : "false");
         toml = set(toml, "crt_filter", crtFilter ? "true" : "false");

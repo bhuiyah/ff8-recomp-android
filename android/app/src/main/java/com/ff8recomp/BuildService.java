@@ -78,7 +78,7 @@ public class BuildService extends Service {
                 } catch (InterruptedException ignored) { }
             });
             ticker.start();
-            String err = b.run(new File(new GameInstall(this).game, "ff7_en.exe"));
+            String err = b.run(new File(new GameInstall(this).game, "ff8_en.exe"));
             ticker.interrupt();
             if (wl.isHeld()) wl.release();
             stopForeground(STOP_FOREGROUND_REMOVE);
@@ -93,7 +93,7 @@ public class BuildService extends Service {
                                 PendingIntent.getForegroundService(this, 2, new Intent(this, BuildService.class).setAction(ACTION_CONTINUE),
                                         PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT)).build());
             } else {
-                done.setContentTitle(err == null ? "FINAL FANTASY VII is ready" : "Building the game stopped")
+                done.setContentTitle(err == null ? "FINAL FANTASY VIII is ready" : "Building the game stopped")
                         .setContentText(err == null ? "Built for this device. Press Play." : err);
             }
             nm.notify(ID + 1, done.build());
@@ -112,7 +112,7 @@ public class BuildService extends Service {
     private Notification note(String what, int pct) {
         return new Notification.Builder(this, CHANNEL)
                 .setSmallIcon(R.drawable.ic_launcher_monochrome)
-                .setContentTitle("Building FINAL FANTASY VII for this device")
+                .setContentTitle("Building FINAL FANTASY VIII for this device")
                 .setContentText(what + " · " + pct + "%")
                 .setProgress(100, pct, false)
                 .setOngoing(true)

@@ -24,8 +24,8 @@ extern "C" void ff7_achievements_banner(const char *title);
 
 namespace {
 
-constexpr AppId_t k_ff7_2013 = 39140;
-AppId_t g_app = k_ff7_2013;                 // state.txt "appid": the FF7 the account owns
+constexpr AppId_t k_ff8_2013 = 39150;
+AppId_t g_app = k_ff8_2013;                 // state.txt "appid": the FF8 the account owns
 
 struct Ach { bool achieved = false; std::string display; };
 
@@ -108,7 +108,7 @@ AppId_t ISteamUtils::GetAppID() {
 
 // Which achievement list FFNx uses (patched into common.cpp): the 2013 release's, or the
 // 2026 re-release's (app 3837340).
-extern "C" int ff7r_steam_is_2013() { return SteamUtils()->GetAppID() == k_ff7_2013; }
+extern "C" int ff7r_steam_is_2013() { return SteamUtils()->GetAppID() == k_ff8_2013; }
 
 bool ISteamUser::BLoggedOn() {
     std::lock_guard<std::mutex> lk(g_mu);
