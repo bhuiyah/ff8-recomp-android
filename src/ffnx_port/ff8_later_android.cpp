@@ -18,6 +18,7 @@
 #include "ff8/vibration.h"
 #include "ff8/battle/monsters.h"
 #include "ff8/menu/volume.h"
+#include "ff8/zzz_archive.h"
 
 // kernel_item.cpp: inactive unless a mod grows the item table; the inventory is the savemap's.
 bool ff8_kernel_item_active() { return false; }
@@ -44,4 +45,8 @@ void vibration_init() {}
 // remaster.cpp: FFNx's mode for the 2000 exe with Remastered assets (FFVIII.exe beside it),
 // never the case here.
 void ff8_remaster_init() {}
+// The Remastered archives (remaster.cpp opens them in ff8_remaster_init): never opened here;
+// their users check ff8_remastered_edition first.
+Zzz g_FF8ZzzArchiveMain;
+Zzz g_FF8ZzzArchiveOther;
 void ff8_remaster_set_field_model_scaling(const std::unordered_map<uint32_t, CharaOneModel> &) {}

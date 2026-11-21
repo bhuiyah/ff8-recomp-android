@@ -63,3 +63,7 @@ template <typename T, size_t N> inline T (&ffnx_guest_static_copy(const T (&init
 template <typename T, size_t N> inline T (&ffnx_guest_static_zero())[N] {
     return *static_cast<T (*)[N]>(ffnx_guest_static_alloc(sizeof(T[N]), alignof(T)));
 }
+
+// FF8Recomp: the guest COM object for one of fake_dd.cpp's interface globals
+// (src/ffnx_port/fake_dd_guest.cpp): what the game gets instead of &_fake_dddevice and friends.
+uint32_t ffnx_fake_dd_va(const void *host_global);

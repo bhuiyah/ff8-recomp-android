@@ -10,7 +10,7 @@ OUT="$ROOT/build/ffnx-link"
 "$CM/cmake.exe" -S "$ROOT/tests/ffnx_probe" -B "$OUT" -G Ninja -DCMAKE_MAKE_PROGRAM="$CM/ninja.exe" \
   -DCMAKE_TOOLCHAIN_FILE="$SDK/ndk/28.2.13676358/build/cmake/android.toolchain.cmake" \
   -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-29 -DANDROID_STL=c++_static \
-  -DCMAKE_BUILD_TYPE=Release -DFFNX_LINK_PROBE=ON > "$OUT.configure.log" 2>&1 || { tail -20 "$OUT.configure.log"; exit 1; }
+  -DCMAKE_BUILD_TYPE=Release -DFF7_NO_GUEST=ON -DFFNX_LINK_PROBE=ON > "$OUT.configure.log" 2>&1 || { tail -20 "$OUT.configure.log"; exit 1; }
 "$CM/cmake.exe" --build "$OUT" --target ffnx_link_probe -- -k 0 -j 8 > "$OUT.log" 2>&1
 rc=$?
 grep -E 'error:' "$OUT.log" | grep -v 'undefined symbol' | head -20

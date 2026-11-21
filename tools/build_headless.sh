@@ -22,5 +22,5 @@ if [ ! -f "$OUT/build.ninja" ]; then
     -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-29 \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo -DFF7_TRACE=$TRACE
 fi
-"$CMAKE" --build "$OUT" -- -j 8
+"$CMAKE" --build "$OUT" -- -j $(nproc)
 ls -la "$OUT/ff7_headless"

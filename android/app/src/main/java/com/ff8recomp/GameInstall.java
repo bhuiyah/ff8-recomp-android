@@ -37,7 +37,7 @@ final class GameInstall {
     }
 
     boolean hasGame() {
-        return new File(game, "ff7_en.exe").isFile() && new File(game, "data/field").isDirectory() && !steamDownloading().exists();
+        return new File(game, "ff8_en.exe").isFile() && new File(game, "Data/lang-en").isDirectory() && !steamDownloading().exists();
     }
 
     /** Present while a download from Steam is unfinished (SteamFiles): the game is not complete. */
@@ -46,9 +46,9 @@ final class GameInstall {
     /** Files under data/ the game opens at start-up and cannot run without: one missing (a copy
      *  cut short, another release's layout) stopped it on a black screen (GitHub #18, #22). */
     static final String[] REQUIRED = {
-        "field/char.lgp", "field/flevel.lgp", "battle/battle.lgp", "battle/magic.lgp", "menu/menu_us.lgp",
-        "minigame/chocobo.lgp", "minigame/condor.lgp", "wm/world_us.lgp", "cd/moviecam.lgp",
-        "sound/audio.fmt", "sound/audio.dat",
+        // FF8 (Steam 2013): the per-language archives and the sound banks
+        "lang-en/battle.fs", "lang-en/field.fs", "lang-en/magic.fs", "lang-en/main.fs", "lang-en/menu.fs",
+        "lang-en/world.fs", "Sound/audio.fmt", "Sound/audio.dat",
     };
 
     /** The REQUIRED files missing or empty in the imported data folder (names matched ignoring
@@ -56,7 +56,7 @@ final class GameInstall {
     List<String> missingFiles() {
         List<String> out = new ArrayList<>();
         for (String rel : REQUIRED) {
-            File f = new File(game, "data");
+            File f = new File(game, "Data");
             for (String part : rel.split("/")) {
                 File next = new File(f, part);
                 if (!next.exists()) {
@@ -65,7 +65,7 @@ final class GameInstall {
                 }
                 f = next;
             }
-            if (!f.isFile() || f.length() == 0) out.add("data/" + rel);
+            if (!f.isFile() || f.length() == 0) out.add("Data/" + rel);
         }
         return out;
     }

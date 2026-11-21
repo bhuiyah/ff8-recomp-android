@@ -62,6 +62,30 @@ FF8_EDITS = [
     ('ff8_opengl.cpp', 'caller, uint32_t(descriptor), uint32_t(records), stride',
      'caller, ffnx_trace_ptr(descriptor), ffnx_trace_ptr(records), stride'),
 
+    # ---- FFNx's fake DirectDraw objects: the game gets guest COM objects
+    # (src/ffnx_port/fake_dd_guest.cpp), and their methods write 4-byte guest cells.
+    ('ff8_opengl.cpp', '\tgame_object->dddevice = &_fake_dddevice;\n\tgame_object->front_surface[0] = &_fake_dd_front_surface;\n'
+                       '\tgame_object->front_surface[1] = &_fake_dd_back_surface;\n\tgame_object->dd2interface = &_fake_dddevice;\n'
+                       '\tgame_object->d3d2device = &_fake_d3d2device;\n',
+     '\t// FF8Recomp: guest COM objects (src/ffnx_port/fake_dd_guest.cpp)\n'
+     '\tgame_object->dddevice = ffnx_fake_dd_va(&_fake_dddevice);\n\tgame_object->front_surface[0] = ffnx_fake_dd_va(&_fake_dd_front_surface);\n'
+     '\tgame_object->front_surface[1] = ffnx_fake_dd_va(&_fake_dd_back_surface);\n\tgame_object->dd2interface = ffnx_fake_dd_va(&_fake_dddevice);\n'
+     '\tgame_object->d3d2device = ffnx_fake_dd_va(&_fake_d3d2device);\n'),
+    # fake_dd.cpp's own tables are host-only here (the game gets fake_dd_guest.cpp's): their
+    # function slots take any function, as MSVC's void * did.
+    ('fake_dd.h', '#include <stdint.h>\n',
+     '#include <stdint.h>\n\n'
+     '// FF8Recomp: a vtable slot of FFNx\'s host-side tables (the game sees src/ffnx_port/fake_dd_guest.cpp\'s)\n'
+     'struct fake_fn { void *p = nullptr; fake_fn() = default; fake_fn(int) {} template <class F> fake_fn(F *f) : p((void *)f) {} };\n'),
+    ('fake_dd.h', '\tvoid *', '\tfake_fn ', 'all'),
+    ('fake_dd.cpp', '\t*dd = &_fake_dddevice;', '\t*(uint32_t *)dd = ffnx_fake_dd_va(&_fake_dddevice);   // FF8Recomp: a 4-byte cell'),
+    ('fake_dd.cpp', '\t\t*ppvobj = me;', '\t\t*(uint32_t *)ppvobj = ffnx_va(me);   // FF8Recomp: a 4-byte cell'),
+    ('fake_dd.cpp', '\t\t*ppvobj = &_fake_dd_temp_surface;', '\t\t*(uint32_t *)ppvobj = ffnx_fake_dd_va(&_fake_dd_temp_surface);'),
+    ('fake_dd.cpp', '\t*clipper = 0;', '\t*(uint32_t *)clipper = 0;   // FF8Recomp: a 4-byte cell'),
+    ('fake_dd.cpp', '\t*palette = 0;', '\t*(uint32_t *)palette = 0;   // FF8Recomp: a 4-byte cell'),
+    ('fake_dd.cpp', '\t*surface = (LPDIRECTDRAWSURFACE)&_fake_dd_temp_surface;',
+     '\t*(uint32_t *)surface = ffnx_fake_dd_va(&_fake_dd_temp_surface);   // FF8Recomp: a 4-byte cell'),
+
     # ---- ff8_data.cpp: the zoom function's own type (guest cells for its double pointers)
     ('ff8_data.cpp',
      'ff8_externals.world_calc_zoom_sub_50F900 = guest::gfn<int16_t(int16_t *, int16_t **, uint32_t **)>::from_va(',
