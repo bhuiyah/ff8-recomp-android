@@ -9,6 +9,7 @@
  * machine lock while it waits.
  */
 #define _GNU_SOURCE
+#include "game_image.h"
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
@@ -107,7 +108,7 @@ static void k_InterlockedExchange(void)  { uint32_t p = A32(0), old = W32(p); W3
 static uint32_t g_cmdline_va, g_env_a_va, g_env_w_va;
 static void k_GetCommandLineA(void) {
     if (!g_cmdline_va) {
-        static const char cmd[] = "ff7_en.exe";
+        static const char cmd[] = GAME_EXE_NAME;
         char *p = (char *)guest_malloc(sizeof cmd);
         memcpy(p, cmd, sizeof cmd);
         g_cmdline_va = (uint32_t)(uintptr_t)p;
@@ -130,7 +131,7 @@ static void k_GetModuleFileNameA(void) {           /* (hModule, buf, size) */
     char *buf = ASTR(1);
     uint32_t size = A32(2);
     if (!buf || !size) RET(0, 3);
-    int n = snprintf(buf, size, "%s\\ff7_en.exe", FF7_GUEST_ROOT);
+    int n = snprintf(buf, size, "%s\\" GAME_EXE_NAME, FF7_GUEST_ROOT);
     RET(n < (int)size ? (uint32_t)n : size, 3);
 }
 /* The guest's working directory (ff7_paths.c keeps it, relative to the game root): FF7

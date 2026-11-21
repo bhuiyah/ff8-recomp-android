@@ -10,6 +10,7 @@
 // ffnx_recomp_report() prints a summary; ffnx_recomp_write_manifest(path) writes JSON.
 //
 // get_relative_call / get_absolute_value / check_is_call are FFNx's (GPL-3.0), unchanged.
+#include "game_image.h"
 #include <algorithm>
 #include <cstdarg>
 #include <cstdio>
@@ -23,7 +24,7 @@
 
 namespace {
 
-constexpr uint32_t TEXT_LO = 0x00401000u, TEXT_HI = 0x007B6000u;   // ff7_en .text
+constexpr uint32_t TEXT_LO = GAME_TEXT_LO, TEXT_HI = GAME_TEXT_HI;   // game_image.h
 
 struct hook_rec { const char *what; uint32_t site, target; int installed; };
 struct write_rec { const char *what; uint32_t offset, size; std::vector<uint8_t> before; };

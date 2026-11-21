@@ -3,6 +3,7 @@
 // FFNx's view. Where Android has an equivalent it is used (files, time, paths); where it
 // has none the call answers the way Windows does when the thing is absent (no registry
 // key, no DLL, no extra monitor), so FFNx takes its existing fallback path.
+#include "game_image.h"
 #include <dirent.h>
 #include <fnmatch.h>
 #include <pthread.h>
@@ -48,7 +49,7 @@ BOOL SetCurrentDirectoryA(LPCSTR p) { return chdir(p) == 0; }
 // graphics driver AF3DN.P, which is how DllMain tells it is driving FF7 (not FF8).
 DWORD GetModuleFileNameA(HMODULE m, LPSTR buf, DWORD n) {
     char cwd[1024]; if (!getcwd(cwd, sizeof cwd)) cwd[0] = 0;
-    return (DWORD)snprintf(buf, n, "%s/%s", cwd, m == FFNX_MODULE ? "AF3DN.P" : "ff7_en.exe");
+    return (DWORD)snprintf(buf, n, "%s/%s", cwd, m == FFNX_MODULE ? "AF3DN.P" : GAME_EXE_NAME);
 }
 DWORD GetTickCount(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return (DWORD)(t.tv_sec * 1000ull + t.tv_nsec / 1000000ull); }
 ULONGLONG GetTickCount64(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec * 1000ull + t.tv_nsec / 1000000ull; }

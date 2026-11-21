@@ -1,47 +1,49 @@
-"""Import the user's FF7 (Steam 2026 release) into game/.
+"""Import the user's FF8 (Steam 2013 release, app 39150) into game/.
 
-Copies the 32-bit 1.02 exe (ff7\\resources\\ff7_1.02\\ff7_en) to game/ff7_en.exe and links
-game/data to the install's ff7\\workingdir\\data (a directory junction on Windows, so the
-3.5 GB of data is not duplicated). Nothing is modified in the install itself.
+Copies FF8_EN.exe, removes its SteamStub wrapper (tools/unwrap_steamstub.py) and writes
+game/ff8_en.exe; links game/Data to the install's Data folder (a directory junction on Windows,
+so the data is not duplicated). Nothing is modified in the install itself.
 
-usage: py -I tools/import_game.py "<path to FINAL FANTASY VII install>"
+usage: py -I tools/import_game.py "<path to the FINAL FANTASY VIII install>"
 """
 import json
 import os
-import shutil
 import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GAME = os.path.join(ROOT, 'game')
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from unwrap_steamstub import unwrap  # noqa: E402
 
 
 def main(install):
     install = os.path.abspath(install)
-    exe = os.path.join(install, 'ff7', 'resources', 'ff7_1.02', 'ff7_en')
-    data = os.path.join(install, 'ff7', 'workingdir', 'data')
+    exe = os.path.join(install, 'FF8_EN.exe')
+    data = os.path.join(install, 'Data')
     for p in (exe, data):
         if not os.path.exists(p):
-            sys.exit(f'missing: {p}\nIs this the FINAL FANTASY VII (Steam 2026) install folder?')
+            sys.exit(f'missing: {p}\nIs this the FINAL FANTASY VIII (Steam 2013) install folder?')
 
     os.makedirs(GAME, exist_ok=True)
-    shutil.copy2(exe, os.path.join(GAME, 'ff7_en.exe'))
-    print('copied ff7_en -> game/ff7_en.exe')
+    out = os.path.join(GAME, 'ff8_en.exe')
+    open(out, 'wb').write(unwrap(open(exe, 'rb').read()))
+    print('unwrapped FF8_EN.exe -> game/ff8_en.exe')
 
-    link = os.path.join(GAME, 'data')
+    link = os.path.join(GAME, 'Data')
     if os.path.lexists(link):
         if os.path.realpath(link) != os.path.realpath(data):
-            sys.exit(f'game/data already exists and points elsewhere: {os.path.realpath(link)}')
-        print('game/data already linked')
+            sys.exit(f'game/Data already exists and points elsewhere: {os.path.realpath(link)}')
+        print('game/Data already linked')
     elif os.name == 'nt':
         subprocess.run(['cmd', '/c', 'mklink', '/J', link, data], check=True, capture_output=True)
-        print(f'linked game/data -> {data}')
+        print(f'linked game/Data -> {data}')
     else:
         os.symlink(data, link)
-        print(f'linked game/data -> {data}')
+        print(f'linked game/Data -> {data}')
 
     with open(os.path.join(GAME, 'source.json'), 'w', encoding='utf-8') as f:
-        json.dump({'install': install, 'release': 'steam-2026', 'steam_appid': 3837340}, f, indent=2)
+        json.dump({'install': install, 'edition': 'steam-2013', 'steam_appid': 39150}, f, indent=2)
 
 
 if __name__ == '__main__':

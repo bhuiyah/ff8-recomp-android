@@ -1,6 +1,7 @@
 """Check game/ against what the pipeline expects and record hashes in analysis/inputs.json.
 
-The exe must be the 32-bit 1.02 US build FFNx knows (entry 0x40B6E0, AF3DN.P import).
+The exe must be the unwrapped 32-bit FF8 1.2 US (Steam 2013) build FFNx knows: version bytes at
+0x401004/0x401404 = VERSION_FF8_12_US_NV, entry 0x55ADB7 (tools/unwrap_steamstub.py), AF3DN.P import.
 Every data file is hashed so later runs can tell if the inputs changed.
 
 usage: py -I tools/check_inputs.py [--quick]   (--quick skips hashing the data folder)
@@ -15,12 +16,13 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GAME = os.path.join(ROOT, 'game')
 OUT = os.path.join(ROOT, 'analysis', 'inputs.json')
 
-EXPECT_ENTRY_VA = 0x0040B6E0      # FFNx externals_102_us.h: start
+EXPECT_ENTRY_VA = 0x0055ADB7      # mainCRTStartup, after unwrapping SteamStub
+EXPECT_VERSION = (0x3885048D, 0x001597C8)   # FFNx common.cpp: VERSION_FF8_12_US_NV
 EXPECT_IMAGE_BASE = 0x00400000
-# Subfolders of data/ that the game reads; missing ones mean an incomplete install.
-# The 2026 release keeps per-language kernel/battle text and movies under lang-xx/.
-EXPECT_DATA_DIRS = ['battle', 'field', 'menu', 'minigame', 'movies', 'music', 'sound', 'wm',
-                    'lang-en/kernel', 'lang-en/battle']
+# Files and folders under Data/ that the game reads; missing ones mean an incomplete install.
+EXPECT_DATA = ['lang-en/battle.fs', 'lang-en/field.fs', 'lang-en/magic.fs', 'lang-en/main.fs',
+               'lang-en/menu.fs', 'lang-en/world.fs', 'Sound/audio.dat', 'Sound/audio.fmt',
+               'Music/dmusic', 'movies']
 
 
 def sha1(path):
@@ -38,31 +40,35 @@ def check_exe(path, errors):
     entry, = struct.unpack_from('<I', b, pe + 24 + 16)
     base, = struct.unpack_from('<I', b, pe + 24 + 28)
     if machine != 0x14C:
-        errors.append(f'ff7_en.exe is not x86-32 (machine 0x{machine:x})')
+        errors.append(f'ff8_en.exe is not x86-32 (machine 0x{machine:x})')
     if base != EXPECT_IMAGE_BASE or base + entry != EXPECT_ENTRY_VA:
-        errors.append(f'ff7_en.exe entry 0x{base + entry:08x} is not the 1.02 US build (want 0x{EXPECT_ENTRY_VA:08x})')
-    if b'AF3DN.P' not in open(path, 'rb').read():
-        errors.append('ff7_en.exe does not import AF3DN.P')
+        errors.append(f'ff8_en.exe entry 0x{base + entry:08x} is not the unwrapped 1.2 US build (want 0x{EXPECT_ENTRY_VA:08x})')
+    full = open(path, 'rb').read()
+    v = struct.unpack_from('<I', full, 0x1004)[0], struct.unpack_from('<I', full, 0x1404)[0]
+    if v != EXPECT_VERSION:
+        errors.append(f'ff8_en.exe version bytes {v[0]:#x}/{v[1]:#x} are not FF8 1.2 US (Steam 2013)')
+    if b'AF3DN.P' not in full:
+        errors.append('ff8_en.exe does not import AF3DN.P')
 
 
 def main():
     quick = '--quick' in sys.argv
     errors = []
-    exe = os.path.join(GAME, 'ff7_en.exe')
-    data = os.path.join(GAME, 'data')
+    exe = os.path.join(GAME, 'ff8_en.exe')
+    data = os.path.join(GAME, 'Data')
     if not os.path.isfile(exe):
-        errors.append('game/ff7_en.exe missing (run tools/import_game.py)')
+        errors.append('game/ff8_en.exe missing (run tools/import_game.py)')
     if not os.path.isdir(data):
-        errors.append('game/data missing (run tools/import_game.py)')
+        errors.append('game/Data missing (run tools/import_game.py)')
     if errors:
         sys.exit('\n'.join('FAIL ' + e for e in errors))
 
     check_exe(exe, errors)
-    for d in EXPECT_DATA_DIRS:
-        if not os.path.isdir(os.path.join(data, d)):
-            errors.append(f'game/data/{d} missing')
+    for d in EXPECT_DATA:
+        if not os.path.exists(os.path.join(data, d)):
+            errors.append(f'game/Data/{d} missing')
 
-    result = {'ff7_en.exe': {'sha1': sha1(exe), 'size': os.path.getsize(exe)}, 'data': {}}
+    result = {'ff8_en.exe': {'sha1': sha1(exe), 'size': os.path.getsize(exe)}, 'data': {}}
     if not quick:
         n = 0
         for dirpath, _, files in os.walk(data):
@@ -76,8 +82,8 @@ def main():
 
     if os.path.exists(OUT):
         old = json.load(open(OUT, encoding='utf-8'))
-        if old.get('ff7_en.exe') != result['ff7_en.exe']:
-            errors.append('ff7_en.exe differs from the one recorded in analysis/inputs.json')
+        if old.get('ff8_en.exe') != result['ff8_en.exe']:
+            errors.append('ff8_en.exe differs from the one recorded in analysis/inputs.json')
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     if not errors:
@@ -85,7 +91,7 @@ def main():
             result['data'] = json.load(open(OUT, encoding='utf-8')).get('data', {})
         json.dump(result, open(OUT, 'w', encoding='utf-8'), indent=1)
 
-    print(f"ff7_en.exe sha1 {result['ff7_en.exe']['sha1']}")
+    print(f"ff8_en.exe sha1 {result['ff8_en.exe']['sha1']}")
     print(f"data files hashed: {len(result['data'])}")
     if errors:
         sys.exit('\n'.join('FAIL ' + e for e in errors))

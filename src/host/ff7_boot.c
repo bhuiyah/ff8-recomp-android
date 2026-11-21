@@ -20,6 +20,7 @@
 #include "win32hle.h"
 #include "ff7_hle.h"
 #include "ff7_boot.h"
+#include "game_image.h"
 #include "mods.h"
 
 void ff7_install_crash_handler(void);
@@ -36,7 +37,7 @@ __attribute__((weak)) uint32_t ffnx_guest_static_base(void) { return 0x6B000000u
  * A phone with a larger Java heap (1-1.5 GB) covers them; then both go into the largest free
  * gap in [FF7_LAYOUT_MIN, FF7_LAYOUT_MAX): the arena, then a 32 MB VirtualAlloc region at its
  * end. The game uses a few tens of MB of heap and 4 MB of VirtualAlloc (the CRT's heap). */
-#define FF7_LAYOUT_MIN 0x01000000u   /* above the exe image (mapped after this) */
+#define FF7_LAYOUT_MIN 0x03000000u   /* above the exe image (GAME_IMAGE_HI, mapped after this) */
 #define FF7_LAYOUT_MAX 0x80000000u   /* guest pointers stay positive as 32-bit ints */
 #define FF7_VM_MOVED   0x02000000u   /* 32 MB */
 #define FF7_ARENA_NEED 0x06000000u   /* 96 MB at least */
@@ -119,8 +120,8 @@ int ff7_boot_and_run(const char *game_dir) {
     ff7_hle_register();          /* FF7 shims first: a name here wins over win32hle */
     recomp_host_init();
     if (getenv("FF7_TRACE_IMPORTS")) win32hle_trace = 1;
-    if (recomp_host_boot_permissive("ff7_en.exe") != 0) {
-        fprintf(stderr, "[ff7] could not map ff7_en.exe in %s\n", game_dir);
+    if (recomp_host_boot_permissive(GAME_EXE_NAME) != 0) {
+        fprintf(stderr, "[ff7] could not map " GAME_EXE_NAME " in %s\n", game_dir);
         return 71;
     }
     /* The mods' hext patches: after the image is mapped, before FFNx (7th Heaven patches the

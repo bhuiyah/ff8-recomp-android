@@ -18,9 +18,9 @@ case " $ENVS " in *" QUIET=1 "*) ;; *) ENVS="FF7_TRACE_IMPORTS=1 $ENVS";; esac
 BIN="$(cygpath -w "$DIR/ff7_headless")"
 "$STRIP" -o "$BIN.stripped" "$BIN"
 export MSYS_NO_PATHCONV=1
-"$ADB" push "$BIN.stripped" /data/local/tmp/ff7/ff7_headless >/dev/null
+"$ADB" push "$BIN.stripped" /data/local/tmp/ff8/ff7_headless >/dev/null
 mkdir -p "$ROOT/logs"
 n=$(ls "$ROOT"/logs/device-*.log 2>/dev/null | wc -l); log="$ROOT/logs/device-$((n + 1)).log"
-"$ADB" shell "cd /data/local/tmp/ff7 && chmod 755 ff7_headless && env $ENVS timeout 120 ./ff7_headless game; echo exit=\$?" > "$log" 2>&1
+"$ADB" shell "cd /data/local/tmp/ff8 && chmod 755 ff7_headless && env $ENVS timeout 120 ./ff7_headless game; echo exit=\$?" > "$log" 2>&1
 echo "log: $log ($(wc -l < "$log") lines)"
 grep -v '^\[hle\] timeGetTime$' "$log" | tail -40

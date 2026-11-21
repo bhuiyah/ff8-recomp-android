@@ -11,8 +11,8 @@ SRC="$(cd "$ROOT/game/data" && pwd -P)"
 cd "$SRC"
 dirs=$(find . -type d ! -path './lang-de*' ! -path './lang-es*' ! -path './lang-fr*' ! -path './lang-ja*' | sed 's|^\./||; s|^\.$||' | grep -v '^$')
 { echo "mkdir -p $DEV/data"; for d in $dirs; do echo "mkdir -p '$DEV/data/$d'"; done; } > "$ROOT/build/mkdirs.sh"
-MSYS_NO_PATHCONV=1 "$ADB" push "$(cygpath -w "$ROOT/build/mkdirs.sh")" /data/local/tmp/ff7_mkdirs.sh > /dev/null
-MSYS_NO_PATHCONV=1 "$ADB" shell sh /data/local/tmp/ff7_mkdirs.sh
+MSYS_NO_PATHCONV=1 "$ADB" push "$(cygpath -w "$ROOT/build/mkdirs.sh")" /data/local/tmp/ff8_mkdirs.sh > /dev/null
+MSYS_NO_PATHCONV=1 "$ADB" shell sh /data/local/tmp/ff8_mkdirs.sh
 for top in *; do
   case "$top" in lang-de|lang-es|lang-fr|lang-ja) continue;; esac
   if [ -d "$top" ]; then

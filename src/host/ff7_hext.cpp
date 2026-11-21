@@ -8,6 +8,7 @@
 // code write is checked against the lift's variant table (recomp_variants.c, emitted by
 // run_lift.py), and the function holding a write with no lifted counterpart is switched to
 // the x86 interpreter (src/interp), which runs the bytes in memory -- the patch included.
+#include "game_image.h"
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
@@ -67,8 +68,8 @@ int ff7_functions_covering(uint32_t va, uint32_t n, uint32_t *out, int max) {
 
 namespace {
 
-constexpr uint32_t IMAGE_LO = 0x00401000u, IMAGE_HI = 0x00F6F000u;   // ff7_en sections
-constexpr uint32_t TEXT_LO = 0x00401000u, TEXT_HI = 0x007B6000u;
+constexpr uint32_t IMAGE_LO = GAME_IMAGE_LO, IMAGE_HI = GAME_IMAGE_HI;   // game_image.h
+constexpr uint32_t TEXT_LO = GAME_TEXT_LO, TEXT_HI = GAME_TEXT_HI;
 constexpr uint32_t STATIC_LO = 0x6B000000u, STATIC_HI = 0x6B010000u;   // FFNx's guest static block
 
 bool readable(uint32_t va, uint32_t n) {

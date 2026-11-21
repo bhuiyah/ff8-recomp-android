@@ -19,6 +19,7 @@
  * Files: <files>/savestates/quick.ff7s (+ .bak of the previous one).
  */
 #define _GNU_SOURCE
+#include "game_image.h"
 #include <errno.h>
 #include <pthread.h>
 #include <stdint.h>
@@ -35,10 +36,10 @@
 #include "ff7_hle.h"
 #include "ff7_savestate.h"
 
-#define SS_MAGIC   "FF7RSS\x1a\x01"
+#define SS_MAGIC   "FF8RSS\x1a\x01"
 #define SS_VERSION 3   /* 3: records the graphics settings (R_CONFIG) */
-#define IMG_DATA_LO 0x007BA000u          /* ff7_en .data/.bss */
-#define IMG_DATA_HI 0x00F51000u
+#define IMG_DATA_LO GAME_DATA_LO          /* .data/.bss (game_image.h) */
+#define IMG_DATA_HI GAME_DATA_HI
 #define FFNX_STATIC_LO 0x6B000000u       /* src/ffnx_port/ffnx_guest_static.cpp: its usual place */
 #define FFNX_STATIC_SIZE 0x10000u
 

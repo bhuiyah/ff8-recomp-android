@@ -127,7 +127,7 @@ const char *hle_host_path(const char *guest, char *buf, unsigned n) {
     char *s = tmp;
     int absolute = 0, rooted = 0;
     /* Under the guest install path (C:\FF7): the rest is relative to the game root. */
-    static const char root[] = "C:/FF7";
+    static const char root[] = "C:/FF8";   /* FF7_GUEST_ROOT with forward slashes */
     size_t rl = sizeof root - 1;
     if (!strncasecmp(s, root, rl) && (s[rl] == '/' || s[rl] == 0)) { s += rl; rooted = 1; }
     else if (isalpha((unsigned char)s[0]) && s[1] == ':') { s += 2; absolute = 1; }
