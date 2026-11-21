@@ -1786,6 +1786,12 @@ EDITS = [
 PATCH_VA_RE = re.compile(r'(patch_code_(?:dword|uint)\((?:[^;]*?)),\s*\((?:DWORD|uint32_t)\)\s*(&?)([A-Za-z_][A-Za-z_0-9:]*)\)\s*;')
 
 
+# FF8Recomp: the edits to FFNx's FF8 files (tools/ffnx_edit_ff8.py).
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from ffnx_edit_ff8 import FF8_EDITS  # noqa: E402
+EDITS += FF8_EDITS
+
+
 def rewrite_fps_tests():
     """`ff7_fps_limiter == FPS_LIMITER_60FPS` means "the high frame rate mode": with the 120 FPS
     mode it becomes >= (FF7 code only)."""
@@ -1809,11 +1815,8 @@ def rewrite_fps_tests():
 def rewrite_patch_values():
     n = 0
     for dirpath, _, files in os.walk(SRC):
-        rel_dir = os.path.relpath(dirpath, SRC).replace(os.sep, '/')
-        if rel_dir.startswith('ff8'):
-            continue
         for f in files:
-            if not f.endswith('.cpp') or f.startswith('ff8'):
+            if not f.endswith('.cpp'):
                 continue
             path = os.path.join(dirpath, f)
             raw = open(path, 'rb').read().decode('utf-8', errors='surrogateescape')
@@ -1831,7 +1834,9 @@ def rewrite_patch_values():
 FNPTR_ASSIGN_RE = re.compile(
     r'(?P<lead>(?:^|[;{}]|\n)\s*)(?P<decl>[A-Za-z_][\w:]*\s*\*?\s*\(\s*\*\s*)?(?P<name>[A-Za-z_]\w*)(?(decl)\s*\)\s*\((?P<dargs>[^)]*)\))\s*=\s*'
     r'\(\s*(?P<ret>[A-Za-z_][\w:\s]*?\**)\s*\(\s*\*\s*\)\s*\((?P<args>[^)]*)\)\s*\)\s*(?P<expr>[^;]+);')
-FNPTR_SKIP_DIRS = ('ff8', 'audio/vgmstream')
+FNPTR_SKIP_DIRS = ('audio/vgmstream',)
+# ff8.h is the game-memory header (tools/ffnx_port.py gptr converts it); its members are not globals.
+FNPTR_SKIP_FILES = ('ff8.h',)
 
 
 def fnptr_decl_re(name):
@@ -1845,7 +1850,7 @@ def rewrite_fnptr_globals():
         rel_dir = os.path.relpath(dirpath, SRC).replace(os.sep, '/')
         if rel_dir.startswith(FNPTR_SKIP_DIRS):
             continue
-        files += [os.path.join(dirpath, f) for f in names if f.endswith(('.cpp', '.h')) and not f.startswith('ff8')]
+        files += [os.path.join(dirpath, f) for f in names if f.endswith(('.cpp', '.h')) and f not in FNPTR_SKIP_FILES]
     text = {p: open(p, 'rb').read().decode('utf-8', errors='surrogateescape') for p in files}
     names, n = set(), 0
     for p, raw in text.items():
@@ -1905,7 +1910,7 @@ def rewrite_game_fn_casts():
         rel_dir = os.path.relpath(dirpath, SRC).replace(os.sep, '/')
         if rel_dir.startswith(FNPTR_SKIP_DIRS):
             continue
-        files += [os.path.join(dirpath, f) for f in fnames if f.endswith(('.cpp', '.h')) and not f.startswith('ff8')]
+        files += [os.path.join(dirpath, f) for f in fnames if f.endswith(('.cpp', '.h')) and f not in FNPTR_SKIP_FILES]
     text = {p: open(p, 'rb').read().decode('utf-8', errors='surrogateescape') for p in files}
     cstyle = re.compile(r'(?P<name>[A-Za-z_]\w*)\s*=\s*\(\s*decltype\(\s*(?P=name)\s*\)\s*\)\s*(?P<expr>[^;]+);')
     for p, raw in text.items():
@@ -1957,6 +1962,60 @@ def rewrite_game_fn_casts():
     return n
 
 
+PP_CAST_RE = re.compile(r'\*\s*\(\s*(?P<type>(?:const\s+)?(?:struct\s+)?[A-Za-z_]\w*)\s*\*\s*\*\s*\)\s*')
+
+
+def _pp_operand(raw, i):
+    """The operand that starts at raw[i] after a `(T **)` cast: a parenthesised expression, a
+    nested `*(U **)...` read, or a name with member access (a.b, a->b, a[i]). Returns its end."""
+    if raw[i] == '(':
+        return _balanced(raw, i, '(', ')')
+    if raw[i] == '*':
+        m = PP_CAST_RE.match(raw, i)
+        if m:
+            return _pp_operand(raw, m.end())
+    m = re.compile(r'[A-Za-z_]\w*(?:(?:\.|->)[A-Za-z_]\w*|\[[^\]]*\])*').match(raw, i)
+    return m.end() if m else -1
+
+
+def rewrite_ff8_pointer_reads():
+    """FF8 code reads pointers out of game memory as `*(T **)(addr)`: on arm64 that reads 8
+    bytes where the game stored a 4-byte pointer. Each read becomes a 4-byte guest cell turned
+    into a host pointer: guest::ptr_of<T>(*(uint32_t *)(addr)). Writes through such a cast are
+    edited by hand (EDITS). Only FFNx's FF8 files (ff8/, ff8_*.cpp)."""
+    n = 0
+    for dirpath, _, files in os.walk(SRC):
+        rel_dir = os.path.relpath(dirpath, SRC).replace(os.sep, '/')
+        for f in files:
+            if not f.endswith('.cpp') or not (rel_dir.startswith('ff8') or f.startswith('ff8_')):
+                continue
+            path = os.path.join(dirpath, f)
+            raw = open(path, 'rb').read().decode('utf-8', errors='surrogateescape')
+
+            def rewrite(text):
+                nonlocal n
+                out, i = [], 0
+                while True:
+                    m = PP_CAST_RE.search(text, i)
+                    if not m:
+                        out.append(text[i:])
+                        return ''.join(out)
+                    end = _pp_operand(text, m.end())
+                    rest = text[end:end + 3] if end > 0 else ''
+                    if end < 0 or (rest.lstrip().startswith('=') and not rest.lstrip().startswith('==')):
+                        out.append(text[i:m.end()]); i = m.end(); continue
+                    inner = rewrite(text[m.end():end])
+                    t = m.group('type')
+                    out.append(text[i:m.start()])
+                    out.append(f'guest::ptr_of<{t}>(*(uint32_t *)({inner}))')
+                    n += 1
+                    i = end
+            new = rewrite(raw)
+            if new != raw:
+                open(path, 'wb').write(new.encode('utf-8', errors='surrogateescape'))
+    return n
+
+
 def apply_edit(edit):
     """'applied', 'present' (already applied) or None (no match yet)."""
     rel, old, new = edit[:3]
@@ -1991,6 +2050,9 @@ def main():
         pending = left
         if not pending:
             break
+    pp_reads = rewrite_ff8_pointer_reads()
+    if pp_reads:
+        print(f'{pp_reads} FF8 pointer reads from game memory made 4-byte guest loads')
     if pending:
         sys.exit(f'{pending[0][0]}: edit did not match exactly once:\n{pending[0][1][:120]}')
     print(f'{changed} edits applied ({len(EDITS)} total); {counts[0]} patch values made guest addresses; '

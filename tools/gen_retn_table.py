@@ -16,7 +16,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CATALOG = os.environ.get('FF7_CATALOG') or os.path.join(ROOT, 'analysis', 'catalog.json')
-EXE = os.environ.get('FF7_EXE') or os.path.join(ROOT, 'game', 'ff7_en.exe')
+EXE = os.environ.get('FF7_EXE') or os.path.join(ROOT, 'game', 'ff8_en.exe')
 OUT = os.environ.get('FF7_RETN_OUT') or os.path.join(ROOT, 'generated', 'recomp', 'recomp_retn.c')   # env: the on-device build
 sys.path.insert(0, os.path.join(ROOT, 'external', 'pcrecomp', 'tools', 'pe'))
 

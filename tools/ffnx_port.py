@@ -301,11 +301,8 @@ def convert_calls(text, stats):
 def cmd_calls():
     total = 0
     for dirpath, _, files in os.walk(FFNX):
-        rel_dir = os.path.relpath(dirpath, FFNX)
-        if rel_dir.startswith('ff8'):
-            continue
         for name in files:
-            if not name.endswith(('.cpp', '.h')) or name.startswith(('ff8', 'fake_dd')):
+            if not name.endswith(('.cpp', '.h')) or name in ('ff8.h', 'fake_dd.cpp', 'fake_dd.h'):
                 continue
             path = os.path.join(dirpath, name)
             raw = open(path, 'rb').read().decode('utf-8', errors='surrogateescape')

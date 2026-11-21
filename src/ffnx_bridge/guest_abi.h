@@ -315,6 +315,11 @@ inline R gcall_this(uint32_t va, T self, A... args) {
 // cdecl: the shim reads arguments at [esp+4...] and returns with esp unchanged (the guest
 // caller pops). `Stdcall` exports pop their own arguments instead.
 
+// MSVC's _ReturnAddress() in a native function the game called (a replace_function /
+// replace_call target): the guest return address, [esp] while the export runs. Valid until
+// the native function makes a guest call of its own (gcall moves esp and puts it back).
+inline uint32_t caller_va() { return MEM32(g_esp); }
+
 // By-value structs (and gptr/gfn) are copied as their 32-bit image: x86 passes them on the
 // stack rounded up to 4 bytes, and MSVC returns 4/8-byte structs in eax / edx:eax.
 template <typename A> inline A get_arg(uint32_t &off) {

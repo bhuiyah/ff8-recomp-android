@@ -18,6 +18,19 @@ template <typename T> inline uint32_t ffnx_guest_va(T *p) {
     if constexpr (std::is_function_v<T>) return p ? guest::host_pool<T>::va_for(p) : 0;
     else return guest::to_va(p);
 }
+// The same for values that already are 32-bit guest addresses: guest pointer and function
+// members, and integers (FFNx keeps many game addresses as uint32_t). FF8Recomp: FFNx's FF8
+// code writes `uint32_t(x)` / `(DWORD)x` / reinterpret_cast<uint32_t>(x) for all of these;
+// tools/ffnx_edit_android.py turns those into ffnx_guest_va(x), which checks the pointer ones.
+template <typename T> inline uint32_t ffnx_guest_va(const guest::gptr<T> &g) { return g.va(); }
+template <typename S, guest::cc C> inline uint32_t ffnx_guest_va(const guest::gfn_t<S, C> &f) { return f.va(); }
+template <typename I, typename = std::enable_if_t<std::is_integral_v<I> || std::is_enum_v<I>>>
+inline uint32_t ffnx_guest_va(I v) { return static_cast<uint32_t>(v); }
+// The name tools/ffnx_edit_ff8.py writes (distinct from FFNx's own ffnx_guest_va sites, so the
+// edit script can tell an edit already made).
+template <typename T> inline uint32_t ffnx_va(T &&x) { return ffnx_guest_va(std::forward<T>(x)); }
+// A pointer printed in a trace line: its low 32 bits, never checked.
+inline uint32_t ffnx_trace_ptr(const void *p) { return static_cast<uint32_t>(reinterpret_cast<uintptr_t>(p)); }
 
 // A guest-memory copy of n elements in a per-call-site scratch buffer that grows as needed
 // and is reused (single game thread). For FFNx's temporary copies of game data that end up
