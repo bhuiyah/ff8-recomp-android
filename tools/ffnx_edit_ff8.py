@@ -123,11 +123,6 @@ FF8_EDITS = [
      '\tVramPos *tex_vram_pos = ff8r_vram_pos_arrays, *pal_vram_pos = ff8r_vram_pos_arrays + FIELD_VRAM_POS_LENGTH;\n'
      '\tmemset(ff8r_vram_pos_arrays, 0, 2 * FIELD_VRAM_POS_LENGTH * sizeof(VramPos));'),
 
-    # TEMPORARY (bring-up): what the field model loader gets
-    ('ff8/vram.cpp', '\tchara_one_pcb_data = pcb_data;\n\tchara_one_pcb_size = pcb_data_size;\n',
-     '\tchara_one_pcb_data = pcb_data;\n\tchara_one_pcb_size = pcb_data_size;\n'
-     '\tfprintf(stderr, "[ff8r] chara_one cur=0x%X models=%p dir=%p \'%s\' pcb=%p size=%d/%d\\n", current_data_pointer, models_infos, (const void *)dir_name, dir_name ? dir_name : "(null)", (const void *)pcb_data, allocated_size, pcb_data_size);\n'),
-
     # FFNx tables the game reads through FFNx's patches: in the fixed guest block
     ('ff8/battle/ai.cpp', 'static uint8_t ff8_ai_index_table[FF8_AI_INDEX_TABLE_SIZE];',
      'static uint8_t (&ff8_ai_index_table)[FF8_AI_INDEX_TABLE_SIZE] = ffnx_guest_static_zero<uint8_t, FF8_AI_INDEX_TABLE_SIZE>();   // FF8Recomp: guest block'),
@@ -252,4 +247,51 @@ FF8_EDITS = [
     # ---- world/wmset.cpp: size_t is 64-bit here
     ('ff8/world/wmset.cpp', 'max = std::min(max, pos / 4);', 'max = std::min<size_t>(max, pos / 4);', 'all'),
     ('ff8/world/wmset.cpp', 'max2 = std::min(max2, frame_pos / 4);', 'max2 = std::min<size_t>(max2, frame_pos / 4);'),
+
+    # ---- voice.cpp (FF8 battle parts; the file is shared with FF7, so outside
+    # rewrite_ff8_pointer_reads): pointers read out of game memory are 4-byte guest cells.
+    # ff8_battle_get_monster_name replaces sub_495100 and runs as soon as a battle opens.
+    ('voice.cpp', 'char* ret = *((char**)*(ff8_externals.battle_char_struct_dword_1D27B10 + 0x34 * idx));',
+     'char* ret = guest::ptr_of<char>(*(uint32_t *)ff8_externals.battle_char_struct_dword_1D27B10[0x34 * idx].get());   // FF8Recomp: guest cell'),
+    ('voice.cpp', 'const byte *action = *(const byte **)(task + 4);',
+     'const byte *action = guest::ptr_of<const byte>(*(uint32_t *)(task + 4));   // FF8Recomp: guest cell'),
+    ('voice.cpp', 'ff8_decode_text(*(const char **)(task + 4))',
+     'ff8_decode_text(guest::ptr_of<const char>(*(uint32_t *)(task + 4)))'),
+
+    # ---- game addresses cast to native function types (auto x = (R *(*)(...))addr): the
+    # host would jump to the guest address. Guest calls instead.
+    ('ff8/vram.cpp',
+     'auto open_effect = (void *(*)(const char*,void*,int,DWORD*))ff8_externals.load_magic_data_sub_571900;',
+     'auto open_effect = guest::gfn<void *(const char*,void*,int,DWORD*)>::from_va(ff8_externals.load_magic_data_sub_571900);   // FF8Recomp: a game function'),
+    ('ff8/esc_menu.cpp',
+     'auto draw_icon = (ff8_draw_menu_sprite_texture_infos *(*)(int, ff8_draw_menu_sprite_texture_infos *, int, uint16_t, uint16_t, int))ff8_externals.ff8_draw_icon_or_key1;',
+     'auto draw_icon = guest::gfn<ff8_draw_menu_sprite_texture_infos *(int, ff8_draw_menu_sprite_texture_infos *, int, uint16_t, uint16_t, int)>::from_va(ff8_externals.ff8_draw_icon_or_key1);   // FF8Recomp: a game function'),
+
+    ('ff8/battle/anim_set.cpp',
+     'typedef void *(*ff8_set_com_file_data)(void *anim_header, ff8_battle_com_file_data *com_file_data, int sections);',
+     'typedef guest::gfn<void *(void *anim_header, ff8_battle_com_file_data *com_file_data, int sections)> ff8_set_com_file_data;   // FF8Recomp: a game function'),
+    ('ff8/battle/anim_set.cpp',
+     'ff8_set_com_file_data set_com_file_data = (ff8_set_com_file_data)ff8_externals.battle_set_com_file_data_sub_502270;',
+     'ff8_set_com_file_data set_com_file_data = ff8_set_com_file_data::from_va(ff8_externals.battle_set_com_file_data_sub_502270);'),
+
+    # ---- game pointer tables read as T ** (8-byte cells): 4-byte guest cells
+    ('ff8/fonts.cpp',
+     '    uint8_t **dword_1D76608 = (uint8_t **)ff8_externals.dword_1D76608;\n    uint8_t *output = *dword_1D76608;',
+     '    uint32_t *dword_1D76608 = (uint32_t *)ff8_externals.dword_1D76608;   // FF8Recomp: a guest cell\n'
+     '    uint8_t *output = guest::ptr_of<uint8_t>(*dword_1D76608);'),
+    ('ff8/vram.cpp',
+     '\tuint32_t **chara_one_model_data = (uint32_t **)ff8_externals.dword_24FEE48;\n\tuint32_t *model_data = chara_one_model_data[model_id_2];',
+     '\tuint32_t *chara_one_model_data = (uint32_t *)ff8_externals.dword_24FEE48;   // FF8Recomp: guest cells\n'
+     '\tuint32_t *model_data = guest::ptr_of<uint32_t>(chara_one_model_data[model_id_2]);'),
+
+    # ---- exe_data.cpp: the same, for the card-name table (ff8_get_card_name replaces a game
+    # function) and the draw-point messages
+    ('exe_data.cpp', '*(uint8_t **)ff8_externals.card_name_positions',
+     'guest::ptr_of<uint8_t>(*(uint32_t *)(uintptr_t)ff8_externals.card_name_positions)', 'all'),
+    ('exe_data.cpp', '*(uint16_t **)ff8_externals.card_name_positions',
+     'guest::ptr_of<uint16_t>(*(uint32_t *)(uintptr_t)ff8_externals.card_name_positions)', 'all'),
+    ('exe_data.cpp', '*(char **)ff8_externals.card_name_positions',
+     'guest::ptr_of<char>(*(uint32_t *)(uintptr_t)ff8_externals.card_name_positions)', 'all'),
+    ('exe_data.cpp', '*(uint8_t **)ff8_externals.drawpoint_messages',
+     'guest::ptr_of<uint8_t>(*(uint32_t *)(uintptr_t)ff8_externals.drawpoint_messages)', 'all'),
 ]

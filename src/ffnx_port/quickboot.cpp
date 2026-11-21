@@ -40,19 +40,21 @@ int64_t g_mode_since, g_started, g_last_press, g_last_skip;
 int g_title_presses;
 char g_resume_slot[48] = "current";
 int g_flow = -1;              // the title menu's choice: 0 new game, 1 continue (resume goes through one)
-
 int64_t now_ms() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
-// Any save file (save/saveNN.ff7 in the game folder, the process's working directory)?
+// Any save file in the game folder (the process's working directory)? FF7: save/saveNN.ff7;
+// FF8: save/user_0/slotN_saveNN.ff8 (FFNx's userdata path, get_userdata_path).
 bool have_saves() {
-    DIR *d = opendir("save");
+    const char *dir = ff8 ? "save/user_0" : "save";
+    const char *prefix = ff8 ? "slot" : "save", *ext = ff8 ? ".ff8" : ".ff7";
+    DIR *d = opendir(dir);
     if (!d) return false;
     bool any = false;
     while (dirent *e = readdir(d)) {
         size_t n = std::strlen(e->d_name);
-        if (n > 4 && !strncasecmp(e->d_name, "save", 4) && !strcasecmp(e->d_name + n - 4, ".ff7")) { any = true; break; }
+        if (n > 4 && !strncasecmp(e->d_name, prefix, 4) && !strcasecmp(e->d_name + n - 4, ext)) { any = true; break; }
     }
     closedir(d);
     return any;

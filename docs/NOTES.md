@@ -57,3 +57,30 @@ repository.
   - `(void *)fn` replacements (55) and the variadic `ff8_open` needed typed thunks.
 - Open: a fault in the game's CRT (0x55E0F9, pointer 1) when the first field loads after
   the opening movie. Music: the game's DirectMusic fails (FFNx external music not set up).
+
+## 2026-11-21 M2 (in progress): field, save states, first battles
+- Field: the infirmary, naming, Quistis's FMV and the classroom play. The CRT fault was
+  FFNx's mid-function `texture_reload_fix` hooks (0x46545F, 0x4657DD): `replace_function`
+  at a non-entry site now writes a jmp and is recorded as a code write; manifest
+  `config/ffnx_manifests/ffnx_manifest_ff8_l1.json` (293 hooks, 109 code writes).
+- Save states (Select+L1 / Select+R1) and quickboot `resume N`: a state loads only in the
+  field at the depth it was saved at, so resume goes New Game → skip the movie → load.
+  States belong to the build that made them.
+- Battles: tested from a 2000-PC save set (17 saves across discs 1-3; `game/test_saves/`,
+  git-ignored, source savegame.pro). The 2000 saves are the same format as the 2013 ones:
+  rename `Save/SlotN/saveNN` to `slotN_saveNN.ff8`, push to `game/save/user_0/`, then
+  Continue → Slot 1 (`tools/ff8_load_block.sh`). Random battles on the world map run to
+  victory and the EXP screen (Esthar plains, Lv 65 party; a Grendel fight on disc 2).
+- Battle bugs, all FFNx code using 32-bit habits (tools/ffnx_edit_ff8.py):
+  - guest pointer cells read as 8-byte `T *`: `ff8_battle_get_monster_name` (it replaces
+    sub_495100, so every battle opened with "host pointer given to the guest"), the battle
+    text voice hooks, card names, draw-point messages, field question windows
+    (dword_1D76608), the world-map Selphie model patch (dword_24FEE48).
+  - game addresses cast to native function types and called from the host (the host
+    jumped to 0x571900 / 0x502270): magic effect loading (`load_magic_data_sub_571900`),
+    the anim-set binder (`ff8_set_com_file_data` typedef), the esc menu icon draw.
+    rewrite_game_fn_casts only sees direct `((T(*)(..))addr)(..)` calls; `auto x = (cast)`
+    and typedef'd forms are edited by hand.
+- Note: voice.cpp still truncates `&execute_opcode_table[..]` with `(uint32_t)` in its
+  voice-acting setup (warnings, only with voice mods); the shared files are not built with
+  -Werror=pointer-to-int-cast yet.
