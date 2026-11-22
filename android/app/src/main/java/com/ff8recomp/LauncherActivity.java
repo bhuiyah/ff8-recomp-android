@@ -2008,11 +2008,11 @@ public class LauncherActivity extends Activity {
                     + "FF8_EN.exe and Data) or FINAL FANTASY VIII Remastered (the one with main.zzz). FF8Recomp "
                     + "then turns the game into a native Android app on this device.", 15, TEXT));
             col.addView(space(14));
-            col.addView(button(install.steamDownloading().exists() ? "Go on downloading from Steam" : "Download from Steam…",
+            col.addView(button(install.steamDownloading().exists() ? "Go on downloading from Steam" : "Connect to Steam…",
                     v -> steamDownload()));
-            col.addView(text("Sign in once with the Steam app on your phone (a QR code; no password is typed here). "
-                    + "It goes on with the launcher in the background, with Pause; if it stops, it goes on "
-                    + "where it was.", 13, DIM));
+            col.addView(text("Sign in once with the Steam app on your phone (a QR code; no password is typed here), "
+                    + "then choose which FINAL FANTASY VIII to play. The download goes on with the launcher in the "
+                    + "background, with Pause; if it stops, it goes on where it was.", 13, DIM));
             col.addView(space(14));
             col.addView(button("Find my FF8 folder…", v -> pick(PICK_GAME)));
             col.addView(space(8));
@@ -2195,7 +2195,7 @@ public class LauncherActivity extends Activity {
     private void steamAccountSection(LinearLayout col) {
         SteamLink s = steam();
         if (!s.signedIn()) {
-            col.addView(text("Download from Steam (Game files) signs you in once by scanning a QR code with the Steam app "
+            col.addView(text("Connect to Steam (Game files) signs you in once by scanning a QR code with the Steam app "
                     + "on your phone: you never type your Steam password into FF8Recomp.", 14, DIM));
             col.addView(space(6));
             col.addView(small("Sign in with the Steam app…", v -> steamSignIn()));
@@ -2203,7 +2203,7 @@ public class LauncherActivity extends Activity {
         }
         col.addView(text("Signed in as " + s.account(), 16, ACCENT));
         col.addView(small("Sign out", v -> ff(new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setMessage("Sign out of Steam? Download from Steam and Repair from Steam ask you to sign in again.")
+                .setMessage("Sign out of Steam? Connect to Steam and Repair from Steam ask you to sign in again.")
                 .setPositiveButton("Sign out", (d, x) -> { steam().signOut(); refresh(); })
                 .setNegativeButton("Cancel", null)
                 .show())));
@@ -2304,9 +2304,9 @@ public class LauncherActivity extends Activity {
         }
     }
 
-    /** Download (or repair) the game from Steam: GameInstall.downloadFromSteam. A repair keeps the
-     *  edition this device has; a first download asks which one when the account owns both (a
-     *  stopped one goes on with the edition it was getting). */
+    /** Connect to Steam, then download (or repair) the game: GameInstall.downloadFromSteam. A repair
+     *  keeps the edition this device has; otherwise, once signed in, the player picks the edition
+     *  (a stopped download goes on with the one it was getting). */
     private void steamDownload() {
         if (busy) return;
         if (!steam().signedIn()) { steamSignIn(this::steamDownload); return; }
@@ -2346,29 +2346,33 @@ public class LauncherActivity extends Activity {
                             + (SteamFiles.EDITION_REMASTERED.equals(want) ? " Remastered." : " (the 2013 release)."));
                     return;
                 }
-                if (has13 && hasRe) chooseEdition();
-                else if (has13) startSteamJob(SteamFiles.EDITION_2013);
-                else if (hasRe) startSteamJob(SteamFiles.EDITION_REMASTERED);
+                if (has13 || hasRe) chooseEdition(has13, hasRe);
                 else tell(e != null ? "Steam: " + e : "This Steam account does not own FINAL FANTASY VIII (the 2013 release or the Remastered).");
             });
         }, "steam-owned").start();
     }
 
-    /** The account has both: which one to play. */
-    private void chooseEdition() {
+    /** Signed in: which FINAL FANTASY VIII to play. Both editions are listed; one the account does
+     *  not have is shown, not offered. */
+    private void chooseEdition(boolean has13, boolean hasRe) {
         String[] names = { "FINAL FANTASY VIII Remastered", "FINAL FANTASY VIII (2013 release)" };
-        String[] notes = { "The Remastered's HD character models, portraits and menus, and its own recording of the music. About 2.9 GB.",
-                "The original PC look, with the game's own MIDI music. About 1.7 GB." };
+        String[] notes = { "HD character models, portraits and menus, the Remastered's own recording of the music, "
+                + "and English, French, German, Spanish or Italian. About 2.8 GB.",
+                "The original PC look, with the game's own MIDI music, in English. About 1.7 GB." };
+        boolean[] owned = { hasRe, has13 };
         LinearLayout box = column();
         box.setPadding(dp(16), dp(8), dp(16), dp(4));
-        box.addView(text("Your Steam account has both editions. Which one do you want to play? Mods work with both, "
-                + "and you can switch later under Game files.", 15, TEXT));
+        box.addView(text("Connected to Steam. Which one do you want to play? Mods work with both, and you can switch "
+                + "later under Game files.", 15, TEXT));
         AlertDialog[] dlg = new AlertDialog[1];
         for (int i = 0; i < 2; i++) {
             final String ed = i == 0 ? SteamFiles.EDITION_REMASTERED : SteamFiles.EDITION_2013;
             box.addView(space(10));
-            box.addView(button(names[i], v -> { if (dlg[0] != null) dlg[0].dismiss(); startSteamJob(ed); }));
-            box.addView(text(notes[i], 13, DIM));
+            View b = button(names[i], v -> { if (dlg[0] != null) dlg[0].dismiss(); startSteamJob(ed); });
+            b.setEnabled(owned[i]);
+            b.setAlpha(owned[i] ? 1f : 0.45f);
+            box.addView(b);
+            box.addView(text(owned[i] ? notes[i] : "Not on this Steam account.", 13, DIM));
         }
         android.widget.ScrollView scroll = new android.widget.ScrollView(this);
         scroll.addView(box);

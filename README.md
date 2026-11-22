@@ -2,20 +2,19 @@
 
 # FF8Recomp
 
-FINAL FANTASY VIII (PC: the 2013 Steam release or the Remastered) statically recompiled to native ARM64 Android,
-rendered by [FFNx](https://github.com/julianxhokaxhiu/FFNx) on Vulkan (or OpenGL ES). Built for
+FINAL FANTASY VIII (PC: the 2013 Steam release or the Remastered) statically recompiled to native
+ARM64 Android, rendered by [FFNx](https://github.com/julianxhokaxhiu/FFNx) on Vulkan (or OpenGL ES). Built for
 the AYN Thor, and meant to run on other Android handhelds and phones. A sibling of
 [FF7Recomp](https://github.com/bhuiyah/ff7-recomp-android) and FF9Recomp.
 
 > **This repository and the APK contain no game code or data.** You need your own copy of FINAL
 > FANTASY VIII from Steam (either edition). The app recompiles **your** copy of the game's program
-> on your device, once; nothing
-> derived from the game is ever published here.
+> on your device, once; nothing derived from the game is ever published here.
 > Not affiliated with or endorsed by Square Enix. FINAL FANTASY is a trademark of Square Enix.
 
-**Status: 0.1, the first public build.** The game plays from the title screen through fields, the
-world map, menus, battles and movies, with its music. Some of FF7Recomp's launcher features are
-not there for FF8 yet (see [Known limitations](#known-limitations)).
+**Status: 0.1, the first public build.** Both editions play from the title screen through fields,
+the world map, menus, battles, GF summons and movies, with their music, and with mods. Some of
+FF7Recomp's launcher features are not there for FF8 yet (see [Known limitations](#known-limitations)).
 
 ## Made with AI
 
@@ -38,8 +37,11 @@ and I would rather you know before you install it.
 
 ## What you get
 
-- The game running natively (no emulation, no Wine/FEX), at its original frame rate or FFNx's
-  30 FPS battles / 60 FPS (experimental) modes.
+- Either edition you own on Steam: the 2013 release, or the Remastered with its HD models,
+  portraits and menus, its own recording of the music, and five languages (English, French,
+  German, Spanish, Italian).
+- The game running natively (no emulation, no Wine/FEX), with battles at 30 FPS (the game
+  shipped them at 15; the original timing and an experimental 60 FPS are in Settings).
 - Its music: Android has no DirectMusic, so FF8Recomp carries a small DirectMusic player that
   plays the game's own segments with its own instrument set (`FF8.dls`), through FFNx's audio
   engine (crossfades, battle music, resume after battles).
@@ -60,16 +62,18 @@ and I would rather you know before you install it.
 1. Download the APK from [Releases](../../releases/latest) and install it (allow installing from
    your browser or file manager when Android asks).
 2. Open FF8Recomp → **Game files**:
-   - **Download from Steam…**: sign in once by scanning a QR code with the Steam app on your phone
-     (you never type your Steam password into FF8Recomp); the launcher downloads the game files
-     your account owns (about 1.6 GB) straight from Steam and checks each one.
+   - **Connect to Steam…**: sign in once by scanning a QR code with the Steam app on your phone
+     (you never type your Steam password into FF8Recomp), then choose which FINAL FANTASY VIII to
+     play: the Remastered (about 2.8 GB) or the 2013 release (about 1.7 GB), whichever your
+     account has. The launcher downloads it straight from Steam and checks each file.
    - or **Find my FF8 folder…**: pick the game's install folder if you already have it on the
      device: `steamapps/common/FINAL FANTASY VIII` (the 2013 release: `FF8_EN.exe` and `Data`) or
      `steamapps/common/FINAL FANTASY VIII Remastered` (`FFVIII_EN.exe.dat`, `main.zzz`,
      `other.zzz`).
-3. The launcher builds the game for your device: it translates your `FF8_EN.exe` to C, compiles
+3. The launcher builds the game for your device: it translates the game's program to C, compiles
    it with the clang it carries and links it with the engine (FFNx, the renderer, the runtime).
-   This happens once and carries on in the background (a notification shows the progress).
+   This happens once (about 15 minutes on an AYN Thor) and carries on in the background (a
+   notification shows the progress).
 4. Press **Play**.
 
 FINAL FANTASY VIII as Steam installs it (English, unpatched) has everything FF8Recomp uses:
@@ -80,8 +84,7 @@ FINAL FANTASY VIII as Steam installs it (English, unpatched) has everything FF8R
   data (HD textures, music, movies) read from `main.zzz` and `other.zzz`. Dotemu's engine
   (`FFVIII_EFIGS.dll`) is not used.
 
-Steam downloads take the edition your account has; with both, the launcher asks which one you want to
-play, and Game files can switch to the other one later (your saves stay).
+Game files can switch to the other edition later, from Steam or from a folder (your saves stay).
 Patched game files are not supported.
 
 **Your PC saves:** copy `slot1_save01.ff8`… from `Documents\Square Enix\FINAL FANTASY VIII
