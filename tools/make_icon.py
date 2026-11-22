@@ -2,9 +2,11 @@
 # Writes the launcher icon (adaptive icon: background, foreground, monochrome) as vector drawables,
 # and the same picture as docs/images/icon.svg for the README.
 #
-# The picture (drawn here as vectors, nothing taken from the game): a single white feather
-# drifting down across a large pale moon, on a dusky orange sky. The sky, stars and moon are
-# the background layer, the feather the foreground (launchers move the two apart a little). 108-unit adaptive-icon canvas; what matters sits inside the 66-unit circle.
+# The picture (drawn here as vectors, nothing taken from the game): a gunblade, a revolver's grip
+# and cylinder with a long single-edged blade, raised across a deep crimson night with a faint cut
+# of light behind it. Red keeps it apart from FF7Recomp's cyan and FF9Recomp's gold. The sky,
+# glow and sparks are the background layer, the gunblade the foreground (launchers move the two
+# apart a little). 108-unit adaptive-icon canvas; what matters sits inside the 66-unit circle.
 import math
 import os
 
@@ -28,68 +30,62 @@ def f2(v):
     return f'{v:.2f}'.rstrip('0').rstrip('.')
 
 
-# ---- the moon (MX,MY, radius R), low and large behind the feather
-MX, MY, R = 58, 50, 21
-MOON = G([
-    (circle(0, 0, R * 1.9), ('radial', 0, 0, R * 1.9, [(0, '#66FFE6C8'), (0.5, '#26FFB070'), (1, '#00FF8040')])),   # halo
-    (circle(0, 0, R), ('radial', -R * 0.3, -R * 0.35, R * 1.45, [(0, '#FFFFF1CC'), (0.55, '#FFF6C987'), (1, '#FFDC9450')])),
-    (circle(-R * 0.32, R * 0.12, R * 0.2), ('solid', '#1F9A6A48')),          # maria
-    (circle(R * 0.3, -R * 0.32, R * 0.14), ('solid', '#1C9A6A48')),
-    (circle(R * 0.22, R * 0.42, R * 0.11), ('solid', '#1A9A6A48')),
-], tx=MX, ty=MY)
+# ---- a gunblade, drawn along x from the grip's end (0) to the blade's tip (82), y down;
+# then turned and placed. A revolver's grip, trigger and cylinder, and a long single-edged blade.
+BLADE = 'M27,-3.6 L82,-3.6 L91,-0.4 L88,1.1 L81,3.6 L27,3.6 Z'
+SPINE = 'M27,-3.6 L82,-3.6 L87,-1.8 L27,-1.8 Z'                 # the back of the blade, darker
+FULLER = 'M31,-0.4 L76,-0.4'                                      # the groove along it
+EDGE = 'M27,2.8 L80.6,2.8 L87.4,0.8'                              # the bright cutting edge
+RECEIVER = 'M17,-6.4 L29,-6.4 Q30.4,-6.4 30.4,-5 L30.4,5 Q30.4,6.4 29,6.4 L17,6.4 Q15.6,6.4 15.6,5 L15.6,-5 Q15.6,-6.4 17,-6.4 Z'
+CYLINDER = circle(22.6, -0.6, 4.6)
+CHAMBERS = ' '.join(circle(22.6 + 2.6 * math.cos(a), -0.6 + 2.6 * math.sin(a), 0.85)
+                    for a in (k * math.pi / 3 for k in range(6)))
+GRIP = 'M15.8,3.6 L21.4,5.4 L16.4,18.4 Q15.6,20.6 13.4,20.2 L10.2,19.4 Q8.2,18.8 9,16.6 Z'
+GRIP_WRAP = ' '.join(f'M{f2(14.8 - 1.1 * k)},{f2(6.4 + 3 * k)} L{f2(20.2 - 1.1 * k)},{f2(8.2 + 3 * k)}' for k in range(4))
+GUARD = 'M20.4,6.4 Q20.2,12.2 25.4,12 Q28.6,11.8 28.4,6.4'           # the trigger guard
+TRIGGER = 'M23.4,6.4 Q23,8.8 24.6,9.8'
+RING = circle(12.2, 22.6, 1.9)                                       # the pommel's ring
 
-
-# ---- a white feather drifting down across the moon, drawn along x from its quill (0) to its
-# tip (L), then turned and placed
-L = 46
-
-
-def vane_edge(side, n=14):
-    """One edge of the vane: widest a third of the way along, closing to the tip; side +1/-1."""
-    pts = []
-    for k in range(n + 1):
-        t = k / n
-        x = 6 + t * (L - 6)
-        w = 7.5 * math.sin(math.pi * min(1.0, t * 1.35) ** 0.8) * (1 - 0.25 * t)
-        w += 0.6 * math.sin(t * 23 + side)                                   # soft ragged edge
-        pts.append((x, side * max(0.0, w)))
-    return pts
-
-
-top, bot = vane_edge(-1), vane_edge(1)
-VANE = 'M6,0 ' + ' '.join(f'L{f2(x)},{f2(y)}' for x, y in top) + ' ' + \
-       ' '.join(f'L{f2(x)},{f2(y)}' for x, y in reversed(bot)) + ' Z'
-RACHIS = f'M0,0.4 L{L - 2},0'
-BARBS = ' '.join(f'M{f2(x)},0 L{f2(x + 4.5)},{f2(s * 5.2 * (1 - x / L) + s * 0.6)}'
-                 for x in range(10, L - 6, 4) for s in (-1, 1))
-NOTCH = 'M24,-0.3 L28.5,-6.4 L29.6,-6.1 L25.6,-0.2 Z'                       # a parted gap in the vane
-FEATHER_ITEMS = [
-    G([(VANE, ('solid', '#663A1206'))], tx=0.9, ty=1.4),                       # soft shadow on the moon
-    (VANE, ('linear', 0, -8, 0, 8, [(0, '#FFFFFFFF'), (0.5, '#FFF4ECF2'), (1, '#FFD8CCDC')])),
-    (NOTCH, ('solid', '#FFE3A06A')),
-    (BARBS, ('stroke', '#59B8A6BC', 0.5)),
-    (RACHIS, ('stroke', '#FFFFFFFF', 1.1)),
+STEEL = ('linear', 0, -3.6, 0, 3.6, [(0, '#FF8A93A6'), (0.35, '#FFD4D9E3'), (0.62, '#FFF2F5FA'), (1, '#FFB9C0CE')])
+GUNMETAL = ('linear', 0, -6.4, 0, 6.4, [(0, '#FF59606F'), (0.5, '#FF2C313C'), (1, '#FF15181F')])
+GUNBLADE_ITEMS = [
+    G([(BLADE, ('solid', '#80000000')), (RECEIVER, ('solid', '#80000000')), (GRIP, ('solid', '#80000000'))], tx=1.2, ty=1.8),  # shadow
+    (BLADE, STEEL),
+    (SPINE, ('solid', '#5C3A4254')),
+    (FULLER, ('stroke', '#8C5C6577', 0.9)),
+    (EDGE, ('stroke', '#FFFFFFFF', 0.7)),
+    (GRIP, ('linear', 0, 3, 0, 18, [(0, '#FF3A2A2C'), (1, '#FF140C0E')])),
+    (GRIP_WRAP, ('stroke', '#66E8D7C9', 0.55)),
+    (RING, ('stroke', '#FFC9CED8', 0.9)),
+    (GUARD, ('stroke', '#FFAEB5C2', 1.1)),
+    (TRIGGER, ('stroke', '#FFAEB5C2', 0.9)),
+    (RECEIVER, GUNMETAL),
+    (CYLINDER, ('radial', 21.4, -2.2, 5.6, [(0, '#FFE6EAF1'), (0.55, '#FF9AA2B2'), (1, '#FF4A5160')])),
+    (CHAMBERS, ('solid', '#FF20242C')),
+    (circle(22.6, -0.6, 1.1), ('solid', '#FF5A6272')),
 ]
-FEATHER = dict(px=0, py=0, rot=-50, s=1.3, tx=36, ty=80)
+GUNBLADE = dict(px=50, py=4, rot=-42, s=0.74, tx=6, ty=49)
 
-STARS = ' '.join(
+SPARKS = ' '.join(
     f'M{f2(x)},{f2(y - r)} L{f2(x + r * 0.25)},{f2(y - r * 0.25)} L{f2(x + r)},{f2(y)} L{f2(x + r * 0.25)},{f2(y + r * 0.25)} '
     f'L{f2(x)},{f2(y + r)} L{f2(x - r * 0.25)},{f2(y + r * 0.25)} L{f2(x - r)},{f2(y)} L{f2(x - r * 0.25)},{f2(y - r * 0.25)} Z'
-    for x, y, r in ((28, 26, 1.8), (86, 24, 1.3), (82, 82, 1.1)))
+    for x, y, r in ((30, 32, 1.6), (80, 30, 2.2), (78, 80, 1.2)))
 
-SKY = ('M0,0 h108 v108 h-108 Z', ('linear', 0, 0, 0, 108,
-       [(0, '#FF2A0B14'), (0.4, '#FF7A2412'), (0.75, '#FFD3621A'), (1, '#FFF6A24A')]))
+SKY = ('M0,0 h108 v108 h-108 Z', ('linear', 0, 0, 108, 108,
+       [(0, '#FF12030A'), (0.5, '#FF4F0A1A'), (1, '#FF9C1530')]))
+GLOW = (circle(54, 54, 34), ('radial', 54, 54, 34, [(0, '#73FF4D66'), (0.6, '#21FF2A4A'), (1, '#00FF2A4A')]))
+SLASH = ('M30,74 Q54,58 80,40', ('stroke', '#59FFD1DA', 0.8))      # a thin cut of light behind the blade
 
-BACKGROUND = [SKY, (STARS, ('solid', '#D9FFF0DC')), MOON]
-FOREGROUND = [G(FEATHER_ITEMS, **FEATHER)]
-MONO = [G([(circle(0, 0, R), ('solid', '#FFFFFFFF'))], tx=MX, ty=MY),
-        G([(VANE, ("solid", "#FFFFFFFF"))], **FEATHER)]
+BACKGROUND = [SKY, GLOW, SLASH, (SPARKS, ('solid', '#D9FFE4EA'))]
+FOREGROUND = [G(GUNBLADE_ITEMS, **GUNBLADE)]
+MONO = [G([(BLADE, ('solid', '#FFFFFFFF')), (RECEIVER, ('solid', '#FFFFFFFF')), (GRIP, ('solid', '#FFFFFFFF')),
+           (GUARD, ('stroke', '#FFFFFFFF', 1.1))], **GUNBLADE)]
 
 
 # ---- Android vector drawables
 HEAD = '''<?xml version="1.0" encoding="utf-8"?>
-<!-- FF8Recomp launcher icon ({part}): a white feather drifting across a large moon on a
-     dusky orange sky (drawn as vectors, not taken from the game). Written by tools/make_icon.py;
+<!-- FF8Recomp launcher icon ({part}): a gunblade on a deep crimson night (drawn as
+     vectors, not taken from the game). Written by tools/make_icon.py;
      edit that, not this. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
@@ -145,8 +141,8 @@ def write(path, text):
         f.write(text)
 
 
-for name, part, items in (('background', 'background: sky, stars and moon', BACKGROUND),
-                          ('foreground', 'foreground: the feather', FOREGROUND),
+for name, part, items in (('background', 'background: sky, glow and sparks', BACKGROUND),
+                          ('foreground', 'foreground: the gunblade', FOREGROUND),
                           ('monochrome', 'themed-icon silhouette', MONO)):
     write(os.path.join(RES, 'drawable', f'ic_launcher_{name}.xml'), HEAD.format(part=part) + a_items(items) + '</vector>\n')
 
