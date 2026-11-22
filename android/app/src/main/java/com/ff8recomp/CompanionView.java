@@ -52,6 +52,7 @@ public class CompanionView extends View {
             GOLD = 0xFFFFE3A0, LOW = 0xFFFFD040, DIVIDER = 0x38FFF0E0;
     private static final int WIN_TOP = 0xFFD7731C, WIN_BOTTOM = 0xFF6E2A07, BORDER = 0xFFFBEBDD, BORDER_IN = 0xFF8A4B22;
     private static final int HOT_TOP = 0xFFFFA34A, HOT_BOTTOM = 0xFFC25A14, TRACK = 0xFF2A1004;
+    private static final int BTN_TOP = 0xFFA9531A, BTN_BOTTOM = 0xFF4F1C06, BG = 0xFF0B0604;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private JSONObject state = new JSONObject();
@@ -207,9 +208,19 @@ public class CompanionView extends View {
 
     /** A window as the launcher draws them: orange gradient, cream border, a thin brown line inside. */
     private void window(Canvas c, float l, float t, float rr, float b) {
+        panel(c, l, t, rr, b, WIN_TOP, WIN_BOTTOM);
+    }
+
+    /** A launcher button (the tabs, the deck): the darker orange; lit or selected, the bright one. */
+    private void button(Canvas c, RectF box, boolean lit) {
+        panel(c, box.left, box.top, box.right, box.bottom, lit ? HOT_TOP : BTN_TOP, lit ? HOT_BOTTOM : BTN_BOTTOM);
+    }
+
+    private void panel(Canvas c, float l, float t, float rr, float b, int top, int bottom) {
         r.set(l, t, rr, b);
         float u = u();
-        fill.setShader(new LinearGradient(l, t, rr, b, WIN_TOP, WIN_BOTTOM, Shader.TileMode.CLAMP));
+        fill.setColor(0xFFFFFFFF);   // the paint's alpha scales the shader: a translucent color left by the last draw dimmed it
+        fill.setShader(new LinearGradient(l, t, rr, b, top, bottom, Shader.TileMode.CLAMP));
         c.drawRoundRect(r, 14 * u, 14 * u, fill);
         fill.setShader(null);
         stroke.setColor(BORDER);
@@ -225,6 +236,7 @@ public class CompanionView extends View {
     /** A gold window: the selected tab, a lit booster, a warning banner. */
     private void goldWindow(Canvas c, RectF b, boolean solid) {
         float u = u();
+        fill.setColor(0xFFFFFFFF);
         fill.setShader(solid ? new LinearGradient(b.left, b.top, b.left, b.bottom, HOT_TOP, HOT_BOTTOM, Shader.TileMode.CLAMP)
                              : new LinearGradient(b.left, b.top, b.right, b.bottom, 0xFF5A2608, 0xFF2A1004, Shader.TileMode.CLAMP));
         c.drawRoundRect(b, 14 * u, 14 * u, fill);
@@ -325,7 +337,7 @@ public class CompanionView extends View {
             drawBattleWindows(c, W, u, 24 * u, deckT);   // the game's windows on this screen (testing)
         } else {
             regions = null;
-            fill.setColor(Color.BLACK);
+            fill.setColor(BG);
             c.drawRect(0, 0, W, H, fill);
             float top = pad, headH = nar ? 150 * u : 96 * u;
             drawHeader(c, pad, top, W - pad, top + headH, u);
@@ -473,14 +485,13 @@ public class CompanionView extends View {
             RectF box = tabBoxes[i];
             box.set(x0, y0, x1, y0 + rowH);
             boolean sel = i < TABS.length && i == tab;
-            if (sel) goldWindow(c, box, true);
-            else window(c, box.left, box.top, box.right, box.bottom);
+            button(c, box, sel);
             if (i == pressedTab) {
                 fill.setColor(0x40FFFFFF);
                 c.drawRoundRect(box, 14 * u, 14 * u, fill);
             }
             String s = i < TABS.length ? TABS[i] : (wide ? "»" : "«");
-            fitLabel(c, s, box.centerX(), box.centerY() + 11 * u, 31 * u, box.width() - 16 * u, sel ? 0xFF2A1A00 : WHITE, Paint.Align.CENTER);
+            fitLabel(c, s, box.centerX(), box.centerY() + 11 * u, 31 * u, box.width() - 16 * u, WHITE, Paint.Align.CENTER);
         }
     }
 
@@ -1037,12 +1048,7 @@ public class CompanionView extends View {
             boolean on = (b.cmd == CMD_SPEED && state.optInt("speed", 1) > 1)
                     || (b.cmd == CMD_BATTLES && state.optInt("noenc") == 1)
                     || (b.cmd == CMD_BPLUS && state.optInt("bplus") == 1);
-            window(c, b.box.left, b.box.top, b.box.right, b.box.bottom);
-            if (on) {
-                stroke.setColor(GOLD);
-                stroke.setStrokeWidth(5 * u);
-                c.drawRoundRect(b.box, 14 * u, 14 * u, stroke);
-            }
+            button(c, b.box, on);
             if (b == pressed) {
                 fill.setColor(0x55FFFFFF);
                 c.drawRoundRect(b.box, 14 * u, 14 * u, fill);
@@ -1051,9 +1057,9 @@ public class CompanionView extends View {
             if (b.cmd == CMD_SPEED && state.optInt("speed", 1) > 1) t = "Speed " + state.optInt("speed", 1) + "×";
             else if (b.cmd == CMD_BATTLES && state.optInt("noenc") == 1) t = "No battles";
             emoji.setTextSize(30 * u);
-            emoji.setColor(on ? GOLD : WHITE);
+            emoji.setColor(WHITE);
             c.drawText(b.icon, b.box.centerX(), b.box.top + bh * 0.40f, emoji);
-            fitLabel(c, t, b.box.centerX(), b.box.top + bh * 0.80f, 30 * u, bw - 12 * u, on ? GOLD : WHITE, Paint.Align.CENTER);
+            fitLabel(c, t, b.box.centerX(), b.box.top + bh * 0.80f, 30 * u, bw - 12 * u, WHITE, Paint.Align.CENTER);
         }
     }
 
