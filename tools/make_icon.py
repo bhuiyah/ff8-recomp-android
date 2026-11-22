@@ -4,7 +4,7 @@
 #
 # The picture (drawn here as vectors, nothing taken from the game): a gunblade, a revolver's grip
 # and cylinder with a long single-edged blade, raised across a deep crimson night with a faint cut
-# of light behind it. Red keeps it apart from FF7Recomp's cyan and FF9Recomp's gold. The sky,
+# of light behind it, and a white feather drifting down past it. Red keeps it apart from FF7Recomp's cyan and FF9Recomp's gold. The sky,
 # glow and sparks are the background layer, the gunblade the foreground (launchers move the two
 # apart a little). 108-unit adaptive-icon canvas; what matters sits inside the 66-unit circle.
 import math
@@ -66,6 +66,40 @@ GUNBLADE_ITEMS = [
 ]
 GUNBLADE = dict(px=50, py=4, rot=-42, s=0.74, tx=6, ty=49)
 
+# ---- a white feather drifting down past the blade (the first icon's), drawn along x from its quill (0) to its
+# tip (L), then turned and placed
+L = 46
+
+
+def vane_edge(side, n=18):
+    """One edge of the vane, from the end of the bare quill (x 9) to the tip: widest a little
+    before the middle, tapering to a point; side +1/-1."""
+    pts = []
+    for k in range(n + 1):
+        t = k / n
+        x = 9 + t * (L - 9)
+        w = 7.2 * math.sin(math.pi * t ** 0.85) ** 0.75 * (1 - 0.2 * t)
+        w += 0.45 * math.sin(t * 23 + side) * math.sin(math.pi * t)        # soft ragged edge
+        pts.append((x, side * max(0.0, w)))
+    return pts
+
+
+top, bot = vane_edge(-1), vane_edge(1)
+VANE = 'M9,0 ' + ' '.join(f'L{f2(x)},{f2(y)}' for x, y in top) + ' ' + \
+       ' '.join(f'L{f2(x)},{f2(y)}' for x, y in reversed(bot)) + ' Z'
+RACHIS = f'M0,0.4 L{L - 1},0'
+BARBS = ' '.join(f'M{f2(x)},0 L{f2(x + 4)},{f2(s * 4.6 * math.sin(math.pi * (x + 4 - 9) / (L - 9)) ** 0.75)}'
+                 for x in range(13, L - 9, 4) for s in (-1, 1))
+NOTCH = 'M24,-0.3 L28.5,-6.4 L29.6,-6.1 L25.6,-0.2 Z'                       # a parted gap in the vane
+FEATHER_ITEMS = [
+    G([(VANE, ('solid', '#66140208'))], tx=0.9, ty=1.4),                         # soft shadow on the sky
+    (VANE, ('linear', 0, -8, 0, 8, [(0, '#FFFFFFFF'), (0.5, '#FFF4ECF2'), (1, '#FFD8CCDC')])),
+    (NOTCH, ('solid', '#FFE9C3CC')),
+    (BARBS, ('stroke', '#59B8A6BC', 0.5)),
+    (RACHIS, ('stroke', '#FFFFFFFF', 1.1)),
+]
+FEATHER = dict(px=0, py=0, rot=-38, s=0.9, tx=25, ty=58)    # in the open sky above the blade
+
 SPARKS = ' '.join(
     f'M{f2(x)},{f2(y - r)} L{f2(x + r * 0.25)},{f2(y - r * 0.25)} L{f2(x + r)},{f2(y)} L{f2(x + r * 0.25)},{f2(y + r * 0.25)} '
     f'L{f2(x)},{f2(y + r)} L{f2(x - r * 0.25)},{f2(y + r * 0.25)} L{f2(x - r)},{f2(y)} L{f2(x - r * 0.25)},{f2(y - r * 0.25)} Z'
@@ -77,14 +111,15 @@ GLOW = (circle(54, 54, 34), ('radial', 54, 54, 34, [(0, '#73FF4D66'), (0.6, '#21
 SLASH = ('M30,74 Q54,58 80,40', ('stroke', '#59FFD1DA', 0.8))      # a thin cut of light behind the blade
 
 BACKGROUND = [SKY, GLOW, SLASH, (SPARKS, ('solid', '#D9FFE4EA'))]
-FOREGROUND = [G(GUNBLADE_ITEMS, **GUNBLADE)]
-MONO = [G([(BLADE, ('solid', '#FFFFFFFF')), (RECEIVER, ('solid', '#FFFFFFFF')), (GRIP, ('solid', '#FFFFFFFF')),
+FOREGROUND = [G(FEATHER_ITEMS, **FEATHER), G(GUNBLADE_ITEMS, **GUNBLADE)]
+MONO = [G([(VANE, ('solid', '#FFFFFFFF'))], **FEATHER),
+        G([(BLADE, ('solid', '#FFFFFFFF')), (RECEIVER, ('solid', '#FFFFFFFF')), (GRIP, ('solid', '#FFFFFFFF')),
            (GUARD, ('stroke', '#FFFFFFFF', 1.1))], **GUNBLADE)]
 
 
 # ---- Android vector drawables
 HEAD = '''<?xml version="1.0" encoding="utf-8"?>
-<!-- FF8Recomp launcher icon ({part}): a gunblade on a deep crimson night (drawn as
+<!-- FF8Recomp launcher icon ({part}): a gunblade and a white feather on a deep crimson night (drawn as
      vectors, not taken from the game). Written by tools/make_icon.py;
      edit that, not this. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
@@ -142,7 +177,7 @@ def write(path, text):
 
 
 for name, part, items in (('background', 'background: sky, glow and sparks', BACKGROUND),
-                          ('foreground', 'foreground: the gunblade', FOREGROUND),
+                          ('foreground', 'foreground: the gunblade and the feather', FOREGROUND),
                           ('monochrome', 'themed-icon silhouette', MONO)):
     write(os.path.join(RES, 'drawable', f'ic_launcher_{name}.xml'), HEAD.format(part=part) + a_items(items) + '</vector>\n')
 

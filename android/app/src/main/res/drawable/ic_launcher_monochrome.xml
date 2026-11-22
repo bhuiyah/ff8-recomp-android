@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- FF8Recomp launcher icon (themed-icon silhouette): a gunblade on a deep crimson night (drawn as
+<!-- FF8Recomp launcher icon (themed-icon silhouette): a gunblade and a white feather on a deep crimson night (drawn as
      vectors, not taken from the game). Written by tools/make_icon.py;
      edit that, not this. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
+    <group android:rotation="-38" android:scaleX="0.9" android:scaleY="0.9" android:translateX="25" android:translateY="58">
+        <path android:fillColor="#FFFFFFFF" android:pathData="M9,0 L9,-0 L11.06,-2.66 L13.11,-4.13 L15.17,-5.01 L17.22,-5.4 L19.28,-5.86 L21.33,-6.58 L23.39,-6.99 L25.44,-6.65 L27.5,-6.01 L29.56,-5.82 L31.61,-5.94 L33.67,-5.63 L35.72,-4.69 L37.78,-3.71 L39.83,-3.08 L41.89,-2.45 L43.94,-1.47 L46,-0 L46,0 L43.94,1.34 L41.89,2.45 L39.83,3.44 L37.78,3.99 L35.72,4.33 L33.67,5.02 L31.61,6 L29.56,6.55 L27.5,6.38 L25.44,6.13 L23.39,6.36 L21.33,6.7 L19.28,6.44 L17.22,5.59 L15.17,4.71 L13.11,3.91 L11.06,2.7 L9,0 Z"/>
+    </group>
     <group android:pivotX="50" android:pivotY="4" android:rotation="-42" android:scaleX="0.74" android:scaleY="0.74" android:translateX="6" android:translateY="49">
         <path android:fillColor="#FFFFFFFF" android:pathData="M27,-3.6 L82,-3.6 L91,-0.4 L88,1.1 L81,3.6 L27,3.6 Z"/>
         <path android:fillColor="#FFFFFFFF" android:pathData="M17,-6.4 L29,-6.4 Q30.4,-6.4 30.4,-5 L30.4,5 Q30.4,6.4 29,6.4 L17,6.4 Q15.6,6.4 15.6,5 L15.6,-5 Q15.6,-6.4 17,-6.4 Z"/>

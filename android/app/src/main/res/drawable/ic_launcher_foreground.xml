@@ -1,11 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- FF8Recomp launcher icon (foreground: the gunblade): a gunblade on a deep crimson night (drawn as
+<!-- FF8Recomp launcher icon (foreground: the gunblade and the feather): a gunblade and a white feather on a deep crimson night (drawn as
      vectors, not taken from the game). Written by tools/make_icon.py;
      edit that, not this. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
+    <group android:rotation="-38" android:scaleX="0.9" android:scaleY="0.9" android:translateX="25" android:translateY="58">
+        <group android:translateX="0.9" android:translateY="1.4">
+            <path android:fillColor="#66140208" android:pathData="M9,0 L9,-0 L11.06,-2.66 L13.11,-4.13 L15.17,-5.01 L17.22,-5.4 L19.28,-5.86 L21.33,-6.58 L23.39,-6.99 L25.44,-6.65 L27.5,-6.01 L29.56,-5.82 L31.61,-5.94 L33.67,-5.63 L35.72,-4.69 L37.78,-3.71 L39.83,-3.08 L41.89,-2.45 L43.94,-1.47 L46,-0 L46,0 L43.94,1.34 L41.89,2.45 L39.83,3.44 L37.78,3.99 L35.72,4.33 L33.67,5.02 L31.61,6 L29.56,6.55 L27.5,6.38 L25.44,6.13 L23.39,6.36 L21.33,6.7 L19.28,6.44 L17.22,5.59 L15.17,4.71 L13.11,3.91 L11.06,2.7 L9,0 Z"/>
+        </group>
+        <path android:pathData="M9,0 L9,-0 L11.06,-2.66 L13.11,-4.13 L15.17,-5.01 L17.22,-5.4 L19.28,-5.86 L21.33,-6.58 L23.39,-6.99 L25.44,-6.65 L27.5,-6.01 L29.56,-5.82 L31.61,-5.94 L33.67,-5.63 L35.72,-4.69 L37.78,-3.71 L39.83,-3.08 L41.89,-2.45 L43.94,-1.47 L46,-0 L46,0 L43.94,1.34 L41.89,2.45 L39.83,3.44 L37.78,3.99 L35.72,4.33 L33.67,5.02 L31.61,6 L29.56,6.55 L27.5,6.38 L25.44,6.13 L23.39,6.36 L21.33,6.7 L19.28,6.44 L17.22,5.59 L15.17,4.71 L13.11,3.91 L11.06,2.7 L9,0 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient android:type="linear" android:startX="0" android:startY="-8" android:endX="0" android:endY="8">
+                <item android:offset="0" android:color="#FFFFFFFF"/>
+                <item android:offset="0.5" android:color="#FFF4ECF2"/>
+                <item android:offset="1" android:color="#FFD8CCDC"/>
+                </gradient>
+            </aapt:attr>
+        </path>
+        <path android:fillColor="#FFE9C3CC" android:pathData="M24,-0.3 L28.5,-6.4 L29.6,-6.1 L25.6,-0.2 Z"/>
+        <path android:strokeColor="#59B8A6BC" android:strokeWidth="0.5" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M13,0 L17,-3.25 M13,0 L17,3.25 M17,0 L21,-4.08 M17,0 L21,4.08 M21,0 L25,-4.52 M21,0 L25,4.52 M25,0 L29,-4.57 M25,0 L29,4.57 M29,0 L33,-4.23 M29,0 L33,4.23 M33,0 L37,-3.49 M33,0 L37,3.49"/>
+        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.1" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M0,0.4 L45,0"/>
+    </group>
     <group android:pivotX="50" android:pivotY="4" android:rotation="-42" android:scaleX="0.74" android:scaleY="0.74" android:translateX="6" android:translateY="49">
         <group android:translateX="1.2" android:translateY="1.8">
             <path android:fillColor="#80000000" android:pathData="M27,-3.6 L82,-3.6 L91,-0.4 L88,1.1 L81,3.6 L27,3.6 Z"/>
