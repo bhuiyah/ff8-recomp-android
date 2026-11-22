@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/images/icon.svg" width="144" alt="FF8Recomp's icon: a gunblade and a white feather on a deep crimson night"></p>
+<p align="center"><img src="docs/images/icon.svg" width="144" alt="FF8Recomp's icon: a gunblade crossed over a white feather on a deep crimson night"></p>
 
 # FF8Recomp
 

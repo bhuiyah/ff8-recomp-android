@@ -4,7 +4,7 @@
 #
 # The picture (drawn here as vectors, nothing taken from the game): a gunblade, a revolver's grip
 # and cylinder with a long single-edged blade, raised across a deep crimson night with a faint cut
-# of light behind it, and a white feather drifting down past it. Red keeps it apart from FF7Recomp's cyan and FF9Recomp's gold. The sky,
+# of light behind it, and a white feather crossed behind it. Red keeps it apart from FF7Recomp's cyan and FF9Recomp's gold. The sky,
 # glow and sparks are the background layer, the gunblade the foreground (launchers move the two
 # apart a little). 108-unit adaptive-icon canvas; what matters sits inside the 66-unit circle.
 import math
@@ -98,7 +98,7 @@ FEATHER_ITEMS = [
     (BARBS, ('stroke', '#59B8A6BC', 0.5)),
     (RACHIS, ('stroke', '#FFFFFFFF', 1.1)),
 ]
-FEATHER = dict(px=0, py=0, rot=-38, s=0.9, tx=25, ty=58)    # in the open sky above the blade
+FEATHER = dict(px=0, py=0, rot=-132, s=0.88, tx=69, ty=72)    # crossing the blade, quill low on the right
 
 SPARKS = ' '.join(
     f'M{f2(x)},{f2(y - r)} L{f2(x + r * 0.25)},{f2(y - r * 0.25)} L{f2(x + r)},{f2(y)} L{f2(x + r * 0.25)},{f2(y + r * 0.25)} '
