@@ -238,3 +238,5 @@ repository.
   (a chunk had 6 tries over ~10 s; now 10 with pauses up to 30 s, ~3 min), and after 2.8 GB
   RemasterExe ran out of the launcher's heap (growing streams and copies, several times the
   37 MB program): it writes one array of the exact size now, and the app has a large heap.
+- French on the Remastered (game_language 2): the game's menus and text, and the bottom
+  screen's place names and spell names (Brasier, Foudre ...: the kernel's), no fault.
