@@ -16,6 +16,24 @@ the AYN Thor, and meant to run on other Android handhelds and phones. A sibling 
 the world map, menus, battles, GF summons and movies, with their music, and with mods. Some of
 FF7Recomp's launcher features are not there for FF8 yet (see [Known limitations](#known-limitations)).
 
+<p align="center"><img src="docs/images/dual-screen-battle.jpg" width="640" alt="A battle on the AYN Thor: the game on the top screen, and on the bottom screen the companion showing the party's HP and ATB and the enemy's HP and weaknesses"></p>
+
+## Screenshots
+
+Taken on an AYN Thor running the Remastered, with two mods on. The top screen is the game; the
+bottom screen is the companion.
+
+| | |
+|:-:|:-:|
+| ![A field on the train: the game on top, the party's GFs and junctions below](docs/images/dual-screen-field.jpg) | ![A battle: the game on top, party HP and ATB and the enemy's weaknesses below](docs/images/dual-screen-battle.jpg) |
+| **Field**: the companion shows the party, their GFs and junctions | **Battle**: HP and ATB, and the enemy's HP and weaknesses |
+| ![The world map: the Ragnarok on the Lenown Plains, the party below](docs/images/dual-screen-world-map.jpg) | ![The load screen with the Remastered's HD portraits](docs/images/game-load-menu.jpg) |
+| **World map** | **Load screen**: the Remastered's HD portraits |
+| ![The launcher's Get mods page, browsing the Junction VIII catalog](docs/images/launcher-get-mods.jpg) | ![The launcher's Mods page with two mods on](docs/images/launcher-mods.jpg) |
+| **Get mods**: browse and install from the Junction VIII catalogs | **Mods**: turn mods on and off, set their order and options |
+| ![The launcher's Game files page](docs/images/launcher-game-files.jpg) | ![The launcher's Settings page: frame rate and performance](docs/images/launcher-settings.jpg) |
+| **Game files**: import, rebuild, or repair from Steam | **Settings**: frame rate, performance, display and language |
+
 ## Made with AI
 
 **This project was built with AI, start to finish.** As with FF7Recomp, I directed an AI coding
