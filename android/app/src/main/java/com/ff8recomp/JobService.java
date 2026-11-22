@@ -210,7 +210,7 @@ public class JobService extends Service {
             SteamLink link = new SteamLink(this);
             if (!link.signedIn()) return "Sign in to Steam first (Game files → Download from Steam), then download again.";
             boolean[] exeChanged = { false };
-            String err = gi.downloadFromSteam(link, w -> status = w, pause, exeChanged);
+            String err = gi.downloadFromSteam(link, w -> status = w, pause, exeChanged, arg);   // arg: the edition
             if ("stopped".equals(err)) throw new Paused();
             if (err != null) return "Not downloaded: " + err + ".";
             if (exeChanged[0] || !new GameBuild(this).built()) return null;

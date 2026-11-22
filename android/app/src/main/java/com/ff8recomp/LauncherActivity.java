@@ -2072,6 +2072,11 @@ public class LauncherActivity extends Activity {
             col.addView(space(8));
             col.addView(button("Repair from Steam", v -> steamDownload()));
             col.addView(text("Checks every game file against Steam's copy and downloads only the missing or damaged ones.", 13, DIM));
+            col.addView(space(8));
+            col.addView(button(install.remastered() ? "Switch to the 2013 release from Steam\u2026" : "Switch to the Remastered from Steam\u2026",
+                    v -> steamOtherEdition()));
+            col.addView(text("If your Steam account has it: downloads that edition and builds the game for it. "
+                    + "Your saves stay.", 13, DIM));
         }
         if (install.hasGame() && !GameBuild.running) {
             col.addView(space(14));
@@ -2298,11 +2303,81 @@ public class LauncherActivity extends Activity {
         }
     }
 
-    /** Download (or repair) the game from Steam: GameInstall.downloadFromSteam. */
+    /** Download (or repair) the game from Steam: GameInstall.downloadFromSteam. A repair keeps the
+     *  edition this device has; a first download asks which one when the account owns both (a
+     *  stopped one goes on with the edition it was getting). */
     private void steamDownload() {
         if (busy) return;
         if (!steam().signedIn()) { steamSignIn(this::steamDownload); return; }
-        startJob(JobService.STEAM, null);
+        if (install.hasGame()) { startSteamJob(install.remastered() ? SteamFiles.EDITION_REMASTERED : SteamFiles.EDITION_2013); return; }
+        String going = prefs.getString("steam_edition", null);
+        if (install.steamDownloading().exists() && going != null) { startSteamJob(going); return; }
+        steamPickEdition(null);
+    }
+
+    /** The other edition from Steam (Game files, when a game is in): switching without a folder. */
+    private void steamOtherEdition() {
+        if (busy) return;
+        if (!steam().signedIn()) { steamSignIn(this::steamOtherEdition); return; }
+        steamPickEdition(install.remastered() ? SteamFiles.EDITION_2013 : SteamFiles.EDITION_REMASTERED);
+    }
+
+    private void startSteamJob(String edition) {
+        prefs.edit().putString("steam_edition", edition).apply();
+        startJob(JobService.STEAM, edition);
+    }
+
+    /** Asks Steam which editions the account owns; both: the player picks (want: only that one). */
+    private void steamPickEdition(String want) {
+        AlertDialog wait = ff(new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setMessage("Checking which FINAL FANTASY VIII your Steam account has\u2026").setCancelable(false).show());
+        new Thread(() -> {
+            int own; String err = null;
+            try { own = steam().ownedEditions(); } catch (Exception e) { own = 0; err = SteamLink.message(e); }
+            final int o = own; final String e = err;
+            runOnUiThread(() -> {
+                wait.dismiss();
+                boolean has13 = (o & SteamLink.OWN_2013) != 0, hasRe = (o & SteamLink.OWN_REMASTERED) != 0;
+                if (want != null) {
+                    boolean ok = SteamFiles.EDITION_REMASTERED.equals(want) ? hasRe : has13;
+                    if (ok) startSteamJob(want);
+                    else tell(e != null ? "Steam: " + e : "This Steam account does not own FINAL FANTASY VIII"
+                            + (SteamFiles.EDITION_REMASTERED.equals(want) ? " Remastered." : " (the 2013 release)."));
+                    return;
+                }
+                if (has13 && hasRe) chooseEdition();
+                else if (has13) startSteamJob(SteamFiles.EDITION_2013);
+                else if (hasRe) startSteamJob(SteamFiles.EDITION_REMASTERED);
+                else tell(e != null ? "Steam: " + e : "This Steam account does not own FINAL FANTASY VIII (the 2013 release or the Remastered).");
+            });
+        }, "steam-owned").start();
+    }
+
+    /** The account has both: which one to play. */
+    private void chooseEdition() {
+        String[] names = { "FINAL FANTASY VIII Remastered", "FINAL FANTASY VIII (2013 release)" };
+        String[] notes = { "The Remastered's HD character models, portraits and menus, and its own recording of the music. About 2.9 GB.",
+                "The original PC look, with the game's own MIDI music. About 1.7 GB." };
+        LinearLayout box = column();
+        box.setPadding(dp(16), dp(8), dp(16), dp(4));
+        box.addView(text("Your Steam account has both editions. Which one do you want to play? Mods work with both, "
+                + "and you can switch later under Game files.", 15, TEXT));
+        AlertDialog[] dlg = new AlertDialog[1];
+        for (int i = 0; i < 2; i++) {
+            final String ed = i == 0 ? SteamFiles.EDITION_REMASTERED : SteamFiles.EDITION_2013;
+            box.addView(space(10));
+            box.addView(button(names[i], v -> { if (dlg[0] != null) dlg[0].dismiss(); startSteamJob(ed); }));
+            box.addView(text(notes[i], 13, DIM));
+        }
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        scroll.addView(box);
+        dlg[0] = ff(new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("Which FINAL FANTASY VIII?").setView(scroll).setNegativeButton("Cancel", null).show());
+    }
+
+    private void tell(String message) {
+        ff(new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setMessage(message).setPositiveButton("OK", null).show());
     }
 
     /** Cloud saves (the Steam page): before Play and after the game. */

@@ -281,14 +281,22 @@ final class SteamLink {
         }
     }
 
-    /** Which FF8 this account owns (remembered): the 2013 release. */
+    /** Which FF8 this account owns (remembered): the 2013 release, else the Remastered. */
     private int ownedApp(Session s) throws IOException {
         int known = prefs.getInt("appid", 0);
         if (known != 0) return known;
-        int app = owns(s, APP_2013) ? APP_2013 : 0;
-        if (app == 0) throw new IOException("this Steam account does not own FINAL FANTASY VIII (2013) on Steam, so it has no FF8 achievements");
+        int app = owns(s, APP_2013) ? APP_2013 : owns(s, APP_REMASTERED) ? APP_REMASTERED : 0;
+        if (app == 0) throw new IOException("this Steam account does not own FINAL FANTASY VIII (the 2013 release or the Remastered)");
         prefs.edit().putInt("appid", app).apply();
         return app;
+    }
+
+    /** The FF8 editions this account owns: OWN_2013 | OWN_REMASTERED. */
+    static final int OWN_2013 = 1, OWN_REMASTERED = 2;
+    int ownedEditions() throws Exception {
+        try (Session s = open()) {
+            return (owns(s, APP_2013) ? OWN_2013 : 0) | (owns(s, APP_REMASTERED) ? OWN_REMASTERED : 0);
+        }
     }
 
     private static void playing(Session s, boolean on) {

@@ -136,11 +136,18 @@ final class SteamFiles {
      * there and intact, else what is wrong. cancel stops it (what was done stays).
      */
     String downloadGame(File game, Progress p, AtomicBoolean cancel) throws Exception {
+        return downloadGame(game, p, cancel, null);
+    }
+
+    /** edition: EDITION_2013 or EDITION_REMASTERED as the player chose; null: the 2013 release
+     *  when the account has it, else the Remastered. */
+    static final String EDITION_2013 = "2013", EDITION_REMASTERED = "remastered";
+    String downloadGame(File game, Progress p, AtomicBoolean cancel, String edition) throws Exception {
         p.update("Connecting to Steam");
         try (SteamLink.Session s = link.open()) {
-            // the 2013 release when the account has it, else the Remastered
-            final boolean remaster = !SteamLink.owns(s, SteamLink.APP_2013);
-            if (remaster && !SteamLink.owns(s, SteamLink.APP_REMASTERED)) return NEED_RERELEASE;
+            final boolean remaster = EDITION_REMASTERED.equals(edition) || (edition == null && !SteamLink.owns(s, SteamLink.APP_2013));
+            if (!SteamLink.owns(s, remaster ? SteamLink.APP_REMASTERED : SteamLink.APP_2013))
+                return remaster ? "this Steam account does not own FINAL FANTASY VIII Remastered" : NEED_RERELEASE;
             int app = remaster ? SteamLink.APP_REMASTERED : SteamLink.APP_2013;
             lastWasRemaster = remaster;
             p.update("Reading the game's file list from Steam");

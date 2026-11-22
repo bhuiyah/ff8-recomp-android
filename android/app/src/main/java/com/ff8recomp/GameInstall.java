@@ -258,13 +258,19 @@ final class GameInstall {
      * Returns null on success, else what is wrong. exeChanged[0]: ff8_en.exe is new (build again).
      */
     String downloadFromSteam(SteamLink link, Progress p, java.util.concurrent.atomic.AtomicBoolean cancel, boolean[] exeChanged) throws Exception {
+        return downloadFromSteam(link, p, cancel, exeChanged, null);
+    }
+
+    /** edition: SteamFiles.EDITION_* (the player's choice), or null for the one the account has. */
+    String downloadFromSteam(SteamLink link, Progress p, java.util.concurrent.atomic.AtomicBoolean cancel, boolean[] exeChanged,
+                             String edition) throws Exception {
         game.mkdirs();
         File exe = new File(game, "ff8_en.exe");
         String before = exe.isFile() ? GameBuild.sha1(exe) : null;
         File mark = steamDownloading();
         if (!mark.isFile()) new FileOutputStream(mark).close();
         SteamFiles sf = new SteamFiles(link);
-        String err = sf.downloadGame(game, p::update, cancel);
+        String err = sf.downloadGame(game, p::update, cancel, edition);
         if (err != null) return err;
         if (sf.lastWasRemaster) {
             byte[] pe = RemasterExe.decode(readAll(new java.io.FileInputStream(new File(game, "FFVIII_EN.exe.dat"))));
@@ -278,6 +284,9 @@ final class GameInstall {
             err = installExe(new File(game, SteamFiles.WRAPPED_EXE), "Steam's FF8_EN.exe");
             if (err != null) return err;
             new File(game, REMASTER_MARKER).delete();
+            // switched from the Remastered: its files (2.8 GB) are not used any more
+            for (String f : REMASTER_FILES) new File(game, f).delete();
+            new File(game, "FFVIII_EN.exe.dat").delete();
         }
         exeChanged[0] = !GameBuild.sha1(exe).equals(before);
         List<String> missing = missingFiles();
