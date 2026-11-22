@@ -305,6 +305,16 @@ FF8_EDITS = [
      'SoLoud::AudioSource *ffnx_ff8_load_segment(const char *path);\n\n'
      'NxAudioEngine nxAudioEngine;\n'),
 
+    # ---- remaster.cpp: FFNx's mode for the 2000 exe with the Remastered's assets (main.zzz,
+    # other.zzz; FFVIII.exe beside them). The game's app_path is the guest's (C:\FF8): the
+    # archives are opened at FFNx's host game folder. The model pointer comes as a guest cell.
+    ('ff8/remaster.cpp', 'snprintf(fullpath, sizeof(fullpath), "%s/main.zzz", ff8_externals.app_path);',
+     'snprintf(fullpath, sizeof(fullpath), "%s/main.zzz", basedir);   // FF8Recomp: the host game folder'),
+    ('ff8/remaster.cpp', 'snprintf(fullpath, sizeof(fullpath), "%s/other.zzz", ff8_externals.app_path);',
+     'snprintf(fullpath, sizeof(fullpath), "%s/other.zzz", basedir);'),
+    ('ff8/remaster.cpp', 'void field_sub_530C30(int a1, int a2, int **a3)\n{\n    next_field_model_divisor = get_model_divisor(uint32_t(*a3));',
+     'void field_sub_530C30(int a1, int a2, gptr<int> *a3)   // FF8Recomp: a guest cell\n{\n    next_field_model_divisor = get_model_divisor(*(uint32_t *)a3);'),
+
     # ---- exe_data.cpp: the same, for the card-name table (ff8_get_card_name replaces a game
     # function) and the draw-point messages
     ('exe_data.cpp', '*(uint8_t **)ff8_externals.card_name_positions',
@@ -313,6 +323,28 @@ FF8_EDITS = [
      'guest::ptr_of<uint16_t>(*(uint32_t *)(uintptr_t)ff8_externals.card_name_positions)', 'all'),
     ('exe_data.cpp', '*(char **)ff8_externals.card_name_positions',
      'guest::ptr_of<char>(*(uint32_t *)(uintptr_t)ff8_externals.card_name_positions)', 'all'),
+
+    # ---- zzz_archive: the Remastered's archive files go to the game as file descriptors (its
+    # _read/_lseek/_close are FFNx's, keyed by them). On Windows they come from FFNx's own CRT,
+    # small numbers like the game's; some game code takes any descriptor as an index into a
+    # 20-entry table of its own (the world map's file layer, 0x51BF50 at 0xB8D480) and only
+    # small ones are harmless there. Android's host descriptors are large (59): that read the
+    # strings after the table and freed "file". The game gets a small number, counted down
+    # from 19: inside that table, and away from the game's own CRT descriptors (counted up
+    # from 3; FFNx's hooks take a number in its archive map first). The host descriptor stays
+    # inside for the reads.
+    ('ff8/zzz_archive.h', '\t\tinline int fd() const {\n\t\t\treturn _fd;\n\t\t}',
+     '\t\tinline int fd() const {\n\t\t\treturn _gameFd;   // FF8Recomp: a small number for the game (zzz_archive.cpp)\n\t\t}'),
+    ('ff8/zzz_archive.h', '\t\tint _fd;\n\t\tint64_t _pos;',
+     '\t\tint _fd;\n\t\tint _gameFd;\n\t\tint64_t _pos;'),
+    ('ff8/zzz_archive.cpp', 'Zzz::File::File(const ZzzTocEntry &tocEntry, int fd) :\n\t_tocEntry(tocEntry), _fd(fd), _pos(tocEntry.filePos)\n{\n}',
+     '// FF8Recomp: the numbers handed to the game, the highest free from 19 down (zzz_archive.h)\n'
+     'static bool zzz_game_fds[20];\n'
+     'static int zzz_game_fd_take()\n{\n\tfor (int i = 19; i >= 10; --i) if (!zzz_game_fds[i]) { zzz_game_fds[i] = true; return i; }\n'
+     '\tffnx_error("Zzz: more than 10 archive files open at once\\n");\n\treturn -1;\n}\n\n'
+     'Zzz::File::File(const ZzzTocEntry &tocEntry, int fd) :\n\t_tocEntry(tocEntry), _fd(fd), _gameFd(zzz_game_fd_take()), _pos(tocEntry.filePos)\n{\n}'),
+    ('ff8/zzz_archive.cpp', '\tif (trace_all) ffnx_trace("Zzz::File::close: %s\\n", _tocEntry.fileName);\n\n\t_close(_fd);',
+     '\tif (trace_all) ffnx_trace("Zzz::File::close: %s\\n", _tocEntry.fileName);\n\n\t_close(_fd);\n\tif (_gameFd >= 10 && _gameFd < 20) zzz_game_fds[_gameFd] = false;'),
     ('exe_data.cpp', '*(uint8_t **)ff8_externals.drawpoint_messages',
      'guest::ptr_of<uint8_t>(*(uint32_t *)(uintptr_t)ff8_externals.drawpoint_messages)', 'all'),
 ]

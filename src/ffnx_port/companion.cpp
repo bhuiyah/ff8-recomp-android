@@ -384,7 +384,27 @@ std::string build_snapshot() {
 
 // Commands: 1 speed 1x/2x/3x, 2 save state (current slot), 3 load it, 4 random battles on/off,
 // 5 battle enhancement on/off (boosters.cpp).
+std::string ff8_companion_snapshot();                           // companion_ff8.cpp
+
 extern "C" void ff7_companion_frame() {
+    if (ff8) {
+        // FF8: its own snapshot; the buttons that apply (2x speed, random battles off, save and load state)
+        switch (g_command.exchange(0)) {
+        case 1: gamehacks.companionToggleSpeedhack(); break;
+        case 4: gamehacks.companionSetBattles(!gamehacks.companionBattlesWanted()); break;   // FFNx's battle toggle (ff8_opengl.cpp)
+        case 2: ff7_savestate_request(0, "current"); break;
+        case 3: ff7_savestate_request(1, "current"); break;
+        default: break;
+        }
+        static auto last8 = std::chrono::steady_clock::time_point{};
+        const auto now8 = std::chrono::steady_clock::now();
+        if (now8 - last8 < std::chrono::milliseconds(100)) return;
+        last8 = now8;
+        std::string snap = ff8_companion_snapshot();
+        std::lock_guard<std::mutex> lk(g_snap_lock);
+        g_snap.swap(snap);
+        return;
+    }
     ff7_companion_battle_tick();
     ff7_boosters_frame();
     ff7_achievements_frame();

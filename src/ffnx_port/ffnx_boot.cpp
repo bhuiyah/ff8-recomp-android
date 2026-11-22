@@ -35,7 +35,11 @@ extern "C" int ff7_ffnx_attach(void) {
 // "CD:\FF8\DATA\DISK1" -> <app path>\data\disk\DISK1, ...), for src/hle/ff7_af3dn.c (C).
 bool ff8_steam_redirection(const char *lpFileName, char *newPath, bool *isZzzFile);   // FFNx ff8/file.cpp
 bool ff8_fs_last_fopen_is_redirected();
+extern uint32_t ff8_remastered_edition;                                             // FFNx globals.h
 extern "C" int ffnx_ff8_steam_redirection(const char *name, char *out) {
+    // The Remastered edition runs the 2000 exe, which opens files with CreateFileA itself
+    // (no Dotemu wrapper): FFNx's own hooks read main.zzz / other.zzz, nothing to redirect here
+    if (ff8_remastered_edition) return 0;
     if (ff8_fs_last_fopen_is_redirected()) return 0;
     out[0] = 0;
     return ff8_steam_redirection(name, out, nullptr) ? 1 : 0;

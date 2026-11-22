@@ -208,6 +208,7 @@ def main():
             if f.endswith('.h'):
                 z.write(os.path.join(r32, f), 'include/' + f)
         z.write(os.path.join(ROOT, 'src', 'host', 'portable_guest.h'), 'include/portable_guest.h')
+        z.write(os.path.join(ROOT, 'src', 'host', 'game_image.h'), 'include/game_image.h')   # portable_guest.h's .text bounds
         # Python's standard library
         junk = ('test/', 'idlelib/', 'tkinter/', 'turtledemo/', 'ensurepip/', 'lib2to3/', 'pydoc_data/',
                 'config-3.14-aarch64-linux-android/', 'venv/', 'sqlite3/')

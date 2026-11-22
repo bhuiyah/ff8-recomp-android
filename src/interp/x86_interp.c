@@ -21,8 +21,9 @@ void ff7_run_callsite(void);
 int ff7_override_install(uint32_t va, uint32_t target);
 int ff7_override_active(uint32_t va);
 #define FF7_INTERP_TARGET 0xFFFFFFFEu    /* the override target meaning "interpret" */
-#define TEXT_LO 0x00401000u
-#define TEXT_HI 0x007B6000u
+#include "game_image.h"
+#define TEXT_LO GAME_TEXT_LO           /* the game's .text: FF8's runs to 0xB69000 */
+#define TEXT_HI GAME_TEXT_HI
 #define CALLSITE_HOOKED(site) \
     ((uint32_t)((site) - TEXT_LO) < (TEXT_HI - TEXT_LO) && \
      (ff7_callsite_bits[((site) - TEXT_LO) >> 5] >> (((site) - TEXT_LO) & 31u) & 1u))

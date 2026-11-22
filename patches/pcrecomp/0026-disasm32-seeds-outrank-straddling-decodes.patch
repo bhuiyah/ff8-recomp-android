@@ -1,0 +1,17 @@
+diff --git a/tools/disasm/disasm32.py b/tools/disasm/disasm32.py
+index 2026e51..c796b52 100644
+--- a/tools/disasm/disasm32.py
++++ b/tools/disasm/disasm32.py
+@@ -904,8 +904,12 @@ class Disassembler:
+         for a, f in functions.items():
+             for t in f.calls_to:
+                 callers.setdefault(t, set()).add(a)
++        # Seeds are evidence too (a table of handlers names them, or a hook must start
++        # there): a false start whose decode straddles one goes, not the seed. FF8's field
++        # opcode table names 0x523030; a scan candidate at 0x523012 decoded across it.
+         gone = drop_mid_instruction_entries(
+             lambda va, n: self.read_bytes(va, n), sizes, code_start, code_end,
++            keep=frozenset(a for a in seeds if a in sizes),
+             callers=callers, weak=weak & set(sizes))
+         for a in list(functions):
+             if a not in sizes:

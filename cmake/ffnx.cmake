@@ -49,7 +49,7 @@ if(NOT DEFINED FFNX_SOURCES)
   # own memory, which has to become guest memory first; they are off in vanilla FF8's sense
   # (their init calls are gated, tools/ffnx_edit_android.py FF8_LATER). Their symbols are
   # named stops (tools/ffnx_link_stubs.py).
-  set(FF8_LATER "ff8/kernel_ability\\.cpp|ff8/kernel_command\\.cpp|ff8/kernel_item\\.cpp|ff8/kernel_magic\\.cpp|ff8/vibration\\.cpp|ff8/remaster\\.cpp|ff8/battle/monsters\\.cpp|ff8/menu/volume\\.cpp")
+  set(FF8_LATER "ff8/kernel_ability\\.cpp|ff8/kernel_command\\.cpp|ff8/kernel_item\\.cpp|ff8/kernel_magic\\.cpp|ff8/vibration\\.cpp|ff8/battle/monsters\\.cpp|ff8/menu/volume\\.cpp")
   list(FILTER FFNX_SOURCES EXCLUDE REGEX "^(${FF8_LATER})$")
 endif()
 
@@ -84,6 +84,7 @@ add_library(ffnx STATIC ${FFNX_SOURCES}
   "${FF7_ROOT}/src/ffnx_port/quickboot.cpp"
   "${FF7_ROOT}/src/ffnx_port/savestate_ffnx.cpp"
   "${FF7_ROOT}/src/ffnx_port/companion.cpp"
+  "${FF7_ROOT}/src/ffnx_port/companion_ff8.cpp"
   "${FF7_ROOT}/src/ffnx_port/companion_render.cpp"
   "${FF7_ROOT}/src/ffnx_port/boosters.cpp"
   "${FF7_ROOT}/src/ffnx_port/rumble.cpp"

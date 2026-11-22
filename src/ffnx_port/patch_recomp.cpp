@@ -285,10 +285,8 @@ void verify_code_writes() {
 
 void step_code() {
     quickboot_frame();
-    // The second screen, boosters and achievements read FF7's game state; FF8's are to come
-    // (docs/ROADMAP.md M7), so FF8 runs without them for now.
-
-    if (!ff8) ff7_companion_frame();
+    // The second screen (FF8: companion_ff8.cpp's snapshot; FF7: also boosters, achievements)
+    ff7_companion_frame();
     std::lock_guard<std::mutex> lk(g_lock);
     if (g_verified < g_code_writes.size()) verify_code_writes_locked();
     const uint64_t k = g_step_frame++;
@@ -404,8 +402,8 @@ extern "C" int ffnx_recomp_write_manifest(const char *path) {
     if (!f) return -1;
     std::fprintf(f, "{\n \"hooks\": [\n");
     for (size_t i = 0; i < g_hooks.size(); i++)
-        std::fprintf(f, "  {\"kind\": \"%s\", \"site\": \"0x%08X\", \"target\": \"0x%08X\"}%s\n",
-                     g_hooks[i].what, g_hooks[i].site, g_hooks[i].target, i + 1 < g_hooks.size() ? "," : "");
+        std::fprintf(f, "  {\"kind\": \"%s\", \"site\": \"0x%08X\", \"target\": \"0x%08X\", \"installed\": %d}%s\n",
+                     g_hooks[i].what, g_hooks[i].site, g_hooks[i].target, g_hooks[i].installed, i + 1 < g_hooks.size() ? "," : "");
     std::fprintf(f, " ],\n \"code_writes\": [\n");
     for (size_t i = 0; i < g_code_writes.size(); i++) {
         const write_rec &w = g_code_writes[i];

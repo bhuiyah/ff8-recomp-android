@@ -605,7 +605,10 @@ extern "C" int ff7_mods_load(const char *profile_path, const char *cache_dir) {
             mod.hext_folders.push_back(f.folder);
             folders++;
         }
-        if (mod.info.conditionals.empty() && mod.info.mod_folders.empty()) add_folder(mi, "");
+        // Wrap.Run counts the runtime's folders, the *active* ones (Profile.GetRuntime filters
+        // them): a mod whose folders are all off serves its root. Junction VIII's "Force high res
+        // models" relies on it (ActiveWhen="1" is false there: IsConfigActive wants an operator).
+        if (folders == 0) add_folder(mi, "");
         mod.hext_folders.push_back("");
         for (const std::string &w : mod.info.windows_code)
             std::fprintf(stderr, "[mods] %s: %s -- Windows code, not supported on Android\n", mod.name.c_str(), w.c_str());

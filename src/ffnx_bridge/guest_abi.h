@@ -231,6 +231,11 @@ struct bounce_scope {
     }
 };
 
+// Windows' long is 32 bits (LLP64); Android's is 64. A long in a guest signature (FF8's
+// _lseek(int, long, int)) is one stack word and comes back in eax alone.
+template <typename A> constexpr bool is_win_long_v =
+    std::is_same_v<std::remove_cv_t<A>, long> || std::is_same_v<std::remove_cv_t<A>, unsigned long>;
+
 // Argument -> guest stack words.
 template <typename A> inline void put_arg(uint32_t *&w, A a) {
     if constexpr (std::is_pointer_v<A> && std::is_function_v<std::remove_pointer_t<A>>) {
@@ -265,10 +270,11 @@ template <typename A> inline void put_arg(uint32_t *&w, A a) {
     else if constexpr (std::is_class_v<A>) {               // by-value struct: its 32-bit image
         uint32_t n = (sizeof(A) + 3u) / 4u; std::memset(w, 0, n * 4u); std::memcpy(w, &a, sizeof(A)); w += n;
     }
+    else if constexpr (is_win_long_v<A>) { *w++ = (uint32_t)a; }
     else if constexpr (sizeof(A) == 8) { uint64_t u = (uint64_t)a; *w++ = (uint32_t)u; *w++ = (uint32_t)(u >> 32); }
     else { *w++ = (uint32_t)a; }
 }
-template <typename A> constexpr size_t arg_words() { return std::is_pointer_v<A> ? 1 : (sizeof(A) + 3u) / 4u; }
+template <typename A> constexpr size_t arg_words() { return std::is_pointer_v<A> || is_win_long_v<A> ? 1 : (sizeof(A) + 3u) / 4u; }
 
 template <typename R> inline R take_result(const result &r) {
     if constexpr (std::is_void_v<R>) return;
@@ -278,6 +284,8 @@ template <typename R> inline R take_result(const result &r) {
         static_assert(sizeof(R) <= 8, "structs over 8 bytes return through a hidden pointer: not supported");
         uint64_t u = ((uint64_t)r.edx << 32) | r.eax; R v; std::memcpy(&v, &u, sizeof(R)); return v;
     }
+    else if constexpr (std::is_same_v<R, long>) return (R)(int32_t)r.eax;
+    else if constexpr (std::is_same_v<R, unsigned long>) return (R)r.eax;
     else if constexpr (sizeof(R) == 8) return (R)(((uint64_t)r.edx << 32) | r.eax);
     else return (R)r.eax;
 }
@@ -330,6 +338,8 @@ template <typename A> inline A get_arg(uint32_t &off) {
     else if constexpr (std::is_class_v<A>) {
         A a; std::memcpy(&a, ptr_of<void>(g_esp + off), sizeof(A)); off += (sizeof(A) + 3u) & ~3u; return a;
     }
+    else if constexpr (std::is_same_v<std::remove_cv_t<A>, long>) { A v = (A)(int32_t)word(off); off += 4; return v; }   // Windows' 32-bit long
+    else if constexpr (std::is_same_v<std::remove_cv_t<A>, unsigned long>) { A v = (A)word(off); off += 4; return v; }
     else if constexpr (sizeof(A) == 8) { uint64_t u = word(off) | ((uint64_t)word(off + 4) << 32); off += 8; return (A)u; }
     else { A v = (A)word(off); off += 4; return v; }
 }

@@ -50,6 +50,9 @@ final class GameBuild {
     static final String EXE_SHA1 = "d0f2ae94afb012070534bb13e2b10368e4f00184";
     /** SHA-1 of the same FF8_EN.exe as Steam ships it (wrapped). */
     static final String WRAPPED_SHA1 = "03230c11328f8a1f9635435096e1659d9bfd002d";
+    /** SHA-1 of the Remastered's program (FFVIII_EN.exe.dat rebuilt as a PE, RemasterExe): the same
+     *  1.2 US game code, calling Windows directly instead of through Dotemu's wrappers. */
+    static final String REMASTER_SHA1 = "cebb705adb4b71f45616af4228e0da9f4224314c";
 
     // ---- shared state (read by the launcher)
     static volatile boolean running;
@@ -148,7 +151,7 @@ final class GameBuild {
             if (!exe.isFile()) throw new IOException("ff8_en.exe is missing: import your game files first");
             String sha = sha1(exe);
             lw.println("exe " + sha);
-            if (!EXE_SHA1.equals(sha))
+            if (!EXE_SHA1.equals(sha) && !REMASTER_SHA1.equals(sha))
                 throw new IOException("this ff8_en.exe is not the one the game is built from: import again. " + GameInstall.WHICH_FOLDER);
 
             unpackKit(ver);

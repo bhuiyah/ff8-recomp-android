@@ -45,20 +45,21 @@ public class LauncherActivity extends Activity {
     /** FF8: not yet. Game boosters: speed, random battles, battle enhancement, save anywhere,
      *  gil / EXP / AP (src/ffnx_port/boosters.cpp pokes FF7's memory). boosters.txt gets neutral values. */
     static final boolean BOOSTERS = false;
-    /** FF8: not yet. Mods, Get mods, Downloads and the mod catalogs (7th Heaven's catalogs are FF7 mods). */
-    static final boolean MODS = false;
+    /** Mods, Get mods, Downloads and the mod catalog: Junction VIII's (ModCatalog), applied by the same
+     *  overlay as 7th Heaven's (src/mods); both editions (the Remastered through FFNx's main.zzz overrides). */
+    static final boolean MODS = true;
     /** FF8: not yet. Import / Export saves (PsxSaves: FF7 PC saves and PlayStation FF7 memory cards). */
     static final boolean SAVE_IMPORT = false;
     /** FF8: not yet. The launcher's menu sounds (Sfx: FF7's sound IDs and data/sound files). */
     static final boolean MENU_SOUNDS = false;
     /** FF8: not yet. The second screen's panels (CompanionView: FF7's party, materia, limit, map)
      *  and the layouts built on them (portrait, split, side by side, swap screens). */
-    static final boolean SECOND_SCREEN = false;
+    static final boolean SECOND_SCREEN = true;     // FF8: companion_ff8.cpp + CompanionView (Junction, Magic, GF, Items, Cards)
     /** FF8: not yet. Controller extras that follow FF7's state: FFNx's analogue controls, hold
      *  confirm to repeat in battles, rumble (src/ffnx_port/rumble.cpp). */
     static final boolean FF7_CONTROLLER_EXTRAS = false;
     /** FF8's frame limiter (FFNx ff8_fps_limiter) goes to 60 FPS at most: no 120 FPS or "60, battles at 30". */
-    private static final int FPS_DEFAULT = 1;
+    private static final int FPS_DEFAULT = 2;   // FF8 shipped battles at 15 FPS: FFNx's 30 FPS battles
 
     private static final int PICK_GAME = 1, PICK_IRO = 2, PICK_FOLDER = 3, PICK_PSX = 4, PICK_STORAGE = 5;
     /** Settings > Storage > Custom folder sent the player to grant All files access: pick the folder when they are back. */
@@ -606,8 +607,8 @@ public class LauncherActivity extends Activity {
                     return c != null ? c.category : null;
                 });
                 if (changed) { saveProfile(); ensureConflicts(); refresh(); }
-                android.widget.Toast.makeText(this, changed ? "Sorted like 7th Heaven: by category, then each mod's own load order"
-                        : "Already in 7th Heaven's order", android.widget.Toast.LENGTH_LONG).show();
+                android.widget.Toast.makeText(this, changed ? "Sorted like Junction VIII: by category, then each mod's own load order"
+                        : "Already in Junction VIII's order", android.widget.Toast.LENGTH_LONG).show();
             });
             sort.setSingleLine(true);   // one line: "Auto-" / "sort" read badly
             actions.addView(sort);
@@ -641,7 +642,7 @@ public class LauncherActivity extends Activity {
             }
             col.addView(box);
         }
-        if (library.mods.isEmpty()) col.addView(text("No mods installed yet. Get mods lists 7th Heaven's catalogs; Add a mod file takes one you downloaded.", 16, DIM));
+        if (library.mods.isEmpty()) col.addView(text("No mods installed yet. Get mods lists Junction VIII's catalog; Add a mod file takes one you downloaded (.iroj, .iro, .zip or .7z).", 16, DIM));
         java.util.List<ModLibrary.Mod> on = new java.util.ArrayList<>(), off = new java.util.ArrayList<>();
         for (ModLibrary.Mod m : library.mods) (m.enabled && m.error == null ? on : off).add(m);
         for (int i = 0; i < on.size(); i++) col.addView(modRow(on.get(i), i, on.size()));
@@ -1221,6 +1222,7 @@ public class LauncherActivity extends Activity {
         s.append(!install.hasGame() ? "Game: not imported yet"
                 : GameBuild.running ? "Game: building for this device, " + GameBuild.percent + "%"
                 : build.built() ? "Game: ready" : "Game: not built for this device yet");
+        if (install.hasGame()) s.append("\nEdition: ").append(install.remastered() ? "Remastered" : "2013 release");
         if (MODS) {
             s.append("\nMods: ").append(library.enabledCount()).append(" of ").append(library.mods.size()).append(" enabled");
             if (!catalog.updates().isEmpty()) s.append("\nMod updates: ").append(catalog.updates().size());
@@ -1426,7 +1428,7 @@ public class LauncherActivity extends Activity {
     private View catalogSettings() {
         LinearLayout col = column();
         col.addView(heading("Mod catalogs"));
-        col.addView(text("Catalogs list mods to install and update, as in 7th Heaven. Checked once a day when the launcher opens.", 14, DIM));
+        col.addView(text("Catalogs list mods to install and update, as in Junction VIII. Checked once a day when the launcher opens.", 14, DIM));
         java.text.DateFormat df = java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT);
         for (ModCatalog.Subscription sc : catalog.subs) {
             ViewGroup bs = buttonRow();
@@ -1939,9 +1941,9 @@ public class LauncherActivity extends Activity {
 
     private static String fpsDetail(int mode) {
         switch (mode) {
-            case 0: return "As shipped";
-            case 1: return "As shipped, smoother pacing (recommended)";
-            case 2: return "Battles at 30, the rest as shipped";
+            case 0: return "As shipped (battles at 15)";
+            case 1: return "As shipped (battles at 15), smoother pacing";
+            case 2: return "Battles at 30, the rest as shipped (recommended)";
             case 4: return "Field at 120; world map and battles at 60";
             case 5: return "Everything at 60 but battles, for devices that slow down in battle";
             default: return "Everything at 60; some scenes may glitch";
@@ -1998,11 +2000,11 @@ public class LauncherActivity extends Activity {
             col.addView(space(14));
         }
         if (!install.hasGame()) {
-            col.addView(text("FF8Recomp needs your copy of FINAL FANTASY VIII from Steam (the 2013 release; the "
-                    + "Remastered edition is not supported yet). Download it here with your Steam account, or pick "
-                    + "the game's folder if you already have it on this device: steamapps/common/FINAL FANTASY VIII, "
-                    + "the folder that holds FF8_EN.exe and Data. FF8Recomp then turns the game into a native "
-                    + "Android app on this device.", 15, TEXT));
+            col.addView(text("FF8Recomp needs your copy of FINAL FANTASY VIII from Steam: the 2013 release or the "
+                    + "Remastered, English. Download it here with your Steam account, or pick the game's folder if "
+                    + "you already have it on this device: steamapps/common/FINAL FANTASY VIII (the one with "
+                    + "FF8_EN.exe and Data) or FINAL FANTASY VIII Remastered (the one with main.zzz). FF8Recomp "
+                    + "then turns the game into a native Android app on this device.", 15, TEXT));
             col.addView(space(14));
             col.addView(button(install.steamDownloading().exists() ? "Go on downloading from Steam" : "Download from Steam…",
                     v -> steamDownload()));

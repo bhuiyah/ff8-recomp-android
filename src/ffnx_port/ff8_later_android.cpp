@@ -42,11 +42,4 @@ void ff8_menu_volume_init() {}
 // vibration.cpp: FFNx's FF8 rumble (the app has its own, src/ffnx_port/rumble.cpp).
 void vibration_init() {}
 
-// remaster.cpp: FFNx's mode for the 2000 exe with Remastered assets (FFVIII.exe beside it),
-// never the case here.
-void ff8_remaster_init() {}
-// The Remastered archives (remaster.cpp opens them in ff8_remaster_init): never opened here;
-// their users check ff8_remastered_edition first.
-Zzz g_FF8ZzzArchiveMain;
-Zzz g_FF8ZzzArchiveOther;
-void ff8_remaster_set_field_model_scaling(const std::unordered_map<uint32_t, CharaOneModel> &) {}
+// remaster.cpp is built now (the Remastered edition: FFNx with main.zzz / other.zzz).

@@ -124,9 +124,6 @@ int ff7_boot_and_run(const char *game_dir) {
         fprintf(stderr, "[ff7] could not map " GAME_EXE_NAME " in %s\n", game_dir);
         return 71;
     }
-    /* The mods' hext patches: after the image is mapped, before FFNx (7th Heaven patches the
-     * process before the driver loads). */
-    ff7_hext_apply_mods();
 #ifdef FF7_WITH_FFNX
     /* FFNx's DllMain: version check on the mapped image, FFNx.toml, hooks. As AF3DN.P on
      * Windows it runs before WinMain, so here it runs before the entry. */
@@ -135,6 +132,11 @@ int ff7_boot_and_run(const char *game_dir) {
         return 72;
     }
 #endif
+    /* The mods' hext patches: after FFNx, as Junction VIII has them applied (FFNx's
+     * hextPatcher.applyAll at the end of its DllMain). FFNx finds its addresses by reading the
+     * game's code: SkipIntro rewrites a call FFNx follows (0x52F327), and read first, FFNx
+     * followed the patch into nowhere. (7th Heaven patches FF7 before the driver loads.) */
+    ff7_hext_apply_mods();
     fprintf(stderr, "[ff7] calling lifted entry 0x%08X\n", recomp_host_entry());
     uint32_t rc = recomp_host_run();
     fprintf(stderr, "[ff7] entry returned 0x%08X\n", rc);

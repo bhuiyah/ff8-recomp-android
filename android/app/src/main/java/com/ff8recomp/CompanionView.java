@@ -47,8 +47,11 @@ public class CompanionView extends View {
     private static final int PAD_Y = 0x8000;   // Triangle: the game's main menu
 
     // FF7's menu colours
-    private static final int WHITE = 0xFFFFFFFF, LIGHT = 0xFFDCDCF0, LABEL = 0xFF8FB4E8, DIM = 0xFF8090B0,
-            GOLD = 0xFFF5C84A, LOW = 0xFFFFD040, DIVIDER = 0x30FFFFFF;
+    // FF8's warm orange, the launcher's (LauncherActivity WIN_* / HOT_* / ACCENT)
+    private static final int WHITE = 0xFFFFFFFF, LIGHT = 0xFFFFF7EE, LABEL = 0xFFFFD9A8, DIM = 0xFFE0B48C,
+            GOLD = 0xFFFFE3A0, LOW = 0xFFFFD040, DIVIDER = 0x38FFF0E0;
+    private static final int WIN_TOP = 0xFFD7731C, WIN_BOTTOM = 0xFF6E2A07, BORDER = 0xFFFBEBDD, BORDER_IN = 0xFF8A4B22;
+    private static final int HOT_TOP = 0xFFFFA34A, HOT_BOTTOM = 0xFFC25A14, TRACK = 0xFF2A1004;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private JSONObject state = new JSONObject();
@@ -87,14 +90,19 @@ public class CompanionView extends View {
 
     // ---- tabs ---------------------------------------------------------------------------------
     private static final String[] TABS = { "Auto", "Materia", "Map", "Items", "Key items", "Extras" };
+    /** FF8's tabs (companion_ff8.cpp's snapshot, "game":"ff8"): as many as FF7's, so the layout is shared. */
+    private static final String[] TABS8 = { "Auto", "Junction", "Magic", "GF", "Items", "Cards" };
     private static final int V_ENEMIES = 0, V_MATERIA = 1, V_MAP = 2, V_ITEMS = 3, V_KEYS = 4, V_EXTRAS = 5;
+    private static final int V_JUNCTION = 6, V_MAGIC = 7, V_GF = 8, V_CARDS = 9;
+    private boolean ff8() { return "ff8".equals(state.optString("game")); }
+    private String[] tabs() { return ff8() ? TABS8 : TABS; }
     private int tab;                                   // 0 Auto, else the view (V_MATERIA..V_EXTRAS)
     private boolean wide;                              // the party column hidden («)
     private final RectF[] tabBoxes = new RectF[TABS.length + 1];
     private int pressedTab = -1;
     private final RectF panelBox = new RectF();
-    private final float[] scroll = new float[6];
-    private final float[] contentH = new float[6];
+    private final float[] scroll = new float[10];
+    private final float[] contentH = new float[10];
     private int shownView = V_ITEMS;
     private float dragY0, dragScroll0;
     private boolean dragging, dragMoved;
@@ -197,26 +205,31 @@ public class CompanionView extends View {
         return narrow() ? Math.min(getHeight() / 1500f, getWidth() / 620f) : Math.min(getHeight() / 1080f, getWidth() / 1240f);
     }
 
-    /** An FF7 menu window: blue gradient, light border, rounded corners. */
+    /** A window as the launcher draws them: orange gradient, cream border, a thin brown line inside. */
     private void window(Canvas c, float l, float t, float rr, float b) {
         r.set(l, t, rr, b);
         float u = u();
-        fill.setShader(new LinearGradient(l, t, rr, b, 0xFF2B4BA8, 0xFF0B1A4E, Shader.TileMode.CLAMP));
+        fill.setShader(new LinearGradient(l, t, rr, b, WIN_TOP, WIN_BOTTOM, Shader.TileMode.CLAMP));
         c.drawRoundRect(r, 14 * u, 14 * u, fill);
         fill.setShader(null);
-        stroke.setColor(0xFFDCDCF0);
+        stroke.setColor(BORDER);
         stroke.setStrokeWidth(4 * u);
         c.drawRoundRect(r, 14 * u, 14 * u, stroke);
+        r.inset(3.5f * u, 3.5f * u);
+        stroke.setColor(BORDER_IN);
+        stroke.setStrokeWidth(1.5f * u);
+        c.drawRoundRect(r, 11 * u, 11 * u, stroke);
+        r.set(l, t, rr, b);
     }
 
     /** A gold window: the selected tab, a lit booster, a warning banner. */
     private void goldWindow(Canvas c, RectF b, boolean solid) {
         float u = u();
-        fill.setShader(solid ? new LinearGradient(b.left, b.top, b.left, b.bottom, 0xFFF0CF6A, 0xFFB98A28, Shader.TileMode.CLAMP)
-                             : new LinearGradient(b.left, b.top, b.right, b.bottom, 0xFF5A4410, 0xFF2A1E06, Shader.TileMode.CLAMP));
+        fill.setShader(solid ? new LinearGradient(b.left, b.top, b.left, b.bottom, HOT_TOP, HOT_BOTTOM, Shader.TileMode.CLAMP)
+                             : new LinearGradient(b.left, b.top, b.right, b.bottom, 0xFF5A2608, 0xFF2A1004, Shader.TileMode.CLAMP));
         c.drawRoundRect(b, 14 * u, 14 * u, fill);
         fill.setShader(null);
-        stroke.setColor(0xFFFFE08A);
+        stroke.setColor(0xFFFFD08A);
         stroke.setStrokeWidth(4 * u);
         c.drawRoundRect(b, 14 * u, 14 * u, stroke);
     }
@@ -228,7 +241,7 @@ public class CompanionView extends View {
     private void bar(Canvas c, float l, float t, float w, float h, double frac, int c0, int c1) {
         frac = Math.max(0, Math.min(1, frac));
         fill.setShader(null);
-        fill.setColor(0xFF0A0E1E);
+        fill.setColor(TRACK);
         r.set(l, t, l + w, t + h);
         c.drawRoundRect(r, h / 2, h / 2, fill);
         if (frac <= 0) return;
@@ -353,6 +366,10 @@ public class CompanionView extends View {
             case V_MAP: drawMap(c, inner, u); end = y0 + inner.height(); scroll[view] = 0; break;
             case V_KEYS: end = drawList(c, inner, y0, u, state.optJSONArray("keys"), false); break;
             case V_EXTRAS: end = drawExtras(c, inner, y0, u); break;
+            case V_JUNCTION: end = drawJunction(c, inner, y0, u); break;
+            case V_MAGIC: end = drawMagic(c, inner, y0, u); break;
+            case V_GF: end = drawGfs(c, inner, y0, u); break;
+            case V_CARDS: end = drawCards(c, inner, y0, u); break;
             default: end = drawList(c, inner, y0, u, state.optJSONArray("inv"), true); break;
             }
             contentH[view] = end - y0;
@@ -378,6 +395,11 @@ public class CompanionView extends View {
     }
 
     private int resolveView(String mode) {
+        if (ff8()) {
+            final int[] v8 = { V_ENEMIES, V_JUNCTION, V_MAGIC, V_GF, V_ITEMS, V_CARDS };
+            if (tab > 0) return v8[tab];
+            return "battle".equals(mode) ? V_ENEMIES : V_JUNCTION;
+        }
         if (tab > 0) return tab;                       // TABS[i] is view i past Auto
         if ("battle".equals(mode)) return V_ENEMIES;
         if ("world".equals(mode)) return V_MAP;
@@ -439,6 +461,7 @@ public class CompanionView extends View {
 
     private void drawTabs(Canvas c, float l, float t, float rr, float b, float u) {
         float gap = 10 * u, small = 70 * u;
+        final String[] TABS = tabs();
         int rows = narrow() ? 2 : 1, first = rows == 1 ? TABS.length + 1 : 4;   // narrow: 4 tabs, then the rest and «
         float rowH = (b - t - gap * (rows - 1)) / rows;
         for (int i = 0; i <= TABS.length; i++) {
@@ -478,7 +501,7 @@ public class CompanionView extends View {
             int id = m.optInt("id");
             android.graphics.Bitmap[] faces = portraits;
             android.graphics.Bitmap face = faces != null && id >= 0 && id < faces.length ? faces[id] : null;
-            // the game's own face (84 x 96) where the files have it, else a letter tile
+            // the game's own face (64 x 96, Portraits) where the files have it, else a letter tile
             float ph = Math.min(cardH - 36 * u, 120 * u);
             float ps = face != null ? ph * Portraits.FACE_W / Portraits.FACE_H : Math.min(92 * u, ph);
             float px = l + 18 * u, py = ct + (cardH - (face != null ? ph : ps)) / 2;
@@ -496,7 +519,7 @@ public class CompanionView extends View {
                 c.drawRoundRect(r, 8 * u, 8 * u, fill);
                 label(c, name.isEmpty() ? "?" : name.substring(0, 1), px + ps / 2, py + ps / 2 + ps * 0.2f, ps * 0.58f, WHITE, Paint.Align.CENTER);
             }
-            stroke.setColor(0xFFDCDCF0);
+            stroke.setColor(BORDER);
             stroke.setStrokeWidth(3 * u);
             c.drawRoundRect(r, 8 * u, 8 * u, stroke);
             float x = px + ps + 18 * u, xr = rr - 18 * u;
@@ -510,6 +533,24 @@ public class CompanionView extends View {
             bar(c, bx, y - 14 * u, bw, 12 * u, hf, hf <= 0.25 ? 0xFFE0B020 : 0xFF5EC8F0, hf <= 0.25 ? 0xFFF0D060 : 0xFF2F6FD8);
             label(c, String.valueOf(hp), xr, y, 26 * u, hf <= 0.25 ? LOW : WHITE, Paint.Align.RIGHT);
             y += rowH;
+            if (ff8()) {
+                List<String> gfs = strings(m.optJSONArray("gf"));
+                label(c, "GF", x, y, 24 * u, LABEL, Paint.Align.LEFT);
+                fitLabel(c, gfs.isEmpty() ? "-" : android.text.TextUtils.join(", ", gfs), bx, y, 26 * u, xr - bx, gfs.isEmpty() ? DIM : WHITE, Paint.Align.LEFT);
+                y += rowH;
+                JSONArray jx = m.optJSONArray("jx");
+                int atb8 = m.optInt("atb", -1);
+                if (battle && atb8 >= 0 && y < cb - 8 * u) {
+                    label(c, "ATB", x, y, 24 * u, LABEL, Paint.Align.LEFT);
+                    bar(c, bx, y - 14 * u, bw, 12 * u, atb8 / 65535.0, 0xFFF0E070, 0xFFC09020);
+                    if (atb8 >= 65000) label(c, "READY", xr, y, 24 * u, GOLD, Paint.Align.RIGHT);
+                } else if (y < cb - 8 * u) {
+                    label(c, "J", x, y, 24 * u, LABEL, Paint.Align.LEFT);
+                    int nj = jx == null ? 0 : jx.length();
+                    fitLabel(c, nj == 0 ? "No junctions" : nj + " junction" + (nj == 1 ? "" : "s"), bx, y, 24 * u, xr - bx, nj == 0 ? DIM : LIGHT, Paint.Align.LEFT);
+                }
+                continue;
+            }
             int atb = m.optInt("atb", -1);
             if (battle && atb >= 0) {
                 boolean ready = atb >= 65000;
@@ -691,6 +732,89 @@ public class CompanionView extends View {
     }
 
     /** Items (with counts) or key items, in two columns. */
+    /** FF8: a member's name as a section title in the panels below. */
+    private float memberTitle(Canvas c, RectF in, float y, float u, String name) {
+        label(c, name, in.left, y + 40 * u, 34 * u, GOLD, Paint.Align.LEFT);
+        divider(c, in, y + 54 * u, u);
+        return y + 60 * u;
+    }
+
+    /** FF8: each party member's junctioned GFs and the magic on each stat. */
+    private float drawJunction(Canvas c, RectF in, float y, float u) {
+        JSONArray party = state.optJSONArray("party");
+        for (int i = 0; party != null && i < party.length(); i++) {
+            JSONObject m = party.optJSONObject(i);
+            if (m == null) continue;
+            y = memberTitle(c, in, y, u, m.optString("name"));
+            y = chipRow(c, in, y, u, "GF", strings(m.optJSONArray("gf")), 0xFF3A2A5A, 0xFFD8C8FF, true);
+            JSONArray jx = m.optJSONArray("jx");
+            List<String> js = new ArrayList<>();
+            for (int k = 0; jx != null && k < jx.length(); k++) {
+                JSONObject o = jx.optJSONObject(k);
+                if (o != null) js.add(o.optString("s") + " " + o.optString("n"));
+            }
+            y = chipRow(c, in, y, u, "Junction", js, 0xFF1E3A5A, 0xFFB8D8FF, true);
+            y += 12 * u;
+        }
+        return y;
+    }
+
+    /** FF8: each party member's magic stock (up to 32 spells, 100 each). */
+    private float drawMagic(Canvas c, RectF in, float y, float u) {
+        JSONArray party = state.optJSONArray("party");
+        for (int i = 0; party != null && i < party.length(); i++) {
+            JSONObject m = party.optJSONObject(i);
+            if (m == null) continue;
+            y = memberTitle(c, in, y, u, m.optString("name"));
+            JSONArray mag = m.optJSONArray("mag");
+            if (mag == null || mag.length() == 0) {
+                label(c, "No magic", in.left, y + 40 * u, 28 * u, DIM, Paint.Align.LEFT);
+                y += 60 * u;
+            } else y = drawList(c, in, y, u, mag, true);
+            y += 8 * u;
+        }
+        return y;
+    }
+
+    /** FF8: the GFs the party has, with their HP and EXP. */
+    private float drawGfs(Canvas c, RectF in, float y, float u) {
+        JSONArray gfs = state.optJSONArray("gfs");
+        if (gfs == null || gfs.length() == 0) {
+            label(c, "No GFs yet", in.centerX(), in.top + 70 * u, 32 * u, DIM, Paint.Align.CENTER);
+            return y + 100 * u;
+        }
+        float rowH = 58 * u;
+        for (int i = 0; i < gfs.length(); i++) {
+            JSONObject g = gfs.optJSONObject(i);
+            if (g == null) continue;
+            fitLabel(c, g.optString("name"), in.left, y + 40 * u, 32 * u, in.width() * 0.45f, WHITE, Paint.Align.LEFT);
+            label(c, "HP " + g.optInt("hp") + "   EXP " + grouped(g.optLong("exp")), in.right, y + 40 * u, 26 * u, LIGHT, Paint.Align.RIGHT);
+            fill.setShader(null);
+            fill.setColor(0x18FFFFFF);
+            c.drawRect(in.left, y + rowH - 2 * u, in.right, y + rowH, fill);
+            y += rowH;
+        }
+        return y + 10 * u;
+    }
+
+    /** FF8: Triple Triad: the record, then the cards held (rare ones in blue). */
+    private float drawCards(Canvas c, RectF in, float y, float u) {
+        JSONObject tt = state.optJSONObject("tt");
+        if (tt != null) {
+            String rec = "Won " + tt.optInt("wins") + " · lost " + tt.optInt("losses") + " · draws " + tt.optInt("draws");
+            label(c, tt.optInt("total") + " cards, " + tt.optInt("kinds") + " kinds, " + tt.optInt("rare") + " rare", in.left, y + 40 * u, 30 * u, GOLD, Paint.Align.LEFT);
+            label(c, rec, in.left, y + 82 * u, 26 * u, LIGHT, Paint.Align.LEFT);
+            divider(c, in, y + 98 * u, u);
+            y += 104 * u;
+        }
+        JSONArray cards = state.optJSONArray("cards");
+        if (cards == null || cards.length() == 0) {
+            label(c, "No cards yet", in.left, y + 40 * u, 28 * u, DIM, Paint.Align.LEFT);
+            return y + 60 * u;
+        }
+        return drawList(c, in, y, u, cards, true);
+    }
+
     private float drawList(Canvas c, RectF in, float y, float u, JSONArray a, boolean counts) {
         int n = a == null ? 0 : a.length();
         if (n == 0) {
@@ -752,7 +876,7 @@ public class CompanionView extends View {
             String e = vehicleEmoji(kind);
             float px = mapX(dst, v.optInt(1), cx0, cx1), py = mapY(dst, v.optInt(2), cz0, cz1);
             fill.setShader(null);
-            fill.setColor(0xB0101830);
+            fill.setColor(0xB0200C04);
             c.drawCircle(px, py, 22 * u, fill);
             emoji.setTextSize(28 * u);
             c.drawText(e, px, py + 10 * u, emoji);
@@ -786,7 +910,7 @@ public class CompanionView extends View {
             }
             RectF box = new RectF(dst.left + 10 * u, dst.bottom - 54 * u, dst.left + 10 * u + lw, dst.bottom - 10 * u);
             fill.setShader(null);
-            fill.setColor(0xB0101830);
+            fill.setColor(0xB0200C04);
             c.drawRoundRect(box, 12 * u, 12 * u, fill);
             float lx = box.left + 12 * u, ly = box.bottom - 13 * u;
             for (String s : legend) {
@@ -862,7 +986,7 @@ public class CompanionView extends View {
             float bx = stack ? in.left : in.left + i * (bw + gap), by = stack ? y + 4 * u + i * (bh + gap) : y + 4 * u;
             RectF b = new RectF(bx, by, bx + bw, by + bh);
             if (on[i]) {
-                fill.setShader(new LinearGradient(b.left, b.top, b.left, b.bottom, 0xFF22306A, 0xFF101A44, Shader.TileMode.CLAMP));
+                fill.setShader(new LinearGradient(b.left, b.top, b.left, b.bottom, HOT_TOP, HOT_BOTTOM, Shader.TileMode.CLAMP));
                 c.drawRoundRect(b, 12 * u, 12 * u, fill);
                 fill.setShader(null);
                 stroke.setColor(GOLD);
@@ -898,10 +1022,16 @@ public class CompanionView extends View {
     private void drawDeck(Canvas c, float W, float u, float pad, float deckT, float deckH, boolean battle) {
         if (!deck) return;
         float gap = 12 * u;
-        int rows = narrow() ? 2 : 1, per = (buttons.length + rows - 1) / rows;
+        // FF8 has no Battle+ (FF7's battle boosters): its box stays empty, so it takes no taps
+        List<Button> shown = new ArrayList<>();
+        for (Button b : buttons) {
+            if (ff8() && b.cmd == CMD_BPLUS) b.box.setEmpty();
+            else shown.add(b);
+        }
+        int rows = narrow() ? 2 : 1, per = (shown.size() + rows - 1) / rows;
         float bw = (W - 2 * pad - gap * (per - 1)) / per, bh = (deckH - gap * (rows - 1)) / rows;
-        for (int i = 0; i < buttons.length; i++) {
-            Button b = buttons[i];
+        for (int i = 0; i < shown.size(); i++) {
+            Button b = shown.get(i);
             float l = pad + (i % per) * (bw + gap), top = deckT + (i / per) * (bh + gap);
             b.box.set(l, top, l + bw, top + bh);
             boolean on = (b.cmd == CMD_SPEED && state.optInt("speed", 1) > 1)
@@ -944,8 +1074,8 @@ public class CompanionView extends View {
             int hp = e.optInt("hp"), mhp = Math.max(1, e.optInt("mhp"));
             float x = pad + 20 * u + (i % 2) * (colW + 40 * u), y = enT + 8 * u + (i / 2) * rowH;
             String nm = e.optString("name");
-            label(c, nm.isEmpty() ? "#" + e.optInt("slot") : nm, x, y + 28 * u, 28 * u, hp > 0 ? Color.WHITE : 0xFF8090B0, Paint.Align.LEFT);
-            label(c, hp + "/" + mhp, x + colW, y + 28 * u, 26 * u, 0xFFDCDCF0, Paint.Align.RIGHT);
+            label(c, nm.isEmpty() ? "#" + e.optInt("slot") : nm, x, y + 28 * u, 28 * u, hp > 0 ? Color.WHITE : DIM, Paint.Align.LEFT);
+            label(c, hp + "/" + mhp, x + colW, y + 28 * u, 26 * u, LIGHT, Paint.Align.RIGHT);
             bar(c, x, y + 36 * u, colW, 8 * u, (double) hp / mhp, 0xFFE05050);
         }
         // the game's windows in between (native code draws them; leave the area clear)
@@ -1146,10 +1276,13 @@ public class CompanionView extends View {
 
     private void fire(Button b) {
         performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
-        if (battleNow && b.pad == PAD_Y) { nativeBattleBack(); return; }
-        if (b.pad != 0) {
+        // FF8 (FFNx's Steam layout): B (0x2000) opens the menu, Y (0x8000) is cancel, so Back
+        // in a battle is a plain cancel; FF7's Back steps its battle windows (companion_render.cpp)
+        final int pad = ff8() && b.pad == PAD_Y ? (battleNow ? 0x8000 : 0x2000) : b.pad;
+        if (!ff8() && battleNow && b.pad == PAD_Y) { nativeBattleBack(); return; }
+        if (pad != 0) {
             // held long enough for the game to see it (it reads the pad once per frame)
-            nativeTap(b.pad);
+            nativeTap(pad);
             handler.postDelayed(() -> nativeTap(0), 150);
             return;
         }

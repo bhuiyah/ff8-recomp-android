@@ -67,6 +67,16 @@ static void a_RegCloseKey(void)      { af3dn("dotemuRegCloseKey")(); }
 static void a_RegFlushKey(void)      { af3dn("dotemuRegFlushKey")(); }
 static void a_RegSetValueExA(void)   { af3dn("dotemuRegSetValueExA")(); }
 static void a_RegQueryValueExA(void) { af3dn("dotemuRegQueryValueExA")(); }
+/* GetDriveTypeA as Windows answers it: c: is a fixed disk, any other root (the DataDrive "CD:"
+ * above, d: and on) does not exist (DRIVE_NO_ROOT_DIR). The 2013 exe asks AF3DN.P instead
+ * (dotemuGetDriveTypeA: "CD:" is its CD-ROM). The 2000 program the Remastered carries asks this:
+ * FFNx's Remastered mode patches its drive search (0x401200's game paths, +0x1F0) to stop at a
+ * DRIVE_NO_ROOT_DIR drive, as "CD:" is on the PC; the CRT's "always fixed" kept it searching. */
+static void k_GetDriveTypeA(void) {
+    const char *root = ASTR(0);
+    const int c = root && root[0] && root[1] == ':' && (root[2] == 0 || root[2] == '\\' || root[2] == '/') ? root[0] | 0x20 : 0;
+    RET(c == 'c' ? 3u /* DRIVE_FIXED */ : 1u /* DRIVE_NO_ROOT_DIR */, 1);
+}
 
 /* ---- WINMM: MCI (the Steam 2013 exe plays "Eyes on Me" through it; FFNx replaces the call
  * with its own player, ff8 dotemuMciSendCommandA) ------------------------------------------ */
@@ -130,6 +140,7 @@ const win32hle_shim ff8_win32[] = {
     { "RegFlushKey", a_RegFlushKey },
     { "RegSetValueExA", a_RegSetValueExA },
     { "RegQueryValueExA", a_RegQueryValueExA },
+    { "GetDriveTypeA", k_GetDriveTypeA },
     { "mciSendCommandA", m_mciSendCommandA },
     { "mciGetErrorStringA", m_mciGetErrorStringA },
     { "LoadIconA", u_LoadIconA },

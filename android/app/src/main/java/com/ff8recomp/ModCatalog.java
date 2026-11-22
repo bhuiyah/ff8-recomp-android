@@ -34,8 +34,9 @@ import org.w3c.dom.NodeList;
 final class ModCatalog {
     private static final String TAG = "FF7Recomp";
     static final String[][] DEFAULTS = {
-        { "Qhimm Catalog", "iros://Url/https$github.com/tsunamods-codes/7th-Heaven-Catalogs/releases/download/canary/qhimm.xml" },
-        { "Sega Catalog", "iros://Url/https$github.com/tsunamods-codes/7th-Heaven-Catalogs/releases/download/canary/sega.xml" },
+        // Junction VIII's own subscription (tsunamods-codes/Junction-VIII AppCore/Settings.cs): the
+        // 7th Heaven catalog format, iroj:// links (ModDownloader.norm)
+        { "Tsunamods Catalog", "iroj://Url/https$github.com/tsunamods-codes/Junction-VIII-Catalogs/releases/download/canary/tsunamods.xml" },
     };
     /** 7th Heaven's categories, in its load order (AppCore/ModLoadOrder.cs). */
     static final String[] CATEGORIES = {
@@ -98,6 +99,11 @@ final class ModCatalog {
                     s.lastCheck = o.optLong("lastCheck");
                     s.error = o.optString("error", null);
                     s.count = o.optInt("count");
+                    // 7th Heaven's catalogs are FF7's mods (FF7Recomp's defaults, kept by early builds)
+                    if (s.url.contains("/7th-Heaven-Catalogs/")) {
+                        new File(dir, cacheName(s)).delete();
+                        continue;
+                    }
                     subs.add(s);
                 }
             }
@@ -131,7 +137,7 @@ final class ModCatalog {
     /** A catalog link someone pasted (iros:// or https). */
     String addSubscription(String name, String link) {
         String url = ModDownloader.resolve(link);
-        if (url == null) return "not a catalog link (iros://Url/... or https://...)";
+        if (url == null) return "not a catalog link (iroj://Url/..., iros://Url/... or https://...)";
         for (Subscription s : subs) if (url.equals(ModDownloader.resolve(s.url))) return "already subscribed: " + s.name;
         Subscription s = new Subscription();
         s.name = name == null || name.trim().isEmpty() ? hostOf(url) : name.trim();

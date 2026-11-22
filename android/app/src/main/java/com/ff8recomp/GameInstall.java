@@ -38,8 +38,16 @@ final class GameInstall {
     }
 
     boolean hasGame() {
-        return new File(game, "ff8_en.exe").isFile() && new File(game, "Data/lang-en").isDirectory() && !steamDownloading().exists();
+        return new File(game, "ff8_en.exe").isFile() && (remastered() ? new File(game, "main.zzz").isFile() : new File(game, "Data/lang-en").isDirectory())
+                && !steamDownloading().exists();
     }
+
+    /** The Remastered edition: FFNx runs the game with main.zzz / other.zzz when FFVIII.exe is
+     *  beside them (an empty marker here; FFNx only looks for it). */
+    boolean remastered() { return new File(game, REMASTER_MARKER).isFile(); }
+
+    static final String REMASTER_MARKER = "FFVIII.exe";
+    static final String[] REMASTER_FILES = { "main.zzz", "other.zzz" };
 
     /** Present while a download from Steam is unfinished (SteamFiles): the game is not complete. */
     File steamDownloading() { return new File(game, ".steam-download"); }
@@ -56,6 +64,10 @@ final class GameInstall {
      *  case, as the game does), or an empty list. */
     List<String> missingFiles() {
         List<String> out = new ArrayList<>();
+        if (remastered()) {
+            for (String f : REMASTER_FILES) { File x = new File(game, f); if (!x.isFile() || x.length() == 0) out.add(f); }
+            return out;
+        }
         for (String rel : REQUIRED) {
             File f = new File(game, "Data");
             for (String part : rel.split("/")) {
@@ -124,13 +136,14 @@ final class GameInstall {
     }
 
     /** What to pick, said when the exe found is not the one the game is built from. */
-    static final String WHICH_FOLDER = "FF8Recomp needs FINAL FANTASY VIII as sold on Steam (the 2013 release, English), "
-            + "unpatched: pick the game's main folder, \"FINAL FANTASY VIII\" in Steam's steamapps/common (the one that "
-            + "holds FF8_EN.exe and Data). The Remastered edition (\"FINAL FANTASY VIII - REMASTERED\") is not supported yet";
+    static final String WHICH_FOLDER = "FF8Recomp needs FINAL FANTASY VIII from Steam, English, unpatched: pick the "
+            + "game's main folder in Steam's steamapps/common: \"FINAL FANTASY VIII\" (the 2013 release, with FF8_EN.exe "
+            + "and Data) or \"FINAL FANTASY VIII Remastered\" (with FFVIII_EN.exe.dat, main.zzz and other.zzz)";
 
     /** The Remastered's folder holds this instead of FF8_EN.exe. */
-    static final String FROM_REMASTERED = "this is FINAL FANTASY VIII - REMASTERED. FF8Recomp runs the 2013 release for "
-            + "now (\"FINAL FANTASY VIII\" on Steam, the one with FF8_EN.exe); the Remastered will follow";
+    static final String FROM_REMASTERED = "this looks like FINAL FANTASY VIII - REMASTERED, but FFVIII_EN.exe.dat, main.zzz "
+            + "or other.zzz is missing from it. Pick the game's main folder (\"FINAL FANTASY VIII Remastered\"), fully "
+            + "installed";
 
     /**
      * The exe as Steam or the player's copy has it, checked and unwrapped into game/ff8_en.exe.
@@ -177,7 +190,8 @@ final class GameInstall {
         p.update("Looking for the game files");
         scan(tree, root, "", 0, exes, exeWhere, datas);
         if (exes.isEmpty()) {
-            if (path(tree, root, "FFVIII_EFIGS.dll") != null || path(tree, root, "FFVIII.exe") != null) return FROM_REMASTERED;
+            if (path(tree, root, "FFVIII_EFIGS.dll") != null || path(tree, root, "FFVIII.exe") != null || path(tree, root, "main.zzz") != null)
+                return importRemastered(tree, root, p);
             return "no FF8_EN.exe was found in this folder. " + WHICH_FOLDER;
         }
         if (datas.isEmpty()) return "the game's Data folder (with lang-en) was not found in this folder. " + WHICH_FOLDER;
@@ -194,11 +208,48 @@ final class GameInstall {
         }
         tmp.delete();
         if (err != null) return err;
+        new File(game, REMASTER_MARKER).delete();                    // the 2013 edition from now on
+        // the Remastered's copies (2.8 GB) a folder import made; its own folder still has them
+        for (String f : REMASTER_FILES) new File(game, f).delete();
+        new File(game, "FFVIII_EN.exe.dat").delete();
         copyTree(tree, datas.get(0).id, new File(game, "Data"), p, "Data");
         List<String> missing = missingFiles();
         if (!missing.isEmpty())
             return "the game's Data folder here is incomplete, these files are missing: " + String.join(", ", missing)
                     + ". Check that the game is fully installed (in Steam or GameNative: verify the game files), then import again";
+        return null;
+    }
+
+    /**
+     * FINAL FANTASY VIII - REMASTERED: its program (FFVIII_EN.exe.dat, rebuilt as ff8_en.exe,
+     * RemasterExe) and its two archives. Returns null on success, else what is wrong.
+     */
+    private String importRemastered(Uri tree, String root, Progress p) throws IOException {
+        Doc dat = path(tree, root, "FFVIII_EN.exe.dat");
+        Doc[] zzz = { path(tree, root, REMASTER_FILES[0]), path(tree, root, REMASTER_FILES[1]) };
+        if (dat == null || zzz[0] == null || zzz[1] == null) return FROM_REMASTERED;
+        game.mkdirs();
+        p.update("Checking FFVIII_EN.exe.dat");
+        File tmp = new File(game, "FFVIII_EN.exe.dat");
+        copyDoc(tree, dat.id, tmp);
+        byte[] pe = RemasterExe.decode(readAll(new java.io.FileInputStream(tmp)));
+        if (!GameBuild.REMASTER_SHA1.equals(sha1(pe)))
+            return "this FFVIII_EN.exe.dat (the Remastered's English program) is not the one the game is built from: SHA-1 "
+                    + sha1(pe).substring(0, 12) + "\u2026 of its program. Please report this number";
+        File out = new File(game, "ff8_en.exe"), part = new File(game, "ff8_en.exe.new");
+        try (OutputStream o = new FileOutputStream(part)) { o.write(pe); }
+        if (out.exists() && !out.delete()) throw new IOException("cannot replace " + out);
+        if (!part.renameTo(out)) throw new IOException("cannot write " + out);
+        for (int i = 0; i < zzz.length; i++) {
+            File f = new File(game, REMASTER_FILES[i]);
+            JobService.checkPause();
+            if (skipCopied && zzz[i].size > 0 && f.isFile() && f.length() == zzz[i].size) continue;
+            p.update("Copying " + REMASTER_FILES[i] + " (" + (zzz[i].size >> 20) + " MB)");
+            copyDoc(tree, zzz[i].id, f);
+        }
+        new FileOutputStream(new File(game, REMASTER_MARKER)).close();
+        List<String> missing = missingFiles();
+        if (!missing.isEmpty()) return "these files did not copy whole: " + String.join(", ", missing) + ". Import again";
         return null;
     }
 
@@ -212,10 +263,22 @@ final class GameInstall {
         String before = exe.isFile() ? GameBuild.sha1(exe) : null;
         File mark = steamDownloading();
         if (!mark.isFile()) new FileOutputStream(mark).close();
-        String err = new SteamFiles(link).downloadGame(game, p::update, cancel);
+        SteamFiles sf = new SteamFiles(link);
+        String err = sf.downloadGame(game, p::update, cancel);
         if (err != null) return err;
-        err = installExe(new File(game, SteamFiles.WRAPPED_EXE), "Steam's FF8_EN.exe");
-        if (err != null) return err;
+        if (sf.lastWasRemaster) {
+            byte[] pe = RemasterExe.decode(readAll(new java.io.FileInputStream(new File(game, "FFVIII_EN.exe.dat"))));
+            if (!GameBuild.REMASTER_SHA1.equals(sha1(pe))) return "Steam's FFVIII_EN.exe.dat is not the one the game is built from. Please report this";
+            File part = new File(game, "ff8_en.exe.new");
+            try (OutputStream o = new FileOutputStream(part)) { o.write(pe); }
+            if (exe.exists() && !exe.delete()) throw new IOException("cannot replace " + exe);
+            if (!part.renameTo(exe)) throw new IOException("cannot write " + exe);
+            new FileOutputStream(new File(game, REMASTER_MARKER)).close();
+        } else {
+            err = installExe(new File(game, SteamFiles.WRAPPED_EXE), "Steam's FF8_EN.exe");
+            if (err != null) return err;
+            new File(game, REMASTER_MARKER).delete();
+        }
         exeChanged[0] = !GameBuild.sha1(exe).equals(before);
         List<String> missing = missingFiles();
         if (!missing.isEmpty()) return "these files did not come with the download: " + String.join(", ", missing) + ". Please report this";
@@ -448,6 +511,14 @@ final class GameInstall {
             java.util.regex.Matcher sm = java.util.regex.Pattern.compile("(?m)^internal_resolution_scale\\s*=\\s*(\\d+)").matcher(toml);
             int cur = sm.find() ? Integer.parseInt(sm.group(1)) : 0;
             if (cur == 0 || cur > scaleCap) toml = set(toml, "internal_resolution_scale", Integer.toString(scaleCap));
+        }
+        // Testing: files/ffnx_debug.toml (key = value lines, e.g. trace_files = true) over all of the above
+        File debug = new File(files, "ffnx_debug.toml");
+        if (debug.isFile()) {
+            for (String line : new String(readAll(new java.io.FileInputStream(debug)), StandardCharsets.UTF_8).split("\n")) {
+                int eq = line.indexOf('=');
+                if (eq > 0 && !line.trim().startsWith("#")) toml = set(toml, line.substring(0, eq).trim(), line.substring(eq + 1).trim());
+            }
         }
         File out = new File(game, "FFNx.toml");
         try (OutputStream o = new FileOutputStream(out)) { o.write(toml.getBytes(StandardCharsets.UTF_8)); }

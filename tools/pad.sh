@@ -2,7 +2,8 @@
 # Press pad buttons on the running game (test API) and take a screenshot.
 # usage: bash tools/pad.sh "<bits>[:ms] <bits>[:ms] ..." [gap seconds] [shot name]
 #   bits: XInput (up 1, down 2, left 4, right 8, start 16, select 32, L1 256, R1 512,
-#         B 4096 = confirm in FF8, A 8192 = cancel, X 16384, Y 32768); "w5" waits 5 s
+#         X 16384, Y 32768); "w5" waits 5 s. FF8 (FFNx, Steam layout): 4096 confirm, 8192 menu,
+#         32768 cancel
 source "$(dirname "${BASH_SOURCE[0]}")/env.sh"; export MSYS_NO_PATHCONV=1
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GAP="${2:-0.8}"

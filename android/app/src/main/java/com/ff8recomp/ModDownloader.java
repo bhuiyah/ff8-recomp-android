@@ -50,9 +50,16 @@ final class ModDownloader {
     }
 
     /** iros:// links to fetchable URLs (null: needs a browser). */
-    static String resolve(String link) {
+    /** Junction VIII's links (iroj://) are 7th Heaven's (iros://) under another name. */
+    static String norm(String link) {
         if (link == null) return null;
         String l = link.trim();
+        return l.regionMatches(true, 0, "iroj://", 0, 7) ? "iros://" + l.substring(7) : l;
+    }
+
+    static String resolve(String link) {
+        if (link == null) return null;
+        String l = norm(link);
         String lower = l.toLowerCase(Locale.ROOT);
         if (lower.startsWith("http://") || lower.startsWith("https://")) return l.replace(" ", "%20");
         if (lower.startsWith("iros://url/")) {
@@ -78,7 +85,7 @@ final class ModDownloader {
     /** The web page for a link that needs a browser (ExternalUrl), or null. */
     static String browserUrl(String link) {
         if (link == null) return null;
-        String l = link.trim();
+        String l = norm(link);
         if (l.toLowerCase(Locale.ROOT).startsWith("iros://externalurl/")) {
             String rest = l.substring("iros://externalurl/".length());
             String rl = rest.toLowerCase(Locale.ROOT);
@@ -329,6 +336,7 @@ final class ModDownloader {
         }
         String result;
         File iro = findFirst(tmp, ".iro");
+        if (iro == null) iro = findFirst(tmp, ".iroj");             // Junction VIII's name for the same archive
         if (iro != null) {
             result = placeIro(iro, base);
         } else {
@@ -462,7 +470,7 @@ final class ModDownloader {
     }
 
     private static String host(String link) {
-        String l = link.toLowerCase(Locale.ROOT);
+        String l = norm(link).toLowerCase(Locale.ROOT);
         if (l.contains("mega")) return "Mega";
         if (l.startsWith("iros://")) return l.substring(7, Math.max(7, l.indexOf('/', 7)));
         return "web page";

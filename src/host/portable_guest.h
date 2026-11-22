@@ -46,8 +46,11 @@ static inline void ff7_guest_cpuid(uint32_t leaf) {
  * [esp] = return address, arguments above it) and the lifted body is skipped. */
 extern uint32_t ff7_override_bits[];
 void ff7_run_override(uint32_t va);
-#define FF7_TEXT_LO 0x00401000u
-#define FF7_TEXT_HI 0x007B6000u
+/* the game's .text (game_image.h): FF8's runs to 0xB69000, where its CRT is (_filelength
+ * at 0xB67C00, hooked for the Remastered); FF7's stopped at 0x7B6000 */
+#include "game_image.h"
+#define FF7_TEXT_LO GAME_TEXT_LO
+#define FF7_TEXT_HI GAME_TEXT_HI
 #define FF7_OVERRIDDEN(va) \
     ((uint32_t)((va) - FF7_TEXT_LO) < (FF7_TEXT_HI - FF7_TEXT_LO) && \
      (ff7_override_bits[((va) - FF7_TEXT_LO) >> 5] >> (((va) - FF7_TEXT_LO) & 31u) & 1u))

@@ -2,13 +2,14 @@
 
 # FF8Recomp
 
-FINAL FANTASY VIII (PC, the 2013 Steam release) statically recompiled to native ARM64 Android,
+FINAL FANTASY VIII (PC: the 2013 Steam release or the Remastered) statically recompiled to native ARM64 Android,
 rendered by [FFNx](https://github.com/julianxhokaxhiu/FFNx) on Vulkan (or OpenGL ES). Built for
 the AYN Thor, and meant to run on other Android handhelds and phones. A sibling of
 [FF7Recomp](https://github.com/bhuiyah/ff7-recomp-android) and FF9Recomp.
 
 > **This repository and the APK contain no game code or data.** You need your own copy of FINAL
-> FANTASY VIII from Steam. The app recompiles **your** `FF8_EN.exe` on your device, once; nothing
+> FANTASY VIII from Steam (either edition). The app recompiles **your** copy of the game's program
+> on your device, once; nothing
 > derived from the game is ever published here.
 > Not affiliated with or endorsed by Square Enix. FINAL FANTASY is a trademark of Square Enix.
 
@@ -45,6 +46,12 @@ and I would rather you know before you install it.
 - Movies (FFmpeg), 16:9 widescreen, controller support, keyboard support, on-screen touch
   controls for devices without a controller.
 - Save states (Select+L1 saves, Select+R1 loads), on top of the game's own saves.
+- Mods: Junction VIII's catalogs (the Tsunamods catalog is subscribed to by default) and
+  `.iro`/`.iroj` files, installed and switched on in the launcher. Mods that patch the game's
+  code (`.hext`) work; mods that carry Windows DLLs are skipped.
+- Dual-screen devices (the Thor's lower screen): the party's HP, junctions, magic, GFs, items
+  and Triple Triad cards, enemy HP in battles, and buttons for 2x speed, random battles off,
+  save states and the menu.
 - A launcher: import or download your game files, build the game for your device, settings,
   save states, problem reports.
 
@@ -57,14 +64,23 @@ and I would rather you know before you install it.
      (you never type your Steam password into FF8Recomp); the launcher downloads the game files
      your account owns (about 1.6 GB) straight from Steam and checks each one.
    - or **Find my FF8 folder…**: pick the game's install folder if you already have it on the
-     device (`steamapps/common/FINAL FANTASY VIII`, the one with `FF8_EN.exe` and `Data`).
+     device: `steamapps/common/FINAL FANTASY VIII` (the 2013 release: `FF8_EN.exe` and `Data`) or
+     `steamapps/common/FINAL FANTASY VIII Remastered` (`FFVIII_EN.exe.dat`, `main.zzz`,
+     `other.zzz`).
 3. The launcher builds the game for your device: it translates your `FF8_EN.exe` to C, compiles
    it with the clang it carries and links it with the engine (FFNx, the renderer, the runtime).
    This happens once and carries on in the background (a notification shows the progress).
 4. Press **Play**.
 
-FINAL FANTASY VIII as Steam installs it (the 2013 release, English, unpatched) has everything
-FF8Recomp uses. Its SteamStub DRM wrapper is removed on the device when the files are imported.
+FINAL FANTASY VIII as Steam installs it (English, unpatched) has everything FF8Recomp uses:
+- **The 2013 release**: its SteamStub DRM wrapper is removed on the device when the files are
+  imported.
+- **The Remastered**: it carries the original PC program inside `FFVIII_EN.exe.dat`; the launcher
+  takes it out and runs it the way FFNx runs the Remastered on the PC, with the Remastered's own
+  data (HD textures, music, movies) read from `main.zzz` and `other.zzz`. Dotemu's engine
+  (`FFVIII_EFIGS.dll`) is not used.
+
+Steam downloads take the 2013 release when your account has it, otherwise the Remastered.
 Patched game files are not supported.
 
 **Your PC saves:** copy `slot1_save01.ff8`… from `Documents\Square Enix\FINAL FANTASY VIII
@@ -117,10 +133,10 @@ the launcher collects the logs (`ff7.log`, `build.log`, `game/FFNx.log` under
 
 ## Known limitations
 
-- Only the 2013 Steam release of FINAL FANTASY VIII (`FF8_EN.exe`, English) is supported. The
-  Remastered edition is planned (it runs the same game code inside its own engine) but not done.
-- Not yet for FF8: mods and mod catalogs (Junction VIII), Steam achievements and cloud saves,
-  importing PlayStation saves, the second-screen panels on dual-screen devices, game boosters.
+- English only, either edition. The Remastered runs through FFNx's Remastered mode, so the
+  Remastered's own additions to the game (its booster menu, its new options) are not there.
+- Not yet for FF8: Steam achievements and cloud saves, importing PlayStation saves. The
+  second-screen panels have no battle data (enemy HP) yet.
 - The music player covers what FF8's segments use (sequence, tempo and band tracks, DLS level 1
   instruments); DirectMusic's reverb and chorus are not reproduced.
 - Movies decode on the CPU.
