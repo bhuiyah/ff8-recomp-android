@@ -13,6 +13,7 @@
 #include "ff8/engine.h"
 #include "gamehacks.h"
 #include "ff8/remaster.h"
+#include "cfg.h"
 #include <vector>
 #include <cctype>
 
@@ -100,9 +101,8 @@ battle_slot slot_at(unsigned i) {
 }
 
 // ---- place names: the game's menu/areames.dc1 (what its save list shows), by the savemap's
-// location id. A u16 count, u16 offsets, FF8 text; 0x0E nn puts in a region name: 0x20-0x27
-// as Deling (myst6re) names them, 0x2D and 0x3E as the save list shows them ("Deling City- Hotel",
-// "B-Garden- Hall"). The others are left out, with the "- " that followed them.
+// location id: a u16 count, u16 offsets, FF8 text. 0x0E nn in it is a name from main's
+// namedic.bin (the same layout, nn - 0x20: Galbadia, Esthar, ... Lunar Base, Ultimecia Castle).
 std::vector<uint8_t> lzss(const std::vector<uint8_t> &src, size_t out_len) {
     std::vector<uint8_t> out; out.reserve(out_len);
     uint8_t win[4096] = {}; unsigned wp = 0xFEE; size_t i = 0;
@@ -123,11 +123,13 @@ std::vector<uint8_t> lzss(const std::vector<uint8_t> &src, size_t out_len) {
     return out;
 }
 
-// The whole of a file: the 2013 release's Data/lang-en, or the Remastered's main.zzz.
-bool read_menu_file(const char *name, std::vector<uint8_t> &out) {
+// The whole of a file of the game's language folder: the 2013 release's Data/lang-en, or the
+// Remastered's main.zzz in FFNx's game_language.
+bool read_lang_file(const char *name, std::vector<uint8_t> &out) {
     out.clear();
     if (ff8_remastered_edition) {
-        char zname[64]; snprintf(zname, sizeof zname, "data\\lang-en\\%s", name);
+        static const char *const lang[] = { "en", "en", "fr", "de", "es", "it" };   // FFNx game_language
+        char zname[64]; snprintf(zname, sizeof zname, "data\\lang-%s\\%s", lang[game_language >= 1 && game_language <= 5 ? game_language : 1], name);
         Zzz::File *f = g_FF8ZzzArchiveMain.openFile(zname);
         if (!f) return false;
         out.resize(f->size());
@@ -144,51 +146,69 @@ bool read_menu_file(const char *name, std::vector<uint8_t> &out) {
     return !out.empty();
 }
 
-const std::vector<std::string> &area_names() {
-    static std::vector<std::string> names;
-    static bool tried = false;
-    if (tried) return names;
-    tried = true;
-    std::vector<uint8_t> fl, fi, fs;
-    if (!read_menu_file("menu.fl", fl) || !read_menu_file("menu.fi", fi) || !read_menu_file("menu.fs", fs)) return names;
-    std::string list(fl.begin(), fl.end());
+// A file out of one of the game's archives (archive.fl names, .fi {size, offset, compression}, .fs),
+// found by the end of its path ("\menu\areames.dc1").
+std::vector<uint8_t> archive_file(const char *archive, const char *suffix) {
+    std::vector<uint8_t> fl, fi, fs, out;
+    const std::string a(archive);
+    if (!read_lang_file((a + ".fl").c_str(), fl) || !read_lang_file((a + ".fi").c_str(), fi) || !read_lang_file((a + ".fs").c_str(), fs))
+        return out;
+    const std::string list(fl.begin(), fl.end()), want(suffix);
     size_t line = 0, at = 0;
-    std::vector<uint8_t> dc;
     while (at < list.size()) {
         size_t e = list.find('\n', at); if (e == std::string::npos) e = list.size();
         std::string l = list.substr(at, e - at);
         while (!l.empty() && (l.back() == '\r' || l.back() == ' ')) l.pop_back();
         for (char &c : l) c = (char)std::tolower((unsigned char)c);
-        if (l.size() >= 17 && l.compare(l.size() - 17, 17, "\\menu\\areames.dc1") == 0 && 12 * line + 12 <= fi.size()) {
+        if (l.size() >= want.size() && l.compare(l.size() - want.size(), want.size(), want) == 0 && 12 * line + 12 <= fi.size()) {
             uint32_t size, off, comp;
             memcpy(&size, &fi[12 * line], 4); memcpy(&off, &fi[12 * line + 4], 4); memcpy(&comp, &fi[12 * line + 8], 4);
-            if (comp == 0 && (size_t)off + size <= fs.size()) dc.assign(fs.begin() + off, fs.begin() + off + size);
+            if (comp == 0 && (size_t)off + size <= fs.size()) out.assign(fs.begin() + off, fs.begin() + off + size);
             else if (comp == 1 && (size_t)off + 4 <= fs.size()) {
                 uint32_t clen; memcpy(&clen, &fs[off], 4);
-                if ((size_t)off + 4 + clen <= fs.size()) dc = lzss(std::vector<uint8_t>(fs.begin() + off + 4, fs.begin() + off + 4 + clen), size);
+                if ((size_t)off + 4 + clen <= fs.size()) out = lzss(std::vector<uint8_t>(fs.begin() + off + 4, fs.begin() + off + 4 + clen), size);
             }
             break;
         }
         at = e + 1; line++;
     }
+    return out;
+}
+
+// Entry k of a u16-count, u16-offsets string table (areames.dc1, namedic.bin), still encoded.
+std::string table_entry(const std::vector<uint8_t> &t, unsigned k) {
+    uint16_t count = 0, o = 0;
+    if (t.size() < 2) return "";
+    memcpy(&count, t.data(), 2);
+    if (k >= count || 2 + 2 * k + 2 > t.size()) return "";
+    memcpy(&o, &t[2 + 2 * k], 2);
+    std::string s;
+    for (size_t x = o; x < t.size() && t[x]; x++) s += (char)t[x];
+    return s;
+}
+
+const std::vector<std::string> &area_names() {
+    static std::vector<std::string> names;
+    static bool tried = false;
+    if (tried) return names;
+    tried = true;
+    const std::vector<uint8_t> dc = archive_file("menu", "\\menu\\areames.dc1"), dic = archive_file("main", "\\namedic.bin");
     if (dc.size() < 2) return names;
     uint16_t count; memcpy(&count, dc.data(), 2);
-    static const char *const region[] = { "Galbadia", "Esthar", "Balamb", "Dollet", "Timber", "Trabia", "Centra", "Horizon" };
-    for (unsigned k = 0; k < count && 2 + 2 * k + 2 <= dc.size(); k++) {
-        uint16_t o; memcpy(&o, &dc[2 + 2 * k], 2);
+    for (unsigned k = 0; k < count; k++) {
+        const std::string raw = table_entry(dc, k);
         std::string enc;
-        bool dropped = false;
-        for (size_t x = o; x < dc.size() && dc[x]; x++) {
-            if (dc[x] == 0x0E && x + 1 < dc.size()) {
-                const unsigned c = dc[++x];
-                const char *n = c >= 0x20 && c <= 0x27 ? region[c - 0x20] : c == 0x2D ? "Deling City" : c == 0x3E ? "Garden" : nullptr;
-                if (n) enc += ff8_encode_text(n); else dropped = true;
+        for (size_t x = 0; x < raw.size(); x++) {
+            if (raw[x] == 0x0E && x + 1 < raw.size()) {   // a name from namedic.bin
+                const unsigned c = (uint8_t)raw[++x];
+                if (c >= 0x20) enc += table_entry(dic, c - 0x20);
                 continue;
             }
-            enc += (char)dc[x];
+            enc += raw[x];
         }
         std::string t = ff8_decode_text(enc.c_str());
-        if (dropped) { size_t p = t.find_first_not_of("- "); t = p == std::string::npos ? "" : t.substr(p); }
+        size_t p = t.find_first_not_of("- ");   // a name namedic.bin lacked leaves "- Hall"
+        t = p == std::string::npos ? "" : t.substr(p);
         for (char &c : t) if (c == '"' || c == '\\') c = ' ';
         names.push_back(t);
     }

@@ -218,3 +218,19 @@ repository.
 - Not a bug: Down in the Continue block list wraps inside its page of three (Left/Right turn
   pages); three presses come back to the same block.
 - Remastered: HD portraits from main.zzz, the opening movie (New Game), a GF summon in battle.
+- Steam, both editions on the account: the launcher asks which to play (a first download),
+  Game files can switch to the other edition from Steam, Repair keeps the installed one. The
+  account check found both (39150, 1026680). SteamLink.open() threw for an account without the
+  2013 release (ownedApp); it takes the Remastered now. 2013 -> Remastered from Steam: 3 files,
+  2.8 GB (depot 1152240 AccessDenied, not one of them).
+- Languages: the Remastered's main.zzz has data/lang-{en,fr,de,es,it,jp}; FFNx's Remastered
+  mode runs the English program in any of them (game_language). The launcher offers English,
+  French, German, Spanish, Italian with the Remastered (not Japanese: its own program and
+  fonts); the 2013 release stays English (one exe per language).
+- Place-name prefixes: text code 0x0E nn is entry nn - 0x20 of main's namedic.bin (32 names:
+  Galbadia ... Fishermans Horizon, East Academy, Desert Prison, Trabia Garden, Lunar Base,
+  Shumi Village, Deling City, Balamb Garden, ..., Ultimecia Castle, Garden, Deling), read from
+  the player's files, in the game's language.
+- Steam account, read only (as asked): the 2013 cloud has no FF8 files for this account; the
+  stats read at sign-in works (schema 28973 bytes, 0 stats). Cloud saves and achievements stay
+  off in 0.1.

@@ -1497,7 +1497,8 @@ public class LauncherActivity extends Activity {
             col.addView(space(10));
         }
         col.addView(heading("Language"));
-        col.addView(text("The game's text and menus. FF8Recomp runs the English release (FF8_EN.exe) for now.", 14, DIM));
+        col.addView(text("The game's text and menus. The Remastered has English, French, German, Spanish and Italian; "
+                + "the 2013 release runs in English.", 14, DIM));
         RadioGroup lg = new RadioGroup(this);
         int curLang = prefs.getInt("game_language", 1);
         for (String[] l : GameInstall.LANGUAGES) {
@@ -1505,7 +1506,7 @@ public class LauncherActivity extends Activity {
             rb.setId(View.generateViewId());
             final int v = Integer.parseInt(l[0]);
             boolean have = !install.hasGame() || install.hasLanguage(v);
-            rb.setText(have ? l[1] : l[1] + "\nImport your game files again (Game files) to add it");
+            rb.setText(have ? l[1] : l[1] + "\nWith the Remastered (Game files)");
             rb.setTextColor(TEXT);
             rb.setTextSize(16);
             rb.setOnClickListener(x -> prefs.edit().putInt("game_language", v).apply());

@@ -80,7 +80,8 @@ FINAL FANTASY VIII as Steam installs it (English, unpatched) has everything FF8R
   data (HD textures, music, movies) read from `main.zzz` and `other.zzz`. Dotemu's engine
   (`FFVIII_EFIGS.dll`) is not used.
 
-Steam downloads take the 2013 release when your account has it, otherwise the Remastered.
+Steam downloads take the edition your account has; with both, the launcher asks which one you want to
+play, and Game files can switch to the other one later (your saves stay).
 Patched game files are not supported.
 
 **Your PC saves:** copy `slot1_save01.ff8`… from `Documents\Square Enix\FINAL FANTASY VIII
@@ -133,10 +134,11 @@ the launcher collects the logs (`ff7.log`, `build.log`, `game/FFNx.log` under
 
 ## Known limitations
 
-- English only, either edition. The Remastered runs through FFNx's Remastered mode, so the
-  Remastered's own additions to the game (its booster menu, its new options) are not there.
-- Not yet for FF8: Steam achievements and cloud saves, importing PlayStation saves. The
-  second-screen panels have no battle data (enemy HP) yet.
+- Languages: the Remastered in English, French, German, Spanish or Italian (Settings); the 2013
+  release in English. Japanese is not supported yet.
+- The Remastered runs through FFNx's Remastered mode, so the Remastered's own additions to the
+  game (its booster menu, its new options) are not there.
+- Not yet for FF8: Steam achievements and cloud saves, importing PlayStation saves.
 - The music player covers what FF8's segments use (sequence, tempo and band tracks, DLS level 1
   instruments); DirectMusic's reverb and chorus are not reproduced.
 - Movies decode on the CPU.

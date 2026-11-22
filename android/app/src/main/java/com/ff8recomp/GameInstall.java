@@ -450,9 +450,14 @@ final class GameInstall {
     /** Settings > Sound and Game options (FfnxOptions): changed FFNx.toml keys, over the mods' values. */
     java.util.Map<String, String> ffnxOptions = new java.util.HashMap<>();
 
-    /** The game's languages: FFNx's game_language, the launcher's name, the Data/lang-* folder.
-     *  FF8's 2013 exes are one per language; FF8_EN.exe is English. */
-    static final String[][] LANGUAGES = { { "1", "English", "en" } };
+    /** The game's languages: FFNx's game_language, the launcher's name, the data/lang-* folder.
+     *  FF8's 2013 exes are one per language and FF8Recomp runs FF8_EN.exe: English. The
+     *  Remastered's main.zzz has every language's data, and FFNx's Remastered mode runs the
+     *  English program in any of them (ff8_language_paths); Japanese needs its own program. */
+    static final String[][] LANGUAGES = {
+        { "1", "English", "en" }, { "2", "Fran\u00e7ais", "fr" }, { "3", "Deutsch", "de" },
+        { "4", "Espa\u00f1ol", "es" }, { "5", "Italiano", "it" },
+    };
 
     /** FFNx game_language (1 English). */
     int gameLanguage = 1;
@@ -463,10 +468,12 @@ final class GameInstall {
         return "en";
     }
 
-    /** Whether the imported game files hold that language's data folder (Data/lang-xx). */
+    /** Whether this edition can run in that language: the Remastered in all of LANGUAGES (its
+     *  main.zzz has them), the 2013 release in English. */
     boolean hasLanguage(int language) {
-        for (String[] l : LANGUAGES)
-            if (Integer.parseInt(l[0]) == language) return new File(game, "Data/lang-" + l[2]).isDirectory();
+        if (language == 1) return true;
+        if (!remastered()) return false;
+        for (String[] l : LANGUAGES) if (Integer.parseInt(l[0]) == language) return true;
         return false;
     }
 
