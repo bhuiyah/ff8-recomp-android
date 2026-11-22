@@ -12,6 +12,9 @@
 #include "ff8/kernel.h"
 #include "ff8/engine.h"
 #include "gamehacks.h"
+#include "ff8/remaster.h"
+#include <vector>
+#include <cctype>
 
 extern "C" void ff7_ss_location(char *out, unsigned n, uint32_t *play_seconds);   // savestate_ffnx.cpp
 char *ff8_get_card_name(int32_t card_id);                                          // FFNx exe_data.cpp
@@ -96,6 +99,102 @@ battle_slot slot_at(unsigned i) {
     return { (const uint8_t *)ff8_externals.battle_char_struct_dword_1D27B10 + i * SLOT_SIZE };
 }
 
+// ---- place names: the game's menu/areames.dc1 (what its save list shows), by the savemap's
+// location id. A u16 count, u16 offsets, FF8 text; 0x0E nn puts in a region name: 0x20-0x27
+// as Deling (myst6re) names them, 0x2D and 0x3E as the save list shows them ("Deling City- Hotel",
+// "B-Garden- Hall"). The others are left out, with the "- " that followed them.
+std::vector<uint8_t> lzss(const std::vector<uint8_t> &src, size_t out_len) {
+    std::vector<uint8_t> out; out.reserve(out_len);
+    uint8_t win[4096] = {}; unsigned wp = 0xFEE; size_t i = 0;
+    while (i < src.size() && out.size() < out_len) {
+        const unsigned flags = src[i++];
+        for (int b = 0; b < 8 && i < src.size() && out.size() < out_len; b++) {
+            if (flags & (1u << b)) { const uint8_t c = src[i++]; out.push_back(c); win[wp] = c; wp = (wp + 1) & 0xFFF; }
+            else {
+                if (i + 1 >= src.size()) return out;
+                const unsigned off = src[i] | ((src[i + 1] & 0xF0) << 4), len = (src[i + 1] & 0x0F) + 3;
+                i += 2;
+                for (unsigned k = 0; k < len && out.size() < out_len; k++) {
+                    const uint8_t c = win[(off + k) & 0xFFF]; out.push_back(c); win[wp] = c; wp = (wp + 1) & 0xFFF;
+                }
+            }
+        }
+    }
+    return out;
+}
+
+// The whole of a file: the 2013 release's Data/lang-en, or the Remastered's main.zzz.
+bool read_menu_file(const char *name, std::vector<uint8_t> &out) {
+    out.clear();
+    if (ff8_remastered_edition) {
+        char zname[64]; snprintf(zname, sizeof zname, "data\\lang-en\\%s", name);
+        Zzz::File *f = g_FF8ZzzArchiveMain.openFile(zname);
+        if (!f) return false;
+        out.resize(f->size());
+        const bool ok = out.empty() || f->read(out.data(), (unsigned)out.size()) == (int)out.size();
+        Zzz::closeFile(f);
+        return ok;
+    }
+    char path[1024]; snprintf(path, sizeof path, "%s/Data/lang-en/%s", basedir, name);
+    std::FILE *f = (std::fopen)(path, "rb");
+    if (!f) return false;
+    std::fseek(f, 0, SEEK_END); long n = std::ftell(f); std::fseek(f, 0, SEEK_SET);
+    if (n > 0) { out.resize((size_t)n); if (std::fread(out.data(), 1, out.size(), f) != out.size()) out.clear(); }
+    std::fclose(f);
+    return !out.empty();
+}
+
+const std::vector<std::string> &area_names() {
+    static std::vector<std::string> names;
+    static bool tried = false;
+    if (tried) return names;
+    tried = true;
+    std::vector<uint8_t> fl, fi, fs;
+    if (!read_menu_file("menu.fl", fl) || !read_menu_file("menu.fi", fi) || !read_menu_file("menu.fs", fs)) return names;
+    std::string list(fl.begin(), fl.end());
+    size_t line = 0, at = 0;
+    std::vector<uint8_t> dc;
+    while (at < list.size()) {
+        size_t e = list.find('\n', at); if (e == std::string::npos) e = list.size();
+        std::string l = list.substr(at, e - at);
+        while (!l.empty() && (l.back() == '\r' || l.back() == ' ')) l.pop_back();
+        for (char &c : l) c = (char)std::tolower((unsigned char)c);
+        if (l.size() >= 17 && l.compare(l.size() - 17, 17, "\\menu\\areames.dc1") == 0 && 12 * line + 12 <= fi.size()) {
+            uint32_t size, off, comp;
+            memcpy(&size, &fi[12 * line], 4); memcpy(&off, &fi[12 * line + 4], 4); memcpy(&comp, &fi[12 * line + 8], 4);
+            if (comp == 0 && (size_t)off + size <= fs.size()) dc.assign(fs.begin() + off, fs.begin() + off + size);
+            else if (comp == 1 && (size_t)off + 4 <= fs.size()) {
+                uint32_t clen; memcpy(&clen, &fs[off], 4);
+                if ((size_t)off + 4 + clen <= fs.size()) dc = lzss(std::vector<uint8_t>(fs.begin() + off + 4, fs.begin() + off + 4 + clen), size);
+            }
+            break;
+        }
+        at = e + 1; line++;
+    }
+    if (dc.size() < 2) return names;
+    uint16_t count; memcpy(&count, dc.data(), 2);
+    static const char *const region[] = { "Galbadia", "Esthar", "Balamb", "Dollet", "Timber", "Trabia", "Centra", "Horizon" };
+    for (unsigned k = 0; k < count && 2 + 2 * k + 2 <= dc.size(); k++) {
+        uint16_t o; memcpy(&o, &dc[2 + 2 * k], 2);
+        std::string enc;
+        bool dropped = false;
+        for (size_t x = o; x < dc.size() && dc[x]; x++) {
+            if (dc[x] == 0x0E && x + 1 < dc.size()) {
+                const unsigned c = dc[++x];
+                const char *n = c >= 0x20 && c <= 0x27 ? region[c - 0x20] : c == 0x2D ? "Deling City" : c == 0x3E ? "Garden" : nullptr;
+                if (n) enc += ff8_encode_text(n); else dropped = true;
+                continue;
+            }
+            enc += (char)dc[x];
+        }
+        std::string t = ff8_decode_text(enc.c_str());
+        if (dropped) { size_t p = t.find_first_not_of("- "); t = p == std::string::npos ? "" : t.substr(p); }
+        for (char &c : t) if (c == '"' || c == '\\') c = ' ';
+        names.push_back(t);
+    }
+    return names;
+}
+
 void kv(std::string &j, const char *k, const std::string &v, bool comma = true) {
     j += '"'; j += k; j += "\":\""; j += v; j += '"'; if (comma) j += ',';
 }
@@ -116,6 +215,11 @@ std::string ff8_companion_snapshot() {
     uint32_t seconds = 0;
     ff7_ss_location(loc, sizeof loc, &seconds);
     seconds = sm->game_time;   // the live play clock (the header's played_time_secs is the last save's)
+    if (mode == MODE_FIELD || mode == MODE_WORLDMAP || mode == MODE_MENU) {   // the place, as the save list names it
+        const std::vector<std::string> &areas = area_names();
+        const unsigned id = sm->header.location_id;
+        if (id < areas.size() && !areas[id].empty()) snprintf(loc, sizeof loc, "%s", areas[id].c_str());
+    }
     for (char *p = loc; *p; p++) if (*p == '"' || *p == '\\') *p = ' ';
 
     std::string j;

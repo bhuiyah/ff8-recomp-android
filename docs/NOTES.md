@@ -208,3 +208,13 @@ repository.
   the Remastered's copies (main.zzz, other.zzz, FFVIII_EN.exe.dat; 2.8 GB).
 - Known: in the Remastered, Down does not move the cursor in the Continue block list (it does
   on the title menu, and in the 2013 edition); the game sees it (engine mapped 0x4000).
+- Steam on the Thor: QR sign-in, ownership (app 39150), Repair from Steam (every file checked),
+  and a full download (347 files, 1.66 GB in 309 s; FF8_EN.exe 03230c11..., the wrapped one).
+  The test API's REPORT/SCREEN/STEAM_DOWNLOAD/STEAM_CLOUD actions were never in the manifest.
+- Place names: menu/areames.dc1 (u16 count, u16 offsets, FF8 text) by the savemap header's
+  location_id, read from menu.fs (or the Remastered's main.zzz). Text code 0x0E nn is a region
+  name: 0x20-0x27 Galbadia, Esthar, Balamb, Dollet, Timber, Trabia, Centra, Horizon (Deling),
+  0x2D Deling City and 0x3E Garden as the save list shows them; the rest are left out.
+- Not a bug: Down in the Continue block list wraps inside its page of three (Left/Right turn
+  pages); three presses come back to the same block.
+- Remastered: HD portraits from main.zzz, the opening movie (New Game), a GF summon in battle.

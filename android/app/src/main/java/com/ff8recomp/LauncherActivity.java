@@ -1201,6 +1201,7 @@ public class LauncherActivity extends Activity {
                 }
                 break;
             case "catalog":
+                if (installedOne) { refresh(); return; }   // the Installed count beside the categories too
                 for (ModCatalog.Mod m : catalog.mods) { LinearLayout s = actionSlots.get(m.id); if (s != null) fillAction(s, m); }
                 break;
             case "mods":

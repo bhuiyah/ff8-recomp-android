@@ -82,6 +82,10 @@
                 <action android:name="com.ff8recomp.test.GET" />
                 <action android:name="com.ff8recomp.test.SET" />
                 <action android:name="com.ff8recomp.test.STOP" />
+                <action android:name="com.ff8recomp.test.REPORT" />
+                <action android:name="com.ff8recomp.test.SCREEN" />
+                <action android:name="com.ff8recomp.test.STEAM_DOWNLOAD" />
+                <action android:name="com.ff8recomp.test.STEAM_CLOUD" />
             </intent-filter>
         </receiver>
         <!-- Pixel Guide's installer answer (GuideInstaller), in the game's process -->
