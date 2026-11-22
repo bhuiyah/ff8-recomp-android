@@ -34,6 +34,9 @@ bottom screen is the companion.
 | ![The launcher's Game files page](docs/images/launcher-game-files.jpg) | ![The launcher's Settings page: frame rate and performance](docs/images/launcher-settings.jpg) |
 | **Game files**: import, rebuild, or repair from Steam | **Settings**: frame rate, performance, display and language |
 
+<p align="center"><img src="docs/images/crt-filter.jpg" alt="The CRT filter on the Balamb Garden hall: scanlines and a phosphor mask over the game"><br>
+<b>CRT filter</b> (Settings, Display): scanlines and a phosphor mask, at full size so the lines show</p>
+
 ## Made with AI
 
 **This project was built with AI, start to finish.** As with FF7Recomp, I directed an AI coding
