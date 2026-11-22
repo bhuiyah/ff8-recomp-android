@@ -87,28 +87,29 @@ final class RemasterExe {
         dos[0] = 'M'; dos[1] = 'Z';
         ByteBuffer.wrap(dos).order(ByteOrder.LITTLE_ENDIAN).putInt(0x3C, 0x40);
         int hdrEnd = 0x40 + 4 + 0x14 + 0xE0 + 0x28 * nsec;
-        int pos = align(hdrEnd, fileAlign);
-        ohb.putInt(60, pos);                                           // SizeOfHeaders
-        ByteArrayOutputStream shdrs = new ByteArrayOutputStream(), body = new ByteArrayOutputStream();
+        int start = align(hdrEnd, fileAlign), total = start;
+        ohb.putInt(60, start);                                         // SizeOfHeaders
+        for (Section s : secs) total += align(s.data.length, fileAlign);
+        // one array of the exact size, written in place: growing streams and their copies took
+        // several times the program's 37 MB, more than a launcher heap had left after a download
+        byte[] out = new byte[total];
+        System.arraycopy(dos, 0, out, 0, dos.length);
+        out[0x40] = 'P'; out[0x41] = 'E';
+        System.arraycopy(fh, 0, out, 0x44, fh.length);
+        System.arraycopy(oh, 0, out, 0x44 + fh.length, oh.length);
+        int hp = 0x44 + fh.length + oh.length, pos = start;
         for (Section s : secs) {
             byte[] h = s.hdr.clone();
             int size = align(s.data.length, fileAlign);
             ByteBuffer hb = ByteBuffer.wrap(h).order(ByteOrder.LITTLE_ENDIAN);
             hb.putInt(16, size);                                       // SizeOfRawData
             hb.putInt(20, pos);                                        // PointerToRawData
-            shdrs.write(h);
-            body.write(s.data);
-            body.write(new byte[size - s.data.length]);
+            System.arraycopy(h, 0, out, hp, h.length);
+            hp += h.length;
+            System.arraycopy(s.data, 0, out, pos, s.data.length);
+            s.data = null;                                             // let it go as we go
             pos += size;
         }
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        out.write(dos);
-        out.write(new byte[] { 'P', 'E', 0, 0 });
-        out.write(fh);
-        out.write(oh);
-        out.write(shdrs.toByteArray());
-        out.write(new byte[align(hdrEnd, fileAlign) - out.size()]);
-        out.write(body.toByteArray());
-        return out.toByteArray();
+        return out;
     }
 }

@@ -234,3 +234,7 @@ repository.
 - Steam account, read only (as asked): the 2013 cloud has no FF8 files for this account; the
   stats read at sign-in works (schema 28973 bytes, 0 stats). Cloud saves and achievements stay
   off in 0.1.
+- The Remastered from Steam, tested end to end: a 503 from a busy content server stopped it
+  (a chunk had 6 tries over ~10 s; now 10 with pauses up to 30 s, ~3 min), and after 2.8 GB
+  RemasterExe ran out of the launcher's heap (growing streams and copies, several times the
+  37 MB program): it writes one array of the exact size now, and the app has a large heap.

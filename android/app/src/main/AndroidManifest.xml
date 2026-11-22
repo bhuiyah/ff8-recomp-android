@@ -33,6 +33,7 @@
         android:hasCode="true"
         android:extractNativeLibs="true"
         android:isGame="true"
+        android:largeHeap="true"
         android:requestLegacyExternalStorage="true"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen">
         <!-- The entry point: game files, mods, settings, Play (LauncherActivity.java). -->

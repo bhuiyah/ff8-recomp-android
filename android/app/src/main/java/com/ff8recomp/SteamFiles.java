@@ -264,10 +264,13 @@ final class SteamFiles {
                 byte[] buf = new byte[Math.max(c.getUncompressedLength(), c.getCompressedLength())];
                 int n = -1;
                 Exception last = null;
-                for (int t = 0; t < 6 && n < 0; t++) {
+                // a busy server answers 503 for a while (the Remastered's 2.8 GB met one): each try
+                // takes the next server, and the pauses grow to 30 s (about 3 minutes in all)
+                for (int t = 0; t < 10 && n < 0; t++) {
+                    if (cancel.get()) return;
                     Server sv = servers.get(Math.floorMod(next.getAndIncrement(), servers.size()));
                     try { n = cdn.downloadDepotChunkFuture(depot, c, sv, buf, key).get(120, TimeUnit.SECONDS); }
-                    catch (Exception e) { last = e; Thread.sleep(500L * (t + 1)); }
+                    catch (Exception e) { last = e; Thread.sleep(Math.min(30_000L, 1000L << t)); }
                 }
                 if (n < 0) throw last;
                 raf.seek(c.getOffset());
