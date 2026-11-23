@@ -226,7 +226,9 @@ def cmd_lift(exe, catalog, outdir, split=400, names_path=None, prefix="", manife
     module = os.path.basename(exe)
     pe = pefile.PE(exe, fast_load=True)
     base = pe.OPTIONAL_HEADER.ImageBase
-    img = pe.get_memory_mapped_image()
+    import tail_reloc
+    img = tail_reloc.apply(pe.get_memory_mapped_image(), base)   # GitHub #2
+    iat.update({va + tail_reloc.DELTA: name for va, name in list(iat.items()) if va >= tail_reloc.CUT})
     cat = json.load(gzip.open(catalog, "rt") if catalog.endswith(".gz") else open(catalog))
     fds = cat["functions"]
     lifted = {fd["address"] for fd in fds}
@@ -268,6 +270,20 @@ def cmd_lift(exe, catalog, outdir, split=400, names_path=None, prefix="", manife
             if fn.startswith(prefix + "recomp_") and fn.endswith(".c"):
                 os.remove(os.path.join(outdir, fn))
 
+    # Files end where the program's own code says (about chunk_bytes of C: C_PER_CODE bytes for one
+    # of code), not where the C's length does: a function that lifts differently in an update then
+    # changes its own file only, and the rest need not be compiled again.
+    C_PER_CODE = 34
+    # With --shard those files are the unit: process I of N lifts every Nth file, so the files are
+    # the same however many processes there are.
+    file_of, k, w = [], 0, 0
+    if shard and chunk_bytes:
+        for fd in fds:
+            file_of.append(k)
+            w += C_PER_CODE * sum(b[1] - b[0] for b in fd["blocks"])
+            if w >= chunk_bytes:
+                k, w = k + 1, 0
+
     # --resume (#53): after each file a shard writes "files last_function chunk_bytes shards"
     # to its progress file; a resumed lift skips the functions those files hold. Only when the
     # same chunk size and shard count wrote it (the files would end elsewhere otherwise).
@@ -276,7 +292,7 @@ def cmd_lift(exe, catalog, outdir, split=400, names_path=None, prefix="", manife
     if progress and resume and os.path.isfile(progress):
         try:
             f_idx, f_last, f_cb, f_sn = (int(x) for x in open(progress).read().split())
-            last_file = os.path.join(outdir, f"{prefix}recomp_{si}{f_idx - 1:03d}.c")
+            last_file = os.path.join(outdir, f"{prefix}recomp_0{file_of[min(f_last, len(fds) - 1)]:03d}.c" if file_of else f"{prefix}recomp_{si}{f_idx - 1:03d}.c")
             if f_cb == chunk_bytes and f_sn == sn and f_idx > 0 and os.path.isfile(last_file):
                 skip_to, start_idx = f_last, f_idx
         except (OSError, ValueError):
@@ -296,7 +312,7 @@ def cmd_lift(exe, catalog, outdir, split=400, names_path=None, prefix="", manife
         nonlocal chunk, idx, lines_total, chunk_len
         if not chunk:
             return
-        name = f"{prefix}recomp_{si}{idx:03d}.c" if shard else f"{prefix}recomp_{idx:04d}.c"
+        name = f"{prefix}recomp_0{file_of[last]:03d}.c" if file_of else f"{prefix}recomp_{si}{idx:03d}.c" if shard else f"{prefix}recomp_{idx:04d}.c"
         body = "\n\n".join(chunk)
         write(name, f"/* AUTO-GENERATED from {module} by run_lift.py (pcrecomp lift32). DO NOT EDIT, DO NOT COMMIT. */\n"
               + f'#define RECOMP_GENERATED_CODE\n#include "recomp_types.h"\n#include "{prefix}recomp_funcs.h"\n#include <math.h>\n#include <string.h>\n\n'
@@ -310,10 +326,10 @@ def cmd_lift(exe, catalog, outdir, split=400, names_path=None, prefix="", manife
     for n, fd in enumerate(fds):
         a = fd["address"]
         entries.append(a)
-        if n % sn != si:
+        if (file_of[n] if file_of else n) % sn != si:
             continue
         if n <= skip_to:
-            if n + sn > skip_to:
+            if n + (1 if file_of else sn) > skip_to:
                 print(f"[*] {n + 1}/{len(fds)} lifted (resumed after {idx} files)", flush=True)
             continue
         try:
@@ -344,8 +360,8 @@ def cmd_lift(exe, catalog, outdir, split=400, names_path=None, prefix="", manife
         if names.get(a):
             code = f"/* {names[a]} */\n" + code
         chunk.append(code)
-        chunk_len += len(code)
-        if (chunk_len >= chunk_bytes) if chunk_bytes else (len(chunk) >= split):
+        chunk_len += C_PER_CODE * sum(b[1] - b[0] for b in fd["blocks"])
+        if (n + 1 == len(fds) or file_of[n + 1] != file_of[n]) if file_of else (chunk_len >= chunk_bytes) if chunk_bytes else (len(chunk) >= split):
             flush(n)
             el = time.time() - t0
             print(f"[*] {n + 1}/{len(fds)} lifted ({el:.0f}s)", flush=True)

@@ -22,7 +22,7 @@
 namespace {
 constexpr uintptr_t k_usual = 0x6B000000u;
 constexpr size_t k_size = 0x10000u;   // 64 KB
-constexpr uintptr_t k_lo = 0x01000000u;   // above the exe image
+constexpr uintptr_t k_lo = 0x03000000u;   // above the exe image
 constexpr uintptr_t k_hi = 0x7F000000u;   // below win32hle's synthetic shim addresses
 constexpr uintptr_t k_heap_lo = 0x33000000u, k_heap_hi = 0x6B000000u;   // FF7_ARENA_LO..FF7_VM_HI
 uintptr_t g_base;

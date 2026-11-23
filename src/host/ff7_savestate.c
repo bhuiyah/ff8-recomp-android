@@ -37,7 +37,7 @@
 #include "ff7_savestate.h"
 
 #define SS_MAGIC   "FF8RSS\x1a\x01"
-#define SS_VERSION 3   /* 3: records the graphics settings (R_CONFIG) */
+#define SS_VERSION 4   /* 3: records the graphics settings (R_CONFIG); 4: the moved tail (GitHub #2) */
 #define IMG_DATA_LO GAME_DATA_LO          /* .data/.bss (game_image.h) */
 #define IMG_DATA_HI GAME_DATA_HI
 #define FFNX_STATIC_LO 0x6B000000u       /* src/ffnx_port/ffnx_guest_static.cpp: its usual place */
@@ -203,7 +203,7 @@ static int capture(buf_t *b) {
     ss_config(cfg, sizeof cfg);
     if (rec(b, R_CONFIG, cfg, (uint32_t)strlen(cfg))) return -1;
 
-    if (rec_mem(b, IMG_DATA_LO, IMG_DATA_HI) || rec_mem(b, ffnx_guest_static_base(), ffnx_guest_static_base() + FFNX_STATIC_SIZE)) return -1;
+    if (rec_mem(b, IMG_DATA_LO, IMG_DATA_HI) || rec_mem(b, GAME_TAIL_LO, GAME_TAIL_DATA_HI) || rec_mem(b, ffnx_guest_static_base(), ffnx_guest_static_base() + FFNX_STATIC_SIZE)) return -1;
 
     /* the heap: everything between the free ranges (under the allocator lock) */
     uint32_t lo, hi;

@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include "recomp_types.h"
 #include "win32hle.h"
+#include "game_image.h"
 
 extern const char *g_cur_import;   /* host_lite.c: the shim being run, for diagnostics */
 void ff7_trace_dump(int last);     /* ff7_trace.c */

@@ -72,17 +72,24 @@ constexpr uint32_t IMAGE_LO = GAME_IMAGE_LO, IMAGE_HI = GAME_IMAGE_HI;   // game
 constexpr uint32_t TEXT_LO = GAME_TEXT_LO, TEXT_HI = GAME_TEXT_HI;
 constexpr uint32_t STATIC_LO = 0x6B000000u, STATIC_HI = 0x6B010000u;   // FFNx's guest static block
 
+extern "C" int ff8_tail_is_site(uint32_t va);
+
+// A hext file has the program's own addresses: from GAME_TAIL_CUT up they are GAME_TAIL_DELTA
+// higher here (ff8_tail.c).
+uint32_t tail_va(uint32_t va) { return va >= GAME_TAIL_CUT && va < GAME_DATA_OLD_HI ? va + GAME_TAIL_DELTA : va; }
+
 bool readable(uint32_t va, uint32_t n) {
     uint64_t e = (uint64_t)va + n;
     uint32_t lo, hi;
     guest_alloc_arena(&lo, &hi);   // the heap and VirtualAlloc ranges (ff7_boot.c may move them)
     uint32_t vlo, vhi;
     ff7_virtual_range(&vlo, &vhi);
-    return (va >= IMAGE_LO && e <= IMAGE_HI) || (va >= lo && e <= hi) || (va >= vlo && e <= vhi) ||
+    return (va >= IMAGE_LO && e <= IMAGE_HI) || (va >= GAME_TAIL_LO && e <= GAME_TAIL_HI) || (va >= lo && e <= hi) || (va >= vlo && e <= vhi) ||
            (va >= STATIC_LO && e <= STATIC_HI);
 }
 
 uint32_t read32(uint32_t va) {
+    va = tail_va(va);
     if (!readable(va, 4)) throw std::runtime_error("pointer read outside game memory");
     uint32_t v;
     std::memcpy(&v, (const void *)(uintptr_t)va, 4);
@@ -174,7 +181,27 @@ void apply_one(const std::string &mod, const std::string &file, const std::strin
         ~Done() { record(mod, file, state, before, c); }
     } done{ mod, file, before, c };
     ff7mods::HextResult r = ff7mods::hext_run(text, honour_delay, read32,
-        [&](uint32_t va, const uint8_t *b, uint32_t n) {
+        [&](uint32_t va, const uint8_t *orig, uint32_t n) {
+            va = tail_va(va);
+            std::vector<uint8_t> moved(orig, orig + n);
+            for (uint32_t i = 0; i + 4 <= n && va < IMAGE_HI; i++) {   // an address written into the program
+                uint32_t v;
+                std::memcpy(&v, &moved[i], 4);
+                if (tail_va(v) == v) continue;
+                if (!ff8_tail_is_site(va + i)) {
+                    if (va + i >= TEXT_HI) continue;   // data that is not an address there
+                    // rewritten code: an instruction's absolute operand (mov [moffs], moffs forms, or
+                    // ModRM mod 00 r/m 101, or push/mov reg imm32)
+                    const uint8_t p = i ? moved[i - 1] : *(const uint8_t *)(uintptr_t)(va + i - 1);
+                    const bool op = (p >= 0xA0 && p <= 0xA3) || (p & 0xC7) == 0x05 || (p & 0xC0) == 0x80 ||
+                                    p == 0x68 || (p >= 0xB8 && p <= 0xBF);
+                    if (!op || (v & 0xFFFF) == 0) continue;
+                }
+                v = tail_va(v);
+                std::memcpy(&moved[i], &v, 4);
+                i += 3;
+            }
+            const uint8_t *b = moved.data();
             if (!readable(va, n)) throw std::runtime_error("write outside game memory");
             bool code = va < TEXT_HI && va + n > TEXT_LO;
             std::vector<uint8_t> before((const uint8_t *)(uintptr_t)va, (const uint8_t *)(uintptr_t)va + n);

@@ -39,7 +39,7 @@ static inline void ff7_guest_cpuid(uint32_t leaf) {
 #define CPUID(a, b, c, d) do { RECOMP_REGS_OUT(); ff7_guest_cpuid((a)); RECOMP_REGS_IN(); } while (0)
 #endif
 
-/* ---- entry overrides (src/host/ff7_overrides.c) ---------------------------------------
+/* ---- entry overrides (src/host/ff8_overrides.c) ---------------------------------------
  * FFNx's replace_function(va, fn) is installed here, at run time: every lifted function
  * entry -- reached by a direct call or through the dispatch table alike -- tests one bit
  * for its VA; if set, the replacement runs on the current guest state (the shim ABI:
@@ -68,7 +68,7 @@ void ff7_run_override(uint32_t va);
     } \
 } while (0)
 
-/* ---- call-site hooks and patched-code variants (src/host/ff7_overrides.c) --------------
+/* ---- call-site hooks and patched-code variants (src/host/ff8_overrides.c) --------------
  * Every direct call is RECOMP_CALL_AT(site, f) / RECOMP_ICALL_AT(site, va): one bit test
  * for FFNx's replace_call / replace_call_function at that site. */
 extern uint32_t ff7_callsite_bits[];

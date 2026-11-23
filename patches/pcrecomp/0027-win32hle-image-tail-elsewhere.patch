@@ -1,0 +1,89 @@
+--- a/runtime/win32hle/pe_loader.c
++++ b/runtime/win32hle/pe_loader.c
+@@ -49,6 +49,14 @@
+     }
+ }
+ 
++/* A host may keep the image's upper part elsewhere in memory (and fix the addresses of it up):
++ * by default the whole image is mapped in place. */
++__attribute__((weak)) uint32_t recomp_pe_low_end(uint32_t base, uint32_t span) { (void)base; (void)span; return 0; }
++__attribute__((weak)) uint32_t recomp_pe_host_va(uint32_t va) { return va; }
++__attribute__((weak)) int recomp_pe_reserve(void) { return 0; }
++__attribute__((weak)) int recomp_pe_fixup(void) { return 0; }
++#define HVA(va) ((void *)(uintptr_t)recomp_pe_host_va(va))
++
+ int recomp_pe_map(const char *path, pe_image *img) {
+     size_t flen;
+     uint8_t *file = slurp(path, &flen);
+@@ -67,7 +75,10 @@
+ 
+     /* Reserve the image's VA range, fixed. On a 32-bit host the VA is a real
+      * host address, so a 1:1 map means every MEM32(va) in lifted code lands. */
+-    void *p = mmap((void *)(uintptr_t)image_base, span, PROT_READ | PROT_WRITE,
++    if (recomp_pe_reserve() != 0) { free(file); return 1; }
++    uint32_t low_end = recomp_pe_low_end(image_base, span);
++    uint32_t low_span = low_end ? low_end - image_base : span;
++    void *p = mmap((void *)(uintptr_t)image_base, low_span, PROT_READ | PROT_WRITE,
+                    MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+     if (p == MAP_FAILED) { free(file); fprintf(stderr, "[pe] mmap @ 0x%08X failed\n", image_base); return 1; }
+     uint32_t base = (uint32_t)(uintptr_t)p;
+@@ -78,8 +89,16 @@
+     pe_section_header *sec = (pe_section_header *)((uint8_t *)&nt->OptionalHeader + nt->FileHeader.SizeOfOptionalHeader);
+     for (int i = 0; i < nt->FileHeader.NumberOfSections; i++) {
+         uint32_t copy = sec[i].SizeOfRawData < sec[i].VirtualSize ? sec[i].SizeOfRawData : sec[i].VirtualSize;
+-        if (copy && (size_t)sec[i].PointerToRawData + copy <= flen)
+-            memcpy((void *)(uintptr_t)(base + sec[i].VirtualAddress), file + sec[i].PointerToRawData, copy);
++        if (copy && (size_t)sec[i].PointerToRawData + copy <= flen) {
++            uint32_t va = base + sec[i].VirtualAddress, done = 0;
++            const uint8_t *src = file + sec[i].PointerToRawData;
++            while (done < copy) {   /* 16 bytes at a time: the section may cross into the moved part */
++                uint32_t n = 16u - ((va + done) & 15u);
++                if (n > copy - done) n = copy - done;
++                memcpy(HVA(va + done), src + done, n);
++                done += n;
++            }
++        }
+     }
+ 
+     if (base != image_base) {
+@@ -87,6 +106,8 @@
+         recomp_pe_relocate(base, r.VirtualAddress, r.Size, (int32_t)(base - image_base));
+     }
+ 
++    if (recomp_pe_fixup() != 0) { free(file); return 1; }
++
+     img->base = base;
+     img->image_base = image_base;
+     img->span = span;
+@@ -101,19 +122,23 @@
+     if (!img->import_rva) return 0;
+     uint32_t base = img->base;
+     int unresolved = 0, bound = 0;
+-    pe_import_descriptor *d = (pe_import_descriptor *)(uintptr_t)(base + img->import_rva);
++    pe_import_descriptor *d = (pe_import_descriptor *)HVA(base + img->import_rva);
+     for (; d->Name; d++) {
+-        const char *dll = (const char *)(uintptr_t)(base + d->Name);
+-        uint32_t *ilt = (uint32_t *)(uintptr_t)(base + (d->OriginalFirstThunk ? d->OriginalFirstThunk : d->FirstThunk));
+-        uint32_t *iat = (uint32_t *)(uintptr_t)(base + d->FirstThunk);
++        const char *dll = (const char *)HVA(base + d->Name);
++        uint32_t *ilt = (uint32_t *)HVA(base + (d->OriginalFirstThunk ? d->OriginalFirstThunk : d->FirstThunk));
++        uint32_t *iat = (uint32_t *)HVA(base + d->FirstThunk);
+         for (; *ilt; ilt++, iat++) {
+             uint32_t va = 0;
+             if (*ilt & PE_ORDINAL_FLAG) {
+-                /* by ordinal: win32hle keys shims by name, so leave it for the
+-                 * resolver to answer by "DLL#N" if it chooses. */
+-                va = 0;
++                /* by ordinal: win32hle keys shims by name, so the resolver is asked
++                 * for "DLL#N" (e.g. "EAX.DLL#5"); a permissive resolver gives an
++                 * unknown one a self-naming stub, as for named imports. */
++                char oname[96];
++                snprintf(oname, sizeof oname, "%s#%u", dll, (unsigned)(*ilt & 0xFFFFu));
++                va = resolve(oname);
++                if (!va) fprintf(stderr, "[pe] unresolved import %s\n", oname);
+             } else {
+-                const char *name = (const char *)(uintptr_t)(base + *ilt + 2); /* skip hint word */
++                const char *name = (const char *)HVA(base + *ilt + 2); /* skip hint word */
+                 va = resolve(name);
+                 if (!va) fprintf(stderr, "[pe] unresolved import %s!%s\n", dll, name);
+             }

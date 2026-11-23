@@ -370,4 +370,10 @@ FF8_EDITS = [
      '\t\t\treplace_function(ff8_externals.manage_time_engine_sub_569971, ff8_manage_time_engine);\n',
      '\t\t\tif (ff8_externals.manage_time_engine_sub_569971)   // FF8Recomp: none on the Remastered (ff8_data.cpp)\n'
      '\t\t\t\treplace_function(ff8_externals.manage_time_engine_sub_569971, ff8_manage_time_engine);\n'),
+    # The game's memory from 0x1F9DC40 up lives 0x69180000 higher (GitHub #2, src/host/ff8_tail.c):
+    # the addresses FFNx has in it as numbers.
+    ('ff8_opengl.cpp',
+     '\tfor (const auto &patch : patches)\n\t{\n\t\tconst bool valid =',
+     '\tfor (auto patch : patches)\n\t{\n\t\tif (patch.classic_offset >= 0x1F9DC40 && patch.classic_offset < 0x279F000) patch.classic_offset += 0x69180000;   // FF8Recomp\n\t\tconst bool valid ='),
+    ('overlay.cpp', '(void*)0x401000, 0x27A0000 - 0x401000, 0x401000);', '(void*)0x401000, 0x1F9E000 - 0x401000, 0x401000);   // FF8Recomp: the rest has moved (GitHub #2)'),
 ]

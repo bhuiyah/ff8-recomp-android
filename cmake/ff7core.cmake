@@ -85,6 +85,7 @@ add_library(ff7_core STATIC
   "${MODS}/hext.cpp"
   "${HOST}/ff7_hext.cpp"
   "${HOST}/ff7_savestate.c"
+  "${HOST}/ff8_tail.c"
   "${FF7_ROOT}/src/interp/x86_interp.c"
   "${FF7_DEPS}/lzma/LzmaDec.c"
   "${FF7_DEPS}/pugixml/src/pugixml.cpp"
