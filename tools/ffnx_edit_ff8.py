@@ -347,4 +347,27 @@ FF8_EDITS = [
      '\tif (trace_all) ffnx_trace("Zzz::File::close: %s\\n", _tocEntry.fileName);\n\n\t_close(_fd);\n\tif (_gameFd >= 10 && _gameFd < 20) zzz_game_fds[_gameFd] = false;'),
     ('exe_data.cpp', '*(uint8_t **)ff8_externals.drawpoint_messages',
      'guest::ptr_of<uint8_t>(*(uint32_t *)(uintptr_t)ff8_externals.drawpoint_messages)', 'all'),
+
+    # The Remastered's program has no call at WinMain+0x23: Dotemu's patch NOPs the call to
+    # manage_time_engine and calls enable_rdtsc(1) itself at WinMain+0xF. FFNx followed the NOPs
+    # to a junk "function" (0x90E72A62) and read enable_rdtsc at junk+0x21: harmless where that
+    # address happens to be mapped (the Thor), a fault in DllMain where it is not (GitHub #4, a
+    # Galaxy Z Fold6). Take enable_rdtsc from the Remastered's own call and hook no time engine.
+    ('ff8_data.cpp',
+     '\tff8_externals.manage_time_engine_sub_569971 = get_relative_call(common_externals.winmain, 0x23);\n'
+     '\tff8_externals.enable_rdtsc_sub_40AA00 = (int (*)(int))get_relative_call(ff8_externals.manage_time_engine_sub_569971, 0x21);\n',
+     '\tif (*(uint8_t *)(uintptr_t)(common_externals.winmain + 0x23) == 0xE8)   // FF8Recomp: not the Remastered (GitHub #4)\n'
+     '\t{\n'
+     '\t\tff8_externals.manage_time_engine_sub_569971 = get_relative_call(common_externals.winmain, 0x23);\n'
+     '\t\tff8_externals.enable_rdtsc_sub_40AA00 = (int (*)(int))get_relative_call(ff8_externals.manage_time_engine_sub_569971, 0x21);\n'
+     '\t}\n'
+     '\telse\n'
+     '\t{\n'
+     '\t\tff8_externals.manage_time_engine_sub_569971 = 0;   // NOPped: push 1; call enable_rdtsc at WinMain+0xF\n'
+     '\t\tff8_externals.enable_rdtsc_sub_40AA00 = (int (*)(int))get_relative_call(common_externals.winmain, 0xF);\n'
+     '\t}\n'),
+    ('common.cpp',
+     '\t\t\treplace_function(ff8_externals.manage_time_engine_sub_569971, ff8_manage_time_engine);\n',
+     '\t\t\tif (ff8_externals.manage_time_engine_sub_569971)   // FF8Recomp: none on the Remastered (ff8_data.cpp)\n'
+     '\t\t\t\treplace_function(ff8_externals.manage_time_engine_sub_569971, ff8_manage_time_engine);\n'),
 ]
