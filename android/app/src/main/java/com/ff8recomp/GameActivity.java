@@ -59,6 +59,7 @@ public class GameActivity extends Activity implements SurfaceHolder.Callback {
                 return;
             }
             if (a.companion != null) a.companion.hide();
+            a.panelsAway = false;
             a.showGuideTab(true);
             new android.os.Handler(a.getMainLooper()).postDelayed(() -> {
                 // Android gives keys to the display that last started or touched an activity:
@@ -86,10 +87,27 @@ public class GameActivity extends Activity implements SurfaceHolder.Callback {
     private long lastLowMemoryRefocus;
 
     @Override
-    protected void onStart() { super.onStart(); onScreen = true; }
+    protected void onStart() {
+        super.onStart();
+        onScreen = true;
+        // back from Home or another app: what was on the second screen comes back
+        if (panelsAway) showPanels();
+        if (guideTabAway) showGuideTab(true);
+        panelsAway = guideTabAway = false;
+    }
 
+    /** Home, or another app over the game: the panels leave the second screen too, as a
+     *  Presentation stays on screen above everything there for as long as it is showing (#12). */
     @Override
-    protected void onStop() { onScreen = false; super.onStop(); }
+    protected void onStop() {
+        onScreen = false;
+        if (companion != null && companion.isShowing()) { companion.hide(); panelsAway = true; }
+        if (guideTab != null && guideTab.isShowing()) { guideTab.hide(); guideTabAway = true; }
+        super.onStop();
+    }
+
+    // Stopped (#12): the panels / Pixel Guide's back button to show again in onStart.
+    private boolean panelsAway, guideTabAway;
 
     @Override
     public void onTopResumedActivityChanged(boolean top) {
@@ -129,7 +147,10 @@ public class GameActivity extends Activity implements SurfaceHolder.Callback {
     static void panelsAside() {
         GameActivity a = current;
         if (a == null) return;
-        a.runOnUiThread(() -> { if (a.companion != null) a.companion.hide(); });
+        a.runOnUiThread(() -> {
+            if (a.companion != null) a.companion.hide();
+            a.panelsAway = false;
+        });
     }
 
     /** Pixel Guide's install ended: the panels come back. */
@@ -150,13 +171,15 @@ public class GameActivity extends Activity implements SurfaceHolder.Callback {
 
     private void showPanels() {
         if (companion == null || companion.isShowing()) return;
+        if (!onScreen) { panelsAway = true; return; }
         companion.show();
         Compat.hideSystemBars(companion.getWindow());
     }
 
     private void showGuideTab(boolean on) {
-        if (!on) { if (guideTab != null) guideTab.hide(); return; }
+        if (!on) { guideTabAway = false; if (guideTab != null) guideTab.hide(); return; }
         if (companion == null) return;
+        if (!onScreen) { guideTabAway = true; return; }
         if (guideTab == null) {
             Display d = companion.getDisplay();
             guideTab = new Presentation(this, d) {
