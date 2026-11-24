@@ -1840,7 +1840,7 @@ public class LauncherActivity extends Activity {
             col.addView(space(16));
             col.addView(heading("Controller"));
             col.addView(text("In the game: press L3 (click the left stick), then R1 or L1 for faster or slower, L2 or R2 to switch that "
-                    + "speed on and off, A for random battles on or off, X to skip a movie. Faster needs a Frame rate other than "
+                    + "speed on and off, Y for random battles on or off, X to skip a movie. Faster needs a Frame rate other than "
                     + "Original, and is limited by the screen's refresh rate. Select+L1 saves a state, Select+R1 loads it; Select+Start "
                     + "held for a second leaves the game. On-screen controls: switch on the L3 button in Size and layout.", 14, DIM));
             col.addView(text("What each button of a controller or keyboard does. Choosing one that is in use swaps the two.", 14, DIM));

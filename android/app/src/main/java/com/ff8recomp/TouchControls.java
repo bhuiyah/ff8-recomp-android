@@ -33,7 +33,7 @@ final class TouchControls extends View {
 
     private static final int UP = 0x0001, DOWN = 0x0002, LEFT = 0x0004, RIGHT = 0x0008;
     private static final int START = 0x0010, SELECT = 0x0020, L1 = 0x0100, R1 = 0x0200;
-    private static final int CIRCLE = 0x2000, CROSS = 0x1000, SQUARE = 0x4000, TRIANGLE = 0x8000;
+    private static final int OK = 0x1000, BACK = 0x8000, CARD = 0x4000, MENU = 0x2000;   // GameActivity.xinputBit's A, B, X, Y
     private static final int L3 = 0x0040, R3 = 0x0080;
     private static final int L2 = 1 << 20, R2 = 1 << 21;    // triggers: sent as analog values
 
@@ -44,8 +44,8 @@ final class TouchControls extends View {
     }
 
     // face buttons laid out as an Android pad: A bottom, B right, X left, Y top
-    private final Btn a = new Btn(CIRCLE, "A", "OK", true), b = new Btn(CROSS, "B", "Back", true),
-            x = new Btn(SQUARE, "X", "", true), y = new Btn(TRIANGLE, "Y", "Menu", true),
+    private final Btn a = new Btn(OK, "A", "OK", true), b = new Btn(BACK, "B", "Back", true),
+            x = new Btn(CARD, "X", "", true), y = new Btn(MENU, "Y", "Menu", true),
             l1 = new Btn(L1, "L1", "", false), l2 = new Btn(L2, "L2", "", false),
             r1 = new Btn(R1, "R1", "", false), r2 = new Btn(R2, "R2", "", false),
             select = new Btn(SELECT, "SELECT", "", false), start = new Btn(START, "START", "", false),

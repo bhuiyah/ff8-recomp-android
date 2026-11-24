@@ -8,7 +8,7 @@ final class ButtonMap {
     static final String[] NAMES = { "A", "B", "X", "Y", "L1", "R1", "L2", "R2", "Select", "Start" };
     private static final int L2 = 6, R2 = 7;
     /** GameActivity.xinputBit's bits; 0: a trigger. */
-    private static final int[] BITS = { 0x2000, 0x1000, 0x4000, 0x8000, 0x0100, 0x0200, 0, 0, 0x0020, 0x0010 };
+    private static final int[] BITS = { 0x1000, 0x8000, 0x4000, 0x2000, 0x0100, 0x0200, 0, 0, 0x0020, 0x0010 };
     private static final int MAPPED = 0x2000 | 0x1000 | 0x4000 | 0x8000 | 0x0100 | 0x0200 | 0x0020 | 0x0010;
 
     static int[] read(SharedPreferences prefs) {

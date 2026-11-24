@@ -260,20 +260,19 @@ public class GameActivity extends Activity implements SurfaceHolder.Callback {
             case KeyEvent.KEYCODE_BUTTON_THUMBR: return 0x0080;
             case KeyEvent.KEYCODE_BUTTON_L1:    return 0x0100;
             case KeyEvent.KEYCODE_BUTTON_R1:    return 0x0200;
-            // FF7 confirms with Circle (XInput B, 0x2000) and cancels with Cross (XInput A,
-            // 0x1000), the Japanese PlayStation layout. Android pads confirm with A: A sends
-            // Circle, B sends Cross.
-            case KeyEvent.KEYCODE_BUTTON_A:     return 0x2000;
-            case KeyEvent.KEYCODE_BUTTON_B:     return 0x1000;
+            // FF8 (FFNx's Steam layout): 0x1000 confirms, 0x8000 cancels, 0x2000 opens the menu.
+            // Android pads confirm with A and cancel with B; Y is the menu.
+            case KeyEvent.KEYCODE_BUTTON_A:     return 0x1000;
+            case KeyEvent.KEYCODE_BUTTON_B:     return 0x8000;
             case KeyEvent.KEYCODE_BUTTON_X:     return 0x4000;
-            case KeyEvent.KEYCODE_BUTTON_Y:     return 0x8000;
+            case KeyEvent.KEYCODE_BUTTON_Y:     return 0x2000;
             default: return keyboardBit(keyCode);
         }
     }
 
     /**
-     * A physical keyboard (#29): arrows or the number pad move, Enter/Space/Z confirm (Circle),
-     * Backspace/X cancel (Cross), Tab/C open the menu (Triangle), V is Square, Q/Page Up and
+     * A physical keyboard (#29): arrows or the number pad move, Enter/Space/Z confirm (as A),
+     * Backspace/X cancel (as B), Tab/C open the menu (as Y), V is X, Q/Page Up and
      * E/Page Down are L1/R1, 1/Home and 3/End are L2/R2 (see dispatchKeyEvent), Esc/P is Start,
      * Shift/Insert is Select.
      */
@@ -295,12 +294,12 @@ public class GameActivity extends Activity implements SurfaceHolder.Callback {
             case KeyEvent.KEYCODE_ENTER:
             case KeyEvent.KEYCODE_NUMPAD_ENTER:
             case KeyEvent.KEYCODE_SPACE:
-            case KeyEvent.KEYCODE_Z:            return 0x2000;
+            case KeyEvent.KEYCODE_Z:            return 0x1000;
             case KeyEvent.KEYCODE_DEL:
-            case KeyEvent.KEYCODE_X:            return 0x1000;
+            case KeyEvent.KEYCODE_X:            return 0x8000;
             case KeyEvent.KEYCODE_V:            return 0x4000;
             case KeyEvent.KEYCODE_TAB:
-            case KeyEvent.KEYCODE_C:            return 0x8000;
+            case KeyEvent.KEYCODE_C:            return 0x2000;
             default: return 0;
         }
     }
