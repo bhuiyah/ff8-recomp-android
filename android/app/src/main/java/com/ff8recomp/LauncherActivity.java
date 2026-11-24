@@ -1676,8 +1676,9 @@ public class LauncherActivity extends Activity {
         RadioGroup ar = new RadioGroup(this);
         String[][] aspects = {
             { "0", "4:3, original", "Black bars at the sides of a 16:9 screen" },
-            { "2", "16:9 widescreen", "3D scenes and menus use the whole screen; fields without widescreen backgrounds keep side bars" },
+            { "2", "16:9 widescreen", "Battles, the world map and menus use the whole screen. Fields (towns, indoors: most of the game) keep side bars, as their backgrounds were drawn for 4:3" },
             { "3", "16:9, stretched to fill", "For screens wider than 16:9 (most phones): the 16:9 picture is stretched sideways to the screen's edges, no black bars" },
+            { "1", "Everything stretched to fill", "The whole 4:3 picture stretched to the screen's edges, fields and movies too: no side bars, but people and things look wider" },
         };
         int curAr = prefs.getInt("aspect", 2);
         for (String[] a : aspects) {
@@ -1835,6 +1836,19 @@ public class LauncherActivity extends Activity {
         }
         col.addView(tc);
         col.addView(button("Size and layout…", v -> startActivity(new Intent(this, TouchLayoutActivity.class))));
+        if (!FF7_CONTROLLER_EXTRAS) {
+            col.addView(space(16));
+            col.addView(heading("Controller"));
+            col.addView(text("In the game: press L3 (click the left stick), then R1 or L1 for faster or slower, L2 or R2 to switch that "
+                    + "speed on and off, B for random battles on or off, X to skip a movie. Faster needs a Frame rate other than "
+                    + "Original, and is limited by the screen's refresh rate. Select+L1 saves a state, Select+R1 loads it; Select+Start "
+                    + "held for a second leaves the game. On-screen controls: switch on the L3 button in Size and layout.", 14, DIM));
+            col.addView(text("What each button of a controller or keyboard does. Choosing one that is in use swaps the two.", 14, DIM));
+            final LinearLayout maps = new LinearLayout(this);
+            maps.setOrientation(LinearLayout.VERTICAL);
+            fillButtonMap(maps);
+            col.addView(maps);
+        }
         if (FF7_CONTROLLER_EXTRAS) {
             col.addView(space(16));
             col.addView(heading("Controller"));
@@ -2981,6 +2995,23 @@ public class LauncherActivity extends Activity {
         int shortSide = Math.min(dm.widthPixels, dm.heightPixels);
         int match = Math.max(1, (shortSide + 240) / 480);
         return perf == 0 ? Math.max(1, match - 1) : match;
+    }
+
+    /** Settings > Controller: one row per button (ButtonMap), and a way back to the usual layout. */
+    private void fillButtonMap(LinearLayout maps) {
+        maps.removeAllViews();
+        final int[] map = ButtonMap.read(prefs);
+        for (int i = 0; i < ButtonMap.NAMES.length; i++) {
+            final int b = i;
+            maps.addView(button(ButtonMap.NAMES[b] + (map[b] == b ? "" : "  works as  " + ButtonMap.NAMES[map[b]]), v ->
+                    new android.app.AlertDialog.Builder(this).setTitle(ButtonMap.NAMES[b] + " works as")
+                            .setSingleChoiceItems(ButtonMap.NAMES, map[b], (d, which) -> {
+                                ButtonMap.choose(prefs, b, which);
+                                d.dismiss();
+                                fillButtonMap(maps);
+                            }).setNegativeButton("Cancel", null).show()));
+        }
+        maps.addView(button("Reset the buttons", v -> { ButtonMap.reset(prefs); fillButtonMap(maps); }));
     }
 
     private int boosterSpeed() {

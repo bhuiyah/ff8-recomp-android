@@ -383,4 +383,35 @@ FF8_EDITS = [
      '\t\t{ 0x81F4E9, 0x262B1E8, 0x400000, ff8_battle_effect_layout_patch_mode::effect_arena },\n',
      '\t\t{ 0x81F4E9, 0x262B1E8, 0x400000, ff8_battle_effect_layout_patch_mode::effect_arena },\n'
      '\t\t{ 0x821263, 0x263DA20, 0x400000, ff8_battle_effect_layout_patch_mode::effect_arena },   // FF8Recomp\n'),
+    # Mods replace what is inside the Remastered's archives: a mod folder laid out as Demaster unpacks
+    # them (data/lang-en/battle.fs, data/field.fs, textures/battle.fs/hd_new/..., with or without
+    # DEMASTER_EXP/ above) is read instead (FFVIII Crystal's Remastered version and others).
+    ('ff8/zzz_archive.cpp',
+     'bool Zzz::lookup(const char *fileName, ZzzTocEntry *tocEntry) const\n{\n',
+     '// FF8Recomp: src/mods/mods.cpp\n'
+     'extern "C" const char *ff7_mods_redirect(const char *rel, char *buf, unsigned n);\n'
+     'static const char *zzz_mod_file(const char *fileName, char *buf, unsigned n)\n{\n'
+     '\tchar rel[ZZZ_FILENAME_MAX_SIZE + 16] = "demaster_exp/";\n\tchar *name = rel + 13;\n\tint i = 0;\n'
+     '\tfor (; fileName[i] != 0 && i < ZZZ_FILENAME_MAX_SIZE - 1; ++i) name[i] = fileName[i] == \'\\\\\' ? \'/\' : tolower(fileName[i]);\n'
+     '\tname[i] = 0;\n'
+     '\tif (const char *path = ff7_mods_redirect(name, buf, n)) return path;\n'
+     '\treturn ff7_mods_redirect(rel, buf, n);\n}\n\n'
+     'bool Zzz::lookup(const char *fileName, ZzzTocEntry *tocEntry) const\n{\n'),
+    ('ff8/zzz_archive.cpp',
+     '\tif (it == _toc.end()) {\n\t\tif (trace_all || trace_files) ffnx_error("Zzz::%s: file %s not found in %s\\n"',
+     '\tif (it == _toc.end()) {\n\t\tchar modFile[MAX_PATH * 4];   // FF8Recomp: a file only a mod has\n'
+     '\t\tif (tocEntry == nullptr && zzz_mod_file(fileName, modFile, sizeof(modFile)) != nullptr) return true;\n\n'
+     '\t\tif (trace_all || trace_files) ffnx_error("Zzz::%s: file %s not found in %s\\n"'),
+    ('ff8/zzz_archive.cpp',
+     '\terrno_t err = _sopen_s(&fd, _fileName, _O_BINARY, _SH_DENYNO, _S_IREAD);\n\tif (err != 0)\n\t{\n\t\treturn nullptr;\n\t}\n\n\tZzzTocEntry tocEntry;\n',
+     '\tchar modFile[MAX_PATH * 4];   // FF8Recomp: a mod has this file\n'
+     '\tif (zzz_mod_file(fileName, modFile, sizeof(modFile)) != nullptr && _sopen_s(&fd, modFile, _O_BINARY, _SH_DENYNO, _S_IREAD) == 0)\n\t{\n'
+     '\t\tZzzTocEntry modEntry = {};\n'
+     '\t\tconst int64_t size = _lseeki64(fd, 0, SEEK_END);\n'
+     '\t\tif (size >= 0 && size <= 0xFFFFFFFFll && _lseeki64(fd, 0, SEEK_SET) == 0)\n\t\t{\n'
+     '\t\t\tmodEntry.fileSize = uint32_t(size);\n'
+     '\t\t\ttoWindowsSeparators(fileName, modEntry.fileName);\n'
+     '\t\t\tmodEntry.fileNameSize = uint32_t(strlen(modEntry.fileName));\n'
+     '\t\t\treturn new File(modEntry, fd);\n\t\t}\n\t\t_close(fd);\n\t}\n\n'
+     '\terrno_t err = _sopen_s(&fd, _fileName, _O_BINARY, _SH_DENYNO, _S_IREAD);\n\tif (err != 0)\n\t{\n\t\treturn nullptr;\n\t}\n\n\tZzzTocEntry tocEntry;\n'),
 ]

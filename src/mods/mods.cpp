@@ -163,7 +163,11 @@ struct State {
 } g;
 
 void add_override(const std::string &key, int mod, const std::string &file, const ConditionalFolder *cond) {
-    g.map[norm_key(key)].push_back({ mod, file, cond });
+    const std::string k = norm_key(key);
+    g.map[k].push_back({ mod, file, cond });
+    // FF8: a Demaster mod's files (its DEMASTER_EXP folder), whatever folder it was unpacked in
+    const size_t d = k.find("/demaster_exp/");
+    if (d != std::string::npos) g.map[k.substr(d + 1)].push_back({ mod, file, cond });
 }
 
 // ConditionalFolder.IsActive(path): the condition for this file, else the folder-wide one
@@ -753,6 +757,37 @@ extern "C" unsigned ff7_mods_count(void) {
     return (unsigned)g.map.size();
 }
 
+// FF8: the field and world archives name their files for one edition (the 2013 release's
+// "\\data\\eng\\field\\", the Remastered's "\\data\\x\\field\\"). A mod's made for the other one
+// would leave every area black: the game's own are kept then.
+static bool other_editions(const std::string &key, const Override &o, const Mod &m) {
+    const size_t slash = key.rfind('/'), dot = key.rfind('.');
+    const std::string base = key.substr(slash == std::string::npos ? 0 : slash + 1, dot == std::string::npos ? dot : dot - (slash == std::string::npos ? 0 : slash + 1));
+    if (base != "field" && base != "world") return false;
+    if (dot == std::string::npos) return false;
+    const std::string ext = key.substr(dot);
+    if (ext != ".fs" && ext != ".fi" && ext != ".fl") return false;
+    auto it = g.map.find(key.substr(0, dot) + ".fl");
+    if (it == g.map.end()) return false;
+    for (const Override &l : it->second) {
+        if (l.mod != o.mod) continue;
+        const std::string host = m.iro ? materialize(m, l.mod, l.file) : l.file;
+        char head[96] = {};
+        if (FILE *f = std::fopen(host.c_str(), "rb")) { std::fread(head, 1, sizeof head - 1, f); std::fclose(f); }
+        for (char &c : head) if (c >= 'A' && c <= 'Z') c += 32;
+        if (!std::strstr(head, "\\ff8\\data\\")) return false;
+        const bool theirs = std::strstr(head, "\\ff8\\data\\x\\") != nullptr;
+        bool ours = false;
+        if (FILE *f = std::fopen("FFVIII.exe", "rb")) { ours = true; std::fclose(f); }   // GameInstall.REMASTER_MARKER
+        if (theirs == ours) return false;
+        static std::set<std::string> told;
+        if (told.insert(key).second)
+            std::fprintf(stderr, "[mods] %s is for the %s: the game's own is used\n", key.c_str(), theirs ? "Remastered" : "2013 release");
+        return true;
+    }
+    return false;
+}
+
 extern "C" const char *ff7_mods_redirect(const char *rel_in, char *buf, unsigned n) {
     if (!rel_in || !n) return nullptr;
     std::lock_guard<std::mutex> lk(g.lock);
@@ -778,6 +813,7 @@ extern "C" const char *ff7_mods_redirect(const char *rel_in, char *buf, unsigned
         if (!pick) continue;
         const Override &o = *pick;
         const Mod &m = *g.mods[o.mod];
+        if (other_editions(key, o, m)) return nullptr;
         std::string host = m.iro ? materialize(m, o.mod, o.file) : o.file;
         if (host.empty()) return nullptr;
         std::snprintf(buf, n, "%s", host.c_str());

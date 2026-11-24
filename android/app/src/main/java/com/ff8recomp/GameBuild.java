@@ -610,7 +610,8 @@ final class GameBuild {
                 if (lifted) lf = 1;
                 long total = lifted ? Math.max(seenBytes, 1) : Math.max(EXPECTED_C, seenBytes);
                 float cf = Math.min(1f, (float) compiledBytes / total);
-                set(lifted ? "Compiling for this device" : "Translating and compiling", 4 + (int) (92 * (0.15f * lf + 0.85f * cf)));
+                set((lifted ? "Compiling for this device" : "Translating and compiling")
+                        + (maxJobs == 1 ? " (slow: this device is low on memory, it can take many hours)" : ""), 4 + (int) (92 * (0.15f * lf + 0.85f * cf)));
                 if (lifted && queue.isEmpty() && running.isEmpty() && pendingRename.isEmpty()) break;
                 Thread.sleep(250);
             }
@@ -724,6 +725,7 @@ final class GameBuild {
         ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
         am.getMemoryInfo(mi);
         int byMem = (int) Math.max(2, (mi.availMem - (1L << 30)) / (3L << 29));
+        if (mi.totalMem < 2600L << 20) return 1;   // a 2 GB phone swaps itself to a standstill with two (issue #5)
         if (quiet) return 2;
         return Math.max(2, Math.min(Math.min(coreCount < cores ? coreCount : cores - 2, 6), byMem));
     }
