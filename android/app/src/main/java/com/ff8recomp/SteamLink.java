@@ -92,8 +92,13 @@ final class SteamLink {
     boolean signedIn() { return !prefs.getString("token", "").isEmpty(); }
     String account() { return prefs.getString("account", ""); }
 
-    /** Steam achievements are on for the game: signed in and the account's state is known. */
-    boolean active() { return signedIn() && state.isFile(); }
+    /** Steam achievements are on for the game: signed in, and the account's state is known for
+     *  the edition installed (after switching editions it is read again at the next Play). */
+    boolean active() {
+        if (!signedIn() || !state.isFile()) return false;
+        List<String> l = readLines(state);
+        return !l.isEmpty() && l.get(0).equals("appid " + installedApp());
+    }
 
     /** {unlocked, total} from the cached state, or null. */
     int[] counts() {
@@ -108,7 +113,13 @@ final class SteamLink {
         return new int[] { got, all };
     }
 
+    /** Unlocks and stat changes not yet on Steam. */
     int waiting() { return readLines(pending).size() + readLines(sending).size(); }
+
+    /** The Steam app of the edition installed: the Remastered's files, else the 2013 release. */
+    int installedApp() {
+        return new File(new GameInstall(ctx).game, GameInstall.REMASTER_MARKER).isFile() ? APP_REMASTERED : APP_2013;
+    }
 
     void signOut() {
         synchronized (LOCK) {
@@ -333,7 +344,11 @@ final class SteamLink {
     private List<String> exchangeStats(Session s) throws Exception {
         SteamUserStats us = s.client.getHandler(SteamUserStats.class);
         SteamID me = s.client.getSteamID();
-        s.app = ownedApp(s);
+        // the achievements of the edition being played (each FF8 is its own Steam app)
+        s.app = installedApp();
+        if (!owns(s, s.app)) throw new IOException("this Steam account does not own "
+                + (s.app == APP_REMASTERED ? "FINAL FANTASY VIII Remastered" : "FINAL FANTASY VIII (the 2013 release)")
+                + ", the edition installed, so its achievements cannot be earned here");
         UserStatsCallback st = stats(s.client, s.app, me);
         if (st.getResult() != EResult.OK) {
             playing(s, true);
@@ -344,6 +359,7 @@ final class SteamLink {
         if (st.getResult() != EResult.OK) throw new IOException("Steam did not return your FF8 achievements (" + st.getResult() + ")");
         Map<String, Ach> schema = parseSchema(st.getSchemaKeyValues());
         if (schema.isEmpty()) throw new IOException("Steam returned no FF8 achievement list");
+        Map<String, Integer> statIds = parseStatIds(st.getSchemaKeyValues());
         Map<Integer, Integer> values = values(st);
 
         // what the game unlocked: pending.txt, moved aside so the game can keep appending
@@ -351,13 +367,34 @@ final class SteamLink {
         if (pending.isFile() && !sending.isFile()) pending.renameTo(sending);
         else if (pending.isFile()) { append(sending, readLines(pending)); pending.delete(); }
         Set<String> waiting = new LinkedHashSet<>();
+        Map<String, Integer> statsWaiting = new HashMap<>();
         for (String l : readLines(sending)) {
-            String n = l.split("\t", 2)[0].trim();
+            String[] f = l.split("\t");
+            if (f[0].equals("stat")) {                    // "stat <name> <value>": the newest, largest value
+                if (f.length < 3) continue;
+                try {
+                    int v = Integer.parseInt(f[2].trim());
+                    Integer old = statsWaiting.get(f[1]);
+                    if (old == null || v > old) statsWaiting.put(f[1], v);
+                } catch (NumberFormatException ignored) {}
+                continue;
+            }
+            String n = f[0].trim();
             if (!n.isEmpty()) waiting.add(n);
         }
 
         Map<Integer, Integer> push = new HashMap<>();
         List<String> newly = new ArrayList<>();
+        // counters (the 2013 release: enemies killed, magic drawn and stocked, card games won):
+        // they only grow, so a value below Steam's (more played on the PC since) is not sent
+        for (Map.Entry<String, Integer> e : statsWaiting.entrySet()) {
+            Integer id = statIds.get(e.getKey());
+            if (id == null) { Log.w(TAG, "not an FF8 Steam stat: " + e.getKey()); continue; }
+            int cur = values.containsKey(id) ? values.get(id) : 0;
+            if (e.getValue() <= cur) continue;
+            values.put(id, e.getValue());
+            push.put(id, e.getValue());
+        }
         for (String n : waiting) {
             Ach a = schema.get(n);
             if (a == null) { Log.w(TAG, "not an FF8 Steam achievement: " + n); continue; }
@@ -367,6 +404,13 @@ final class SteamLink {
             values.put(a.stat, v);
             push.put(a.stat, v);
             newly.add(a.display);
+        }
+        // files/steam/dry-run (testing with saves that are not the player's own): log what would
+        // be sent, send nothing, keep it waiting
+        if (!push.isEmpty() && new File(dir, "dry-run").isFile()) {
+            Log.i(TAG, "dry run, not sent: achievements " + newly + ", stats " + push);
+            writeState(s.app, schema, statIds, values(st));
+            return new ArrayList<>();
         }
         if (!push.isEmpty()) {
             ClientMsgProtobuf<CMsgClientStoreUserStats2.Builder> msg =
@@ -379,7 +423,7 @@ final class SteamLink {
             for (Map.Entry<Integer, Integer> e : push.entrySet())
                 msg.getBody().addStats(CMsgClientStoreUserStats2.Stats.newBuilder().setStatId(e.getKey()).setStatValue(e.getValue()));
             s.client.send(msg);
-            Log.i(TAG, "sent " + newly.size() + " achievement(s) to Steam: " + newly);
+            Log.i(TAG, "sent " + newly.size() + " achievement(s) to Steam: " + newly + "; stats " + push.keySet());
             // read back: Steam answers the store asynchronously
             Map<Integer, Integer> back = null;
             for (int tries = 0; tries < 5; tries++) {
@@ -398,7 +442,7 @@ final class SteamLink {
             if (back == null) throw new IOException("Steam did not take the achievement(s) yet; they will be sent again");
             values = back;
         }
-        writeState(s.app, schema, values);
+        writeState(s.app, schema, statIds, values);
         sending.delete();
         if (!newly.isEmpty()) notifyUnlocked(newly);
         return newly;
@@ -440,6 +484,20 @@ final class SteamLink {
         return out;
     }
 
+    /** The ordinary (integer) stats of the schema: API name -> stat id. */
+    private static Map<String, Integer> parseStatIds(KeyValue root) {
+        Map<String, Integer> out = new LinkedHashMap<>();
+        KeyValue stats = find(root, "stats", 3);
+        if (stats == null) return out;
+        for (KeyValue stat : stats.getChildren()) {
+            if (child(stat, "bits") != null) continue;           // achievement bits
+            KeyValue nm = child(stat, "name");
+            if (nm == null || nm.getValue() == null || nm.getValue().isEmpty()) continue;
+            try { out.put(nm.getValue(), Integer.parseInt(stat.getName())); } catch (NumberFormatException ignored) {}
+        }
+        return out;
+    }
+
     private static KeyValue child(KeyValue kv, String name) {
         if (kv == null) return null;
         for (KeyValue c : kv.getChildren()) if (name.equalsIgnoreCase(c.getName())) return c;
@@ -457,13 +515,16 @@ final class SteamLink {
         return null;
     }
 
-    private void writeState(int app, Map<String, Ach> schema, Map<Integer, Integer> values) throws IOException {
+    private void writeState(int app, Map<String, Ach> schema, Map<String, Integer> statIds, Map<Integer, Integer> values) throws IOException {
         StringBuilder sb = new StringBuilder("appid ").append(app).append('\n');
         for (Ach a : schema.values()) {
             int v = values.containsKey(a.stat) ? values.get(a.stat) : 0;
             sb.append("ach ").append(a.name).append(' ').append((v >>> a.bit & 1) != 0 ? 1 : 0)
               .append(' ').append(a.display.replace('\n', ' ')).append('\n');
         }
+        for (Map.Entry<String, Integer> e : statIds.entrySet())
+            sb.append("stat ").append(e.getKey()).append(' ')
+              .append(values.containsKey(e.getValue()) ? values.get(e.getValue()) : 0).append('\n');
         dir.mkdirs();
         File tmp = new File(dir, "state.tmp");
         try (OutputStream o = new FileOutputStream(tmp)) { o.write(sb.toString().getBytes(StandardCharsets.UTF_8)); }

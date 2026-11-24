@@ -3,7 +3,7 @@
 // On Windows FFNx is AF3DN.P and its DllMain runs before the game's WinMain: it detects the
 // exe version from code bytes at 0x401004, fills the address tables (externals_102_us.h),
 // reads FFNx.toml and installs its hooks (replace_function → recomp entry overrides here,
-// src/ffnx_port/patch_recomp.cpp). Here the same DllMain runs from ff7_boot.c once the
+// src/ffnx_port/patch_recomp.cpp). Here the same DllMain runs from ff8_boot.c once the
 // image is mapped and the guest heap is up, before the lifted entry is called.
 //
 // Both hooks are strong definitions of weak symbols in ff7_core, so the runtime without FFNx
@@ -23,8 +23,10 @@ extern "C" void ffnx_bridge_register(void) {
     guest::guest_export<&new_dll_graphics_driver>("new_dll_graphics_driver");
 }
 
+void framegen_init();                                                       // framegen.cpp
 extern "C" int ff7_ffnx_attach(void) {
     std::fprintf(stderr, "[ffnx] DllMain(DLL_PROCESS_ATTACH)\n");
+    framegen_init();   // before the renderer starts
     BOOL ok = DllMain(FFNX_MODULE, DLL_PROCESS_ATTACH, nullptr);
     ffnx_recomp_report();
     std::fprintf(stderr, "[ffnx] DllMain returned %d\n", (int)ok);
@@ -32,7 +34,7 @@ extern "C" int ff7_ffnx_attach(void) {
 }
 
 // FF8: FFNx's path redirection for the Steam 2013 exe's file opens (dotemuCreateFileA:
-// "CD:\FF8\DATA\DISK1" -> <app path>\data\disk\DISK1, ...), for src/hle/ff7_af3dn.c (C).
+// "CD:\FF8\DATA\DISK1" -> <app path>\data\disk\DISK1, ...), for src/hle/ff8_af3dn.c (C).
 bool ff8_steam_redirection(const char *lpFileName, char *newPath, bool *isZzzFile);   // FFNx ff8/file.cpp
 bool ff8_fs_last_fopen_is_redirected();
 extern uint32_t ff8_remastered_edition;                                             // FFNx globals.h

@@ -31,7 +31,7 @@ import java.util.zip.ZipOutputStream;
  * problem" page). It holds:
  *   report.txt   the app version, the device (model, chip, Android, RAM), where the files are,
  *                the launcher's settings, how the game last closed (Android's exit records)
- *   logs/        ff7.log (this run and the one before), build.log, game/FFNx.log, game/APP.LOG,
+ *   logs/        ff8.log (this run and the one before), build.log, game/FFNx.log, game/APP.LOG,
  *                boosters.txt, env.txt, quickboot.txt, companion.txt, display.txt (the screen's
  *                refresh rate while playing), game/FFNx.toml, the mod
  *                profile (mods/profile.xml)
@@ -92,7 +92,7 @@ final class Reports {
         File root = Storage.root(c);
         try (ZipOutputStream z = new ZipOutputStream(new java.io.FileOutputStream(zip))) {
             put(z, "report.txt", summary(c).getBytes(StandardCharsets.UTF_8));
-            for (String p : new String[] { "ff7.log", "ff7.prev.log", "build.log", "boosters.txt", "env.txt", "quickboot.txt",
+            for (String p : new String[] { "ff8.log", "ff8.prev.log", "build.log", "boosters.txt", "env.txt", "quickboot.txt",
                                            "companion.txt", "display.txt", "mods/profile.xml", "game/FFNx.log", "game/APP.LOG", "game/FFNx.toml" }) {
                 File f = new File(root, p);
                 if (f.isFile()) putFile(z, "logs/" + p.replace('/', '_'), f, MAX_LOG);

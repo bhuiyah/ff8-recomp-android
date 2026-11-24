@@ -30,8 +30,8 @@ typedef struct _XINPUT_VIBRATION { WORD wLeftMotorSpeed, wRightMotorSpeed; } XIN
 #define ERROR_DEVICE_NOT_CONNECTED 1167L
 #define ZeroMemory(p, n) std::memset((p), 0, (n))
 
-// The device's controls (src/android/ff7_android_main.cpp: Android key/motion events).
-#include "ff7_boot.h"
+// The device's controls (src/android/ff8_android_main.cpp: Android key/motion events).
+#include "ff8_boot.h"
 static_assert(sizeof(ff7_pad_state) == sizeof(XINPUT_GAMEPAD), "ff7_pad_state is XINPUT_GAMEPAD");
 
 inline DWORD XInputGetState(DWORD i, XINPUT_STATE *s) {

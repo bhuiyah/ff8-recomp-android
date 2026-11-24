@@ -14,7 +14,7 @@
 #include <string.h>
 #include "x86_interp.h"
 
-/* ---- the runtime this runs in (src/host/ff7_overrides.c, the lift) ---------------------- */
+/* ---- the runtime this runs in (src/host/ff8_overrides.c, the lift) ---------------------- */
 extern uint32_t ff7_callsite_bits[];
 extern uint32_t ff7_callsite_cur;
 void ff7_run_callsite(void);
@@ -709,7 +709,7 @@ static void group3(cpu_t *c, dec_t *d, int sz) {
     }
 }
 
-/* ---- the last instructions run, for the crash report (ff7_crash.c) ------------------------- */
+/* ---- the last instructions run, for the crash report (ff8_crash.c) ------------------------- */
 #define TRACE_N 48
 static struct { uint32_t eip, func, eax, ecx, esp, ebp; } g_trace[TRACE_N];
 static unsigned g_trace_i;

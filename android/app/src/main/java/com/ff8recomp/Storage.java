@@ -16,7 +16,7 @@ import java.util.Locale;
  * folder in internal storage (Android/data/com.ff8recomp/files), the same folder on an SD card,
  * or a folder the player picks anywhere on the device or the SD card, e.g. /sdcard/FF8Recomp
  * for backups and Syncthing (Settings > Storage, GitHub #61). The first two need no storage
- * permission; a custom folder needs Android's "All files access". The built game (libff7.so)
+ * permission; a custom folder needs Android's "All files access". The built game (libff8.so)
  * always stays in the app's private internal storage: Android runs no code from shared storage.
  *
  * Every process reads the choice from the launcher's preferences (the game runs in its own

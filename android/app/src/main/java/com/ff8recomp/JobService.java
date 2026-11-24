@@ -210,10 +210,17 @@ public class JobService extends Service {
             SteamLink link = new SteamLink(this);
             if (!link.signedIn()) return "Sign in to Steam first (Game files → Connect to Steam), then download again.";
             boolean[] exeChanged = { false };
-            String err = gi.downloadFromSteam(link, w -> status = w, pause, exeChanged, arg);   // arg: the edition
-            if ("stopped".equals(err)) throw new Paused();
-            if (err != null) return "Not downloaded: " + err + ".";
-            if (exeChanged[0] || !new GameBuild(this).built()) return null;
+            // arg: the edition, or BOTH (the Remastered first: the first one in is the one Play
+            // starts). Continue skips an edition that is whole already.
+            String[] eds = BOTH.equals(arg) ? new String[] { GameInstall.ED_REMASTERED, GameInstall.ED_2013 } : new String[] { arg };
+            for (int n = 0; n < eds.length; n++) {
+                if (eds.length > 1 && gi.has(eds[n])) continue;
+                final String lead = eds.length > 1 ? GameInstall.editionName(eds[n]) + " (" + (n + 1) + " of 2): " : "";
+                String err = gi.downloadFromSteam(link, w -> status = lead + w, pause, exeChanged, eds[n]);
+                if ("stopped".equals(err)) throw new Paused();
+                if (err != null) return "Not downloaded: " + lead + err + ".";
+            }
+            if (exeChanged[0] || unbuilt(gi)) return null;
             return "Every game file was checked against Steam's copy; any missing or damaged ones were downloaded again.";
         }
         // the import ran before (a pause, or the system stopped it): keep what it copied
@@ -222,6 +229,16 @@ public class JobService extends Service {
         String err = gi.importGame(Uri.parse(arg), w -> status = w);
         if (err != null) return "Not imported: " + err + ".";
         return null;
+    }
+
+    /** STEAM's arg for both editions. */
+    static final String BOTH = "both";
+
+    /** An edition on this device is not built for it yet. */
+    private boolean unbuilt(GameInstall gi) {
+        for (String ed : new String[] { GameInstall.ED_REMASTERED, GameInstall.ED_2013 })
+            if (gi.has(ed) && !new GameBuild(this, ed).built()) return true;
+        return false;
     }
 
     private PendingIntent launcher() {

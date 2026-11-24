@@ -35,11 +35,108 @@ final class GameInstall {
         this.ctx = ctx;
         files = Storage.root(ctx);   // internal storage or the SD card (Settings > Storage)
         game = new File(files, "game");
+        finishSwitch();
+    }
+
+    // ---------------------------------------------------------------- both editions side by side
+    /*
+     * The 2013 release's data (Data/) and the Remastered's (main.zzz, other.zzz) share no name, so
+     * both stay in the game folder. Only the program (ff8_en.exe) and the marker FFNx looks for
+     * tell them apart: the edition not being played has its program parked as
+     * ff8_en.<edition>.exe, and switching is a few renames. The saves (game/save) are one folder
+     * for both; save states are one build's memory, so each edition has its own.
+     */
+    static final String ED_2013 = SteamFiles.EDITION_2013, ED_REMASTERED = SteamFiles.EDITION_REMASTERED;
+
+    static String editionName(String ed) { return ED_REMASTERED.equals(ed) ? "Remastered" : "2013 release"; }
+    static String other(String ed) { return ED_REMASTERED.equals(ed) ? ED_2013 : ED_REMASTERED; }
+
+    /** The edition Play starts. */
+    String edition() { return remastered() ? ED_REMASTERED : ED_2013; }
+
+    private File program() { return new File(game, "ff8_en.exe"); }
+    private File parked(String ed) { return new File(game, "ff8_en." + ed + ".exe"); }
+    private File states(String ed) { return new File(files, "savestates-" + ed); }
+
+    /** The edition's program, wherever it is now. */
+    File program(String ed) { return ed.equals(edition()) ? program() : parked(ed); }
+
+    /** This edition is on the device, whole. */
+    boolean has(String ed) {
+        return program(ed).isFile() && !steamDownloading(ed).exists() && missingFiles(ed).isEmpty();
+    }
+
+    /** Play this edition from now on (it is here, and the game is not running). */
+    synchronized void activate(String ed) throws IOException {
+        String cur = edition();
+        if (ed.equals(cur)) return;
+        if (!parked(ed).isFile()) throw new IOException("the " + editionName(ed) + " is not on this device");
+        File st = new File(files, "savestates");
+        if (st.isDirectory()) mustRename(st, states(cur));
+        if (states(ed).isDirectory()) mustRename(states(ed), st);
+        if (program().isFile()) mustRename(program(), parked(cur));
+        mustRename(parked(ed), program());
+        mark(ed);
+    }
+
+    private static final long PROGRAM_2013_SIZE = 22_124_216L, REMASTER_PROGRAM_SIZE = 37_355_520L;
+
+    /** A switch stopped half way: the marker follows the program that is in place. */
+    private void finishSwitch() {
+        File p = program();
+        try {
+            if (!p.isFile()) {
+                File back = parked(edition());
+                if (!back.isFile() || !back.renameTo(p)) return;
+            }
+            if (p.length() == REMASTER_PROGRAM_SIZE && !remastered()) mark(ED_REMASTERED);
+            else if (p.length() == PROGRAM_2013_SIZE && remastered()) mark(ED_2013);
+        } catch (IOException e) {
+            android.util.Log.w("FF8Install", "edition marker", e);
+        }
+    }
+
+    private void mark(String ed) throws IOException {
+        File m = new File(game, REMASTER_MARKER);
+        if (ED_REMASTERED.equals(ed)) new FileOutputStream(m).close();
+        else if (m.exists() && !m.delete()) throw new IOException("cannot remove " + m);
+    }
+
+    private static void mustRename(File from, File to) throws IOException {
+        if (to.isDirectory()) GameBuild.deleteTree(to);
+        else if (to.exists() && !to.delete()) throw new IOException("cannot replace " + to);
+        if (!from.renameTo(to)) throw new IOException("cannot move " + from.getName());
+    }
+
+    /** Puts an edition's program (checked by the caller) in: the first edition on the device is
+     *  the one Play starts; a second one lands beside it, and Game files switches. */
+    private void installProgram(String ed, byte[] pe) throws IOException {
+        File tmp = new File(game, "ff8_en.exe.new");
+        try (OutputStream o = new FileOutputStream(tmp)) { o.write(pe); }
+        if (program().isFile() && !ed.equals(edition())) { mustRename(tmp, parked(ed)); return; }
+        mustRename(tmp, program());
+        mark(ed);
+    }
+
+    /** Deletes the edition not being played: its data, program, build and save states. Saves stay. */
+    void remove(String ed) throws IOException {
+        if (ed.equals(edition())) throw new IOException("the " + editionName(ed) + " is the one Play starts");
+        parked(ed).delete();
+        if (ED_REMASTERED.equals(ed)) {
+            for (String f : REMASTER_FILES) new File(game, f).delete();
+            new File(game, "FFVIII_EN.exe.dat").delete();
+        } else {
+            GameBuild.deleteTree(new File(game, "Data"));
+            new File(game, SteamFiles.WRAPPED_EXE).delete();
+        }
+        steamDownloading(ed).delete();
+        GameBuild.deleteTree(states(ed));
+        GameBuild.forget(ctx, ed);
     }
 
     boolean hasGame() {
-        return new File(game, "ff8_en.exe").isFile() && (remastered() ? new File(game, "main.zzz").isFile() : new File(game, "Data/lang-en").isDirectory())
-                && !steamDownloading().exists();
+        return program().isFile() && (remastered() ? new File(game, "main.zzz").isFile() : new File(game, "Data/lang-en").isDirectory())
+                && !steamDownloading().exists() && !steamDownloading(edition()).exists();
     }
 
     /** The Remastered edition: FFNx runs the game with main.zzz / other.zzz when FFVIII.exe is
@@ -51,6 +148,12 @@ final class GameInstall {
 
     /** Present while a download from Steam is unfinished (SteamFiles): the game is not complete. */
     File steamDownloading() { return new File(game, ".steam-download"); }
+    /** The same for one edition: the other one stays playable meanwhile. */
+    File steamDownloading(String ed) { return new File(game, ".steam-download-" + ed); }
+    /** A download of the first edition(s) was begun and not finished. */
+    boolean downloadBegun() {
+        return steamDownloading().exists() || steamDownloading(ED_2013).exists() || steamDownloading(ED_REMASTERED).exists();
+    }
 
     /** Files under data/ the game opens at start-up and cannot run without: one missing (a copy
      *  cut short, another release's layout) stopped it on a black screen (GitHub #18, #22). */
@@ -62,9 +165,11 @@ final class GameInstall {
 
     /** The REQUIRED files missing or empty in the imported data folder (names matched ignoring
      *  case, as the game does), or an empty list. */
-    List<String> missingFiles() {
+    List<String> missingFiles() { return missingFiles(edition()); }
+
+    List<String> missingFiles(String ed) {
         List<String> out = new ArrayList<>();
-        if (remastered()) {
+        if (ED_REMASTERED.equals(ed)) {
             for (String f : REMASTER_FILES) { File x = new File(game, f); if (!x.isFile() || x.length() == 0) out.add(f); }
             return out;
         }
@@ -158,10 +263,7 @@ final class GameInstall {
         else return seen + " (SHA-1 " + sha.substring(0, 12) + "…) is not the FF8_EN.exe the game is built from. "
                 + WHICH_FOLDER + " (If your copy is from Steam and unpatched, please report this number.)";
         if (!GameBuild.EXE_SHA1.equals(sha1(plain))) return "FF8_EN.exe did not unwrap as expected. Please report this";
-        File out = new File(game, "ff8_en.exe"), tmp = new File(game, "ff8_en.exe.new");
-        try (OutputStream o = new FileOutputStream(tmp)) { o.write(plain); }
-        if (out.exists() && !out.delete()) throw new IOException("cannot replace " + out);
-        if (!tmp.renameTo(out)) throw new IOException("cannot write " + out);
+        installProgram(ED_2013, plain);
         return null;
     }
 
@@ -208,12 +310,9 @@ final class GameInstall {
         }
         tmp.delete();
         if (err != null) return err;
-        new File(game, REMASTER_MARKER).delete();                    // the 2013 edition from now on
-        // the Remastered's copies (2.8 GB) a folder import made; its own folder still has them
-        for (String f : REMASTER_FILES) new File(game, f).delete();
-        new File(game, "FFVIII_EN.exe.dat").delete();
+        // (the Remastered, when it is here too, stays: Game files switches between them)
         copyTree(tree, datas.get(0).id, new File(game, "Data"), p, "Data");
-        List<String> missing = missingFiles();
+        List<String> missing = missingFiles(ED_2013);
         if (!missing.isEmpty())
             return "the game's Data folder here is incomplete, these files are missing: " + String.join(", ", missing)
                     + ". Check that the game is fully installed (in Steam or GameNative: verify the game files), then import again";
@@ -236,10 +335,6 @@ final class GameInstall {
         if (!GameBuild.REMASTER_SHA1.equals(sha1(pe)))
             return "this FFVIII_EN.exe.dat (the Remastered's English program) is not the one the game is built from: SHA-1 "
                     + sha1(pe).substring(0, 12) + "\u2026 of its program. Please report this number";
-        File out = new File(game, "ff8_en.exe"), part = new File(game, "ff8_en.exe.new");
-        try (OutputStream o = new FileOutputStream(part)) { o.write(pe); }
-        if (out.exists() && !out.delete()) throw new IOException("cannot replace " + out);
-        if (!part.renameTo(out)) throw new IOException("cannot write " + out);
         for (int i = 0; i < zzz.length; i++) {
             File f = new File(game, REMASTER_FILES[i]);
             JobService.checkPause();
@@ -247,8 +342,8 @@ final class GameInstall {
             p.update("Copying " + REMASTER_FILES[i] + " (" + (zzz[i].size >> 20) + " MB)");
             copyDoc(tree, zzz[i].id, f);
         }
-        new FileOutputStream(new File(game, REMASTER_MARKER)).close();
-        List<String> missing = missingFiles();
+        installProgram(ED_REMASTERED, pe);
+        List<String> missing = missingFiles(ED_REMASTERED);
         if (!missing.isEmpty()) return "these files did not copy whole: " + String.join(", ", missing) + ". Import again";
         return null;
     }
@@ -265,33 +360,28 @@ final class GameInstall {
     String downloadFromSteam(SteamLink link, Progress p, java.util.concurrent.atomic.AtomicBoolean cancel, boolean[] exeChanged,
                              String edition) throws Exception {
         game.mkdirs();
-        File exe = new File(game, "ff8_en.exe");
-        String before = exe.isFile() ? GameBuild.sha1(exe) : null;
-        File mark = steamDownloading();
+        // this edition is incomplete until the download ends; the other one stays playable
+        File mark = edition == null ? steamDownloading() : steamDownloading(edition);
         if (!mark.isFile()) new FileOutputStream(mark).close();
         SteamFiles sf = new SteamFiles(link);
         String err = sf.downloadGame(game, p::update, cancel, edition);
         if (err != null) return err;
+        String ed = sf.lastWasRemaster ? ED_REMASTERED : ED_2013;
+        File exe = program(ed);
+        String before = exe.isFile() ? GameBuild.sha1(exe) : null;
         if (sf.lastWasRemaster) {
             byte[] pe = RemasterExe.decode(readAll(new java.io.FileInputStream(new File(game, "FFVIII_EN.exe.dat"))));
             if (!GameBuild.REMASTER_SHA1.equals(sha1(pe))) return "Steam's FFVIII_EN.exe.dat is not the one the game is built from. Please report this";
-            File part = new File(game, "ff8_en.exe.new");
-            try (OutputStream o = new FileOutputStream(part)) { o.write(pe); }
-            if (exe.exists() && !exe.delete()) throw new IOException("cannot replace " + exe);
-            if (!part.renameTo(exe)) throw new IOException("cannot write " + exe);
-            new FileOutputStream(new File(game, REMASTER_MARKER)).close();
+            installProgram(ED_REMASTERED, pe);
         } else {
             err = installExe(new File(game, SteamFiles.WRAPPED_EXE), "Steam's FF8_EN.exe");
             if (err != null) return err;
-            new File(game, REMASTER_MARKER).delete();
-            // switched from the Remastered: its files (2.8 GB) are not used any more
-            for (String f : REMASTER_FILES) new File(game, f).delete();
-            new File(game, "FFVIII_EN.exe.dat").delete();
         }
-        exeChanged[0] = !GameBuild.sha1(exe).equals(before);
-        List<String> missing = missingFiles();
+        exeChanged[0] |= !GameBuild.sha1(program(ed)).equals(before);
+        List<String> missing = missingFiles(ed);
         if (!missing.isEmpty()) return "these files did not come with the download: " + String.join(", ", missing) + ". Please report this";
         mark.delete();
+        steamDownloading().delete();
         return null;
     }
 
@@ -551,7 +641,7 @@ final class GameInstall {
                        int exp, int ap, boolean autofire, int rumble) throws IOException {
         String s = "speed=" + speed + "\nencounters=" + (noEncounters ? "off" : "on") + "\nbattle=" + (battlePlus ? "on" : "off")
                 + "\nframeskip=" + (frameSkip ? "on" : "off") + "\n"
-                + "saveanywhere=" + (saveAnywhere ? "on" : "off") + "\n"   // src/host/ff7_hext.cpp, at boot
+                + "saveanywhere=" + (saveAnywhere ? "on" : "off") + "\n"   // src/host/ff8_hext.cpp, at boot
                 + "gil=" + gil + "\n"                                       // gil from battles times this
                 + "exp=" + exp + "\n" + "ap=" + ap + "\n"               // EXP and AP too (src/ffnx_port/boosters.cpp)
                 + "autofire=" + (autofire ? "on" : "off") + "\n"          // battles: confirm held repeats (#33)

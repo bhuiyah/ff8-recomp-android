@@ -36,7 +36,7 @@ final class Sfx {
     volatile boolean enabled = true;
     private long lastCursor;
 
-    static { System.loadLibrary("ff7launcher"); }
+    static { System.loadLibrary("ff8launcher"); }
 
     private static native String[] nativeModFiles(String profile, String cacheDir, String[] rels);
 

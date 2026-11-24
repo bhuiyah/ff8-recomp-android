@@ -24,5 +24,5 @@ labels: bug
 **Report**
 <!-- In the launcher: Report a problem -> Save to Downloads, then drag the FF7Recomp-report zip
      here. It has the logs, how the game last closed, your device and mod list (and your saves,
-     if you ticked them). No report? Attach ff7.log, build.log and game/FFNx.log from
+     if you ticked them). No report? Attach ff8.log, build.log and game/FFNx.log from
      Android/data/com.ff8recomp/files/ instead. Please do not attach game files. -->

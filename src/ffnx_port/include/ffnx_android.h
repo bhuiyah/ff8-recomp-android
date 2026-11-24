@@ -1,7 +1,7 @@
 // ffnx_android.h - small platform helpers FFNx's Android branches call (patches/ffnx).
 #pragma once
 #include <windows.h>
-#include "ff7_boot.h"
+#include "ff8_boot.h"
 
 // FFNx's module handle (DllMain hinstDLL): FFNx is linked in, not loaded, so this is a
 // name only; GetModuleFileNameA answers "AF3DN.P" for it (win32_compat.cpp).

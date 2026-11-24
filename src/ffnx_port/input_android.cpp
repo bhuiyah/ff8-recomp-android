@@ -2,7 +2,7 @@
 //
 // On the Thor, the built-in pad and any Bluetooth pad arrive as Android KeyEvents/MotionEvents
 // in GameActivity and are presented to FFNx (and the game) through XInputGetState
-// (src/ffnx_port/include/Xinput.h, fed by src/android/ff7_android_main.cpp). FFNx's other two
+// (src/ffnx_port/include/Xinput.h, fed by src/android/ff8_android_main.cpp). FFNx's other two
 // paths are therefore present but empty:
 //   SDL3 gamepads  SDL_InitSubSystem fails, so SDLGamepad::init() returns false and FFNx
 //                  never opens a gamepad (sdl_gamepad.cpp); everything else is inert.

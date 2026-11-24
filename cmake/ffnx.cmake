@@ -38,7 +38,7 @@ endforeach()
 if(NOT DEFINED FFNX_SOURCES)
   # All of FFNx's FF7 side. Left out: FF8-only code (ff8 is a runtime flag, always false
   # here), FFNx's own patch.cpp (replaced by src/ffnx_port/patch_recomp.cpp), the Windows
-  # crash dialog (crashdump.cpp; crashes are reported by src/host/ff7_crash.c), DirectInput/
+  # crash dialog (crashdump.cpp; crashes are reported by src/host/ff8_crash.c), DirectInput/
   # WMI joystick enumeration (joystick.cpp; controllers come through XInput here), and the
   # FFmpeg movie player (video/*) until FFmpeg is built. Their symbols are named stops
   # (tools/ffnx_link_stubs.py).
@@ -70,15 +70,17 @@ list(TRANSFORM FFNX_SOURCES PREPEND "${FFNX_SRC}/")
 # offline (src/ffnx_port/achievements.cpp)
 set(FF7_RC_DIR "${FFNX_DEPS}/rcheevos")
 file(GLOB FF7_RC_SOURCES "${FF7_RC_DIR}/src/rcheevos/*.c")
-add_library(ff7_rcheevos STATIC ${FF7_RC_SOURCES} "${FF7_RC_DIR}/src/rc_compat.c" "${FF7_RC_DIR}/src/rc_util.c"
+add_library(ff8_rcheevos STATIC ${FF7_RC_SOURCES} "${FF7_RC_DIR}/src/rc_compat.c" "${FF7_RC_DIR}/src/rc_util.c"
             "${FF7_RC_DIR}/src/rhash/md5.c")
-target_include_directories(ff7_rcheevos PUBLIC "${FF7_RC_DIR}/include")
-target_compile_definitions(ff7_rcheevos PUBLIC RC_DISABLE_LUA)
-set_target_properties(ff7_rcheevos PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_include_directories(ff8_rcheevos PUBLIC "${FF7_RC_DIR}/include")
+target_compile_definitions(ff8_rcheevos PUBLIC RC_DISABLE_LUA)
+set_target_properties(ff8_rcheevos PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 add_library(ffnx STATIC ${FFNX_SOURCES}
   # 32-bit layout proof for every game struct (tools/ffnx_layout_check.py)
   "${FF7_ROOT}/src/ffnx_port/layout_asserts.cpp"
+  "${FF7_ROOT}/src/ffnx_port/framegen.cpp"
+  "${FF7_ROOT}/src/ffnx_port/framegen_game.cpp"
   # FFNx's patch API with recomp semantics (replaces FFNx's patch.cpp)
   "${FF7_ROOT}/src/ffnx_port/patch_recomp.cpp"
   "${FF7_ROOT}/src/ffnx_port/quickboot.cpp"
@@ -150,8 +152,8 @@ set_target_properties(ffnx PROPERTIES POSITION_INDEPENDENT_CODE ON)
 include("${FF7_ROOT}/cmake/ffnx_deps.cmake")
 include("${FF7_ROOT}/cmake/ffnx_audio.cmake")
 target_include_directories(ffnx PRIVATE "${FFNX_DEPS}/cgltf" "${FF7_ROOT}/src/interp" "${FF7_ROOT}/src/host")
-target_link_libraries(ffnx PUBLIC ff7_core bgfx ff7_rcheevos ffnx::rc ffnx_png ffnx_imgui ffnx_pugixml ffnx_xxhash
-  ffnx_soloud ffnx_vgmstream ffnx_openpsf ffnx_lz4)
+target_link_libraries(ffnx PUBLIC ff8_core bgfx ff8_rcheevos ffnx::rc ffnx_png ffnx_imgui ffnx_pugixml ffnx_xxhash
+  ffnx_soloud ffnx_vgmstream ffnx_openpsf ffnx_lz4 ffnx_lsfg)
 if(FF7_HAVE_FFMPEG)
   target_compile_definitions(ffnx PRIVATE FF7_HAVE_FFMPEG=1)
   foreach(lib avformat avcodec swscale swresample avutil)
@@ -169,9 +171,9 @@ target_link_options(ffnx INTERFACE "-Wl,--allow-multiple-definition")
 # Link check: an executable over the FFNx core, to list what the unported modules still
 # owe (tools/ffnx_link_stubs.py turns the undefined symbols into named stops).
 if(FFNX_LINK_PROBE)
-  add_executable(ffnx_link_probe "${FF7_ROOT}/src/host/ff7_headless_main.c")
+  add_executable(ffnx_link_probe "${FF7_ROOT}/src/host/ff8_headless_main.c")
   # Whole archive: nothing in main references FFNx, so the linker would drop it all.
-  target_link_libraries(ffnx_link_probe PRIVATE "-Wl,--whole-archive" ffnx "-Wl,--no-whole-archive" ff7_core bgfx ffnx_png ffnx_imgui ffnx_pugixml ffnx_xxhash ffnx-resources)
+  target_link_libraries(ffnx_link_probe PRIVATE "-Wl,--whole-archive" ffnx "-Wl,--no-whole-archive" ff8_core bgfx ffnx_png ffnx_imgui ffnx_pugixml ffnx_xxhash ffnx-resources)
   # lld only reports undefined symbols in live sections; keep everything for the census.
   target_link_options(ffnx_link_probe PRIVATE "-Wl,--no-gc-sections" "-Wl,--error-limit=0" "-Wl,--no-demangle")
 endif()

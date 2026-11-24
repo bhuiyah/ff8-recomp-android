@@ -4,7 +4,7 @@
  * It runs on the lifted code's own machine state (g_eax.. registers, the lazy flags that
  * cross every call, the x87 stack g_st, the FPU control word), so interpreted and lifted
  * code call each other freely:
- *   - a marked function is an entry override (src/host/ff7_overrides.c): any lifted call
+ *   - a marked function is an entry override (src/host/ff8_overrides.c): any lifted call
  *     to it, direct or through the dispatch table, lands in ff7_interp_run;
  *   - a call from interpreted code goes to the lifted function (or FFNx's replacement:
  *     entry overrides and call-site hooks are honoured), or is interpreted when the target
@@ -39,7 +39,7 @@ int ff7_interp_marked(uint32_t va);
 uint32_t ff7_interp_function_of(uint32_t va);
 
 /* Every lifted function whose body holds guest bytes in [va, va+n), inline copies included
- * (src/host/ff7_hext.cpp, from tools/gen_extents.py); at most `max` into `out`. */
+ * (src/host/ff8_hext.cpp, from tools/gen_extents.py); at most `max` into `out`. */
 int ff7_functions_covering(uint32_t va, uint32_t n, uint32_t *out, int max);
 
 /* Instructions executed so far (statistics). */

@@ -4,7 +4,7 @@
 // arrangement FFNx uses: bgfx's API thread is whichever thread calls bgfx::init.
 #include "ffnx_display.h"
 #include <cstdio>
-#include "ff7_boot.h"
+#include "ff8_boot.h"
 
 #ifdef FF7_WITH_BGFX
 #include <bgfx/bgfx.h>          // FFNx's fork keeps renderFrame/PlatformData in bgfx.h

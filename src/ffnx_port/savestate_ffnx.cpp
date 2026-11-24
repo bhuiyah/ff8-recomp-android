@@ -1,4 +1,4 @@
-// savestate_ffnx.cpp - what the save states (src/host/ff7_savestate.c) need from FFNx: the
+// savestate_ffnx.cpp - what the save states (src/host/ff8_savestate.c) need from FFNx: the
 // game's mode, whether this moment can be saved, an on-screen note, and FFNx's texture sets.
 //
 // Texture sets live in guest memory (the game holds them) but carry host state: GPU texture
@@ -25,7 +25,7 @@
 #include "ff7/widescreen.h"
 #include "audio.h"
 #include "music.h"
-#include "ff7_savestate.h"
+#include "ff8_savestate.h"
 
 void stop_music_for_channel(int channel);   // music.cpp
 // gl/deferred.cpp: queues allocated once from the game heap, kept across frames

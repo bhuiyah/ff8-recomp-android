@@ -2,7 +2,7 @@
 // Build and run: clang++ -std=c++17 -I src/android tests/pad_remap/test_pad_remap.cpp && ./a.out
 #include <cstdio>
 #include <cstring>
-#include "ff7_pad_remap.h"
+#include "ff8_pad_remap.h"
 
 static int fails;
 static void check(const char *what, unsigned got, unsigned want) {

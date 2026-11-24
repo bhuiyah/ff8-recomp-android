@@ -54,7 +54,7 @@ public class TestControl extends BroadcastReceiver {
     static {
         for (String k : new String[] { "fps", "renderer", "aspect", "perf", "speed", "touch_controls", "game_language", "gil", "resolution", "exp", "ap", "rumble" })
             TYPES.put(k, Integer.class);
-        for (String k : new String[] { "crt_filter", "show_fps", "no_encounters", "battle_plus", "bottom_screen", "portrait", "split", "side", "side_left",
+        for (String k : new String[] { "crt_filter", "framegen", "show_fps", "no_encounters", "battle_plus", "bottom_screen", "portrait", "split", "side", "side_left",
                                        "menu_sounds", "quiet_build", "turbo", "analog_controls", "save_anywhere", "bottom_buttons", "autofire", "swap_screens",
                                        "touch_extra" })
             TYPES.put(k, Boolean.class);
@@ -102,6 +102,22 @@ public class TestControl extends BroadcastReceiver {
                 int pid = gamePid(ctx);
                 if (pid > 0) android.os.Process.killProcess(pid);
                 out.put("stopped", pid > 0);
+                break;
+            }
+            case "EDITION": {
+                // --es edition 2013|remastered: play that edition from now on; without it, which is here
+                GameInstall gi = new GameInstall(ctx);
+                String ed = intent.getStringExtra("edition");
+                if (ed != null) {
+                    if (!ed.equals(GameInstall.ED_2013) && !ed.equals(GameInstall.ED_REMASTERED)) throw new IllegalArgumentException("edition 2013 or remastered");
+                    if (gamePid(ctx) > 0) throw new IllegalStateException("the game is running");
+                    if (GameBuild.running || JobService.running != null) throw new IllegalStateException("building or downloading");
+                    if (!gi.has(ed)) throw new IllegalStateException(ed + " is not on this device: " + gi.missingFiles(ed));
+                    gi.activate(ed);
+                }
+                out.put("edition", gi.edition());
+                for (String e : new String[] { GameInstall.ED_2013, GameInstall.ED_REMASTERED })
+                    out.put(e, gi.has(e) ? new GameBuild(ctx, e).built() ? "built" : "here" : "no");
                 break;
             }
             case "REPORT": {

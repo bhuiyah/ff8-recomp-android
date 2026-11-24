@@ -182,7 +182,7 @@ BOOL MoveFileExA(LPCSTR from, LPCSTR to, DWORD) { return rename(from, to) == 0; 
 char *StrStrIA(const char *hay, const char *needle) { return (char *)strcasestr(hay, needle); }
 BOOL AdjustWindowRect(LPRECT, DWORD, BOOL) { return TRUE; }
 
-// ---- modules / exceptions: no DLLs to load; crashes are reported by src/host/ff7_crash.c
+// ---- modules / exceptions: no DLLs to load; crashes are reported by src/host/ff8_crash.c
 HMODULE LoadLibraryA(LPCSTR) { return 0; }
 FARPROC GetProcAddress(HMODULE, LPCSTR) { return nullptr; }
 BOOL FreeLibrary(HMODULE) { return TRUE; }

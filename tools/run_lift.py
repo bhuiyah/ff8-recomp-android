@@ -15,7 +15,7 @@ Adapted from codepdbh/nfsu2-recompiled scripts/run_lift.py (MIT License).
         recomp_funcs.h         declarations
         recomp_dispatch.c      sorted VA -> function table (binary search)
         recomp_imports.c       IAT slot VA -> "dll!name" (for crash trails)
-        recomp_variants.c      patched-code variants lifted (checked by ff7_hext.cpp)
+        recomp_variants.c      patched-code variants lifted (checked by ff8_hext.cpp)
         recomp_extents.c       guest ranges each function's body covers (tools/gen_extents.py)
         lift_stats.json        counts for docs/LIFT_REPORT.md
       --chunk-bytes B  end a file once its C reaches B bytes (else every --split functions):
@@ -35,7 +35,7 @@ Adapted from codepdbh/nfsu2-recompiled scripts/run_lift.py (MIT License).
 
 Everything written here is derived from the game binary and is gitignored.
 """
-import gzip, json, os, sys, time, collections
+import contextlib, gzip, json, os, sys, time, collections
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PCRECOMP = os.environ.get("PCRECOMP", os.path.normpath(os.path.join(HERE, "..", "external", "pcrecomp")))
@@ -217,6 +217,15 @@ def manifest_patches(manifest_paths, img, base, md, fds):
     return patch_sites, variants
 
 
+@contextlib.contextmanager
+def whole(path):
+    """A file that appears whole: the on-device build compiles each as soon as it sees it, and clang
+    crashed on one still being written."""
+    with open(path + ".tmp", "w", newline="\n") as fh:
+        yield fh
+    os.replace(path + ".tmp", path)
+
+
 def cmd_lift(exe, catalog, outdir, split=400, names_path=None, prefix="", manifests=None,
              chunk_bytes=0, shard=None, resume=False):
     import pefile
@@ -370,25 +379,25 @@ def cmd_lift(exe, catalog, outdir, split=400, names_path=None, prefix="", manife
         print(f"[*] shard {si}/{sn}: {idx} files", flush=True)
         return
 
-    with open(os.path.join(outdir, f"{prefix}recomp_dispatch.c"), "w", newline="\n") as fh:
+    with whole(os.path.join(outdir, f"{prefix}recomp_dispatch.c")) as fh:
         fh.write(f'/* AUTO-GENERATED. DO NOT EDIT. */\n#include "recomp_types.h"\n#include "{prefix}recomp_funcs.h"\n\n')
         fh.write(f"const recomp_dispatch_entry_t {prefix}recomp_dispatch_table[] = {{\n")
         for a in sorted(entries):
             fh.write(f"    {{ 0x{a:08X}u, sub_{a:08X} }},\n")
         fh.write("};\n")
         fh.write(f"const uint32_t {prefix}recomp_dispatch_count = {len(entries)};\n")
-    with open(os.path.join(outdir, f"{prefix}recomp_imports.c"), "w", newline="\n") as fh:
+    with whole(os.path.join(outdir, f"{prefix}recomp_imports.c")) as fh:
         fh.write("/* AUTO-GENERATED: IAT slot -> import name, for diagnostics. */\n#include <stdint.h>\n")
         fh.write("typedef struct { uint32_t slot; const char* name; } ff7_import_name_t;\n")
         fh.write(f"const ff7_import_name_t {prefix}ff7_import_names[] = {{\n")
         for slot, (dll, nm) in sorted(iat.items()):
             fh.write(f'    {{ 0x{slot:08X}u, "{dll}!{nm}" }},\n')
         fh.write("    { 0, 0 } };\n")
-    # Patched-code variants the lift has (src/host/ff7_hext.cpp checks mod hext code writes
+    # Patched-code variants the lift has (src/host/ff8_hext.cpp checks mod hext code writes
     # against these: a write with no matching variant cannot take effect).
     def cstr(b):
         return '"' + "".join(f"\\x{x:02X}" for x in b) + '"'
-    with open(os.path.join(outdir, f"{prefix}recomp_variants.c"), "w", newline="\n") as fh:
+    with whole(os.path.join(outdir, f"{prefix}recomp_variants.c")) as fh:
         fh.write("/* AUTO-GENERATED: lifted patched-code variants (start, end, bytes, mask). */\n#include <stdint.h>\n")
         fh.write("typedef struct { uint32_t start, end; const char *bytes, *mask; } ff7_code_variant_t;\n")
         rows = [(s, v) for s, vs in sorted(code_variants.items()) for v in vs]
@@ -410,7 +419,7 @@ def cmd_lift(exe, catalog, outdir, split=400, names_path=None, prefix="", manife
             fh.write("    0,\n")
         fh.write("};\n")
         fh.write(f"const uint32_t {prefix}ff7_live_dword_site_count = {len(sites)};\n")
-    # Which functions hold each guest address (inline copies included): ff7_hext.cpp switches
+    # Which functions hold each guest address (inline copies included): ff8_hext.cpp switches
     # every one of them to the interpreter for a patch the lift has no variant for.
     if shard:
         print(f"[*] shard {si}/{sn}: {idx} files, tables written", flush=True)

@@ -40,6 +40,9 @@ public class LauncherActivity extends Activity {
     /** FF8: not yet. Achievements page (FF7's achievement list; FFNx's achievement code is FF7's).
      *  Steam sign-in itself stays: Download from Steam uses it. */
     static final boolean ACHIEVEMENTS = false;
+    /** Steam achievements: FFNx's FF8 achievement code, unlocks sent to the Steam account
+     *  (SteamLink.java), for the edition installed. Settings > Steam shows them. */
+    static final boolean STEAM_ACHIEVEMENTS = true;
     /** FF8: not yet. Steam Cloud save sync (FF7's save files and cloud folder). */
     static final boolean CLOUD_SAVES = false;
     /** FF8: not yet. Game boosters: speed, random battles, battle enhancement, save anywhere,
@@ -58,10 +61,12 @@ public class LauncherActivity extends Activity {
     /** FF8: not yet. Controller extras that follow FF7's state: FFNx's analogue controls, hold
      *  confirm to repeat in battles, rumble (src/ffnx_port/rumble.cpp). */
     static final boolean FF7_CONTROLLER_EXTRAS = false;
-    /** FF8's frame limiter (FFNx ff8_fps_limiter) goes to 60 FPS at most: no 120 FPS or "60, battles at 30". */
-    private static final int FPS_DEFAULT = 2;   // FF8 shipped battles at 15 FPS: FFNx's 30 FPS battles
+    /** FF8's frame limiter (FFNx ff8_fps_limiter). The game counts frames, and FFNx scales nothing: at a
+     *  higher rate everything happens faster (2, 30 FPS battles: battles at twice the speed; 3, 60 FPS:
+     *  four times). 1 is the game's own speed; frame generation is what makes it smooth. */
+    private static final int FPS_DEFAULT = 1;
 
-    private static final int PICK_GAME = 1, PICK_IRO = 2, PICK_FOLDER = 3, PICK_PSX = 4, PICK_STORAGE = 5;
+    private static final int PICK_GAME = 1, PICK_IRO = 2, PICK_FOLDER = 3, PICK_PSX = 4, PICK_STORAGE = 5, PICK_LOSSLESS = 6;
     /** Settings > Storage > Custom folder sent the player to grant All files access: pick the folder when they are back. */
     private boolean wantStorageFolder;
 
@@ -280,7 +285,7 @@ public class LauncherActivity extends Activity {
         return Updater.percent >= 0 ? Updater.status + " · " + Updater.percent + "%" : Updater.status;
     }
 
-    /** The game can start: files imported and libff7.so built for this device. */
+    /** The game can start: files imported and libff8.so built for this device. */
     private boolean ready() {
         return install.hasGame() && build.built() && !GameBuild.running && JobService.running == null;
     }
@@ -319,6 +324,9 @@ public class LauncherActivity extends Activity {
         downloader = sDownloader;
         queue = sQueue;
         prefs = getSharedPreferences("launcher", MODE_PRIVATE);
+        // 30 FPS battles was the default, and 60 FPS a choice, without saying that they speed the game up
+        if (!prefs.getBoolean("fps_speed_known", false))
+            prefs.edit().putBoolean("fps_speed_known", true).putInt("fps", Math.min(prefs.getInt("fps", FPS_DEFAULT), FPS_DEFAULT)).apply();
         if (Storage.sdMissing(this))
             new android.os.Handler(getMainLooper()).post(() -> toastDialog("Your game files are on the SD card, which is "
                     + "not inserted. Insert it and open FF8Recomp again (Settings > Storage moves them back to internal "
@@ -424,6 +432,20 @@ public class LauncherActivity extends Activity {
                 runOnUiThread(() -> { refresh(); if (m != null) toastDialog(m); });
             }, "cloud-saves").start();
         }
+        // Steam achievements the game earned (files/steam/pending.txt) go to Steam from here, once
+        // the game has closed: not from the game's process while it plays (a Steam connection
+        // there corrupted the game's memory in battles: docs/NOTES.md 2026-11-22)
+        if (STEAM_ACHIEVEMENTS && !busy && steam().signedIn() && steam().waiting() > 0 && TestControl.gamePid(this) <= 0) {
+            new Thread(() -> {
+                try {
+                    java.util.List<String> got = steam().sync();
+                    if (!got.isEmpty()) android.util.Log.i("FF8Steam", "after the game, sent: " + got);
+                } catch (Exception e) {
+                    android.util.Log.w("FF8Steam", "after the game, waiting for the next try: " + SteamLink.message(e));
+                }
+                runOnUiThread(this::refresh);
+            }, "steam-after-game").start();
+        }
         Intent ti = getIntent();
         if (ti != null && ti.getBooleanExtra(TestControl.EXTRA_STEAM_QR, false)) {
             ti.removeExtra(TestControl.EXTRA_STEAM_QR);
@@ -471,6 +493,7 @@ public class LauncherActivity extends Activity {
         long ms = android.os.SystemClock.uptimeMillis() - t0;
         if (ms > 100) android.util.Log.w("FF7Recomp", "mod list took " + ms + " ms on the UI thread");
         catalog.prune(library.dir);
+        if (!build.edition.equals(install.edition())) build = new GameBuild(this);   // switched editions
         updateStatus();
         playButton.setEnabled(ready() && !busy);
         // the same page rebuilt (a mod switched on or off, moved, a setting changed): the focused
@@ -1223,7 +1246,8 @@ public class LauncherActivity extends Activity {
         s.append(!install.hasGame() ? "Game: not imported yet"
                 : GameBuild.running ? "Game: building for this device, " + GameBuild.percent + "%"
                 : build.built() ? "Game: ready" : "Game: not built for this device yet");
-        if (install.hasGame()) s.append("\nEdition: ").append(install.remastered() ? "Remastered" : "2013 release");
+        if (install.hasGame()) s.append("\nEdition: ").append(GameInstall.editionName(install.edition()))
+                .append(install.has(GameInstall.other(install.edition())) ? " (both installed)" : "");
         if (MODS) {
             s.append("\nMods: ").append(library.enabledCount()).append(" of ").append(library.mods.size()).append(" enabled");
             if (!catalog.updates().isEmpty()) s.append("\nMod updates: ").append(catalog.updates().size());
@@ -1493,7 +1517,7 @@ public class LauncherActivity extends Activity {
         }
         if (!ACHIEVEMENTS) {   // the Steam sign-in lives here while the Achievements page is off
             col.addView(heading("Steam"));
-            steamAccountSection(col);
+            if (STEAM_ACHIEVEMENTS) steamSection(col); else steamAccountSection(col);
             col.addView(space(10));
         }
         col.addView(heading("Language"));
@@ -1556,7 +1580,9 @@ public class LauncherActivity extends Activity {
         int cur = fpsMode();
         // FF8 (FFNx ff8_fps_limiter): Original, Default, 30 FPS battles, 60 FPS. FF7's 5 (60 FPS
         // with battles at 30, #64) and 4 (120 FPS) do not exist for FF8.
-        for (int mode : new int[] { 0, 1, 2, 3 }) {
+        col.addView(text("FF8 counts its frames: battles are made for 15 a second and the rest for 30, and more of them "
+                + "would play the game faster. For smooth motion at the right speed, use Frame generation below.", 14, DIM));
+        for (int mode : new int[] { 1, 0, 2, 3 }) {
             RadioButton rb = new RadioButton(this);
             rb.setId(View.generateViewId());
             // one line: the name, then a short dim note
@@ -1724,6 +1750,8 @@ public class LauncherActivity extends Activity {
         crt.setChecked(prefs.getBoolean("crt_filter", false));
         crt.setOnCheckedChangeListener((b, on) -> prefs.edit().putBoolean("crt_filter", on).apply());
         col.addView(crt);
+        col.addView(space(16));
+        frameGenSection(col);
         col.addView(space(16));
         ffnxSections(col);
         if (SECOND_SCREEN) {
@@ -1932,23 +1960,23 @@ public class LauncherActivity extends Activity {
 
     private static String fpsName(int mode) {
         switch (mode) {
-            case 0: return "Original";
-            case 1: return "Original, fixed";
-            case 2: return "30 FPS battles";
+            case 0: return "As shipped";
+            case 1: return "Original speed";
+            case 2: return "Fast battles";
             case 4: return "120 FPS (experimental)";
             case 5: return "60 FPS, battles at 30";
-            default: return "60 FPS (experimental)";
+            default: return "Fast everything (experimental)";
         }
     }
 
     private static String fpsDetail(int mode) {
         switch (mode) {
-            case 0: return "As shipped (battles at 15)";
-            case 1: return "As shipped (battles at 15), smoother pacing";
-            case 2: return "Battles at 30, the rest as shipped (recommended)";
+            case 0: return "The PC release's own timing, which can stutter";
+            case 1: return "Battles at 15, the rest at 30, evenly paced (recommended)";
+            case 2: return "Battles at 30: twice the speed";
             case 4: return "Field at 120; world map and battles at 60";
             case 5: return "Everything at 60 but battles, for devices that slow down in battle";
-            default: return "Everything at 60; some scenes may glitch";
+            default: return "60 everywhere: battles at four times the speed";
         }
     }
 
@@ -2008,7 +2036,7 @@ public class LauncherActivity extends Activity {
                     + "FF8_EN.exe and Data) or FINAL FANTASY VIII Remastered (the one with main.zzz). FF8Recomp "
                     + "then turns the game into a native Android app on this device.", 15, TEXT));
             col.addView(space(14));
-            col.addView(button(install.steamDownloading().exists() ? "Go on downloading from Steam" : "Connect to Steam…",
+            col.addView(button(install.downloadBegun() ? "Go on downloading from Steam" : "Connect to Steam…",
                     v -> steamDownload()));
             col.addView(text("Sign in once with the Steam app on your phone (a QR code; no password is typed here), "
                     + "then choose which FINAL FANTASY VIII to play. The download goes on with the launcher in the "
@@ -2073,11 +2101,32 @@ public class LauncherActivity extends Activity {
             col.addView(space(8));
             col.addView(button("Repair from Steam", v -> steamDownload()));
             col.addView(text("Checks every game file against Steam's copy and downloads only the missing or damaged ones.", 13, DIM));
-            col.addView(space(8));
-            col.addView(button(install.remastered() ? "Switch to the 2013 release from Steam\u2026" : "Switch to the Remastered from Steam\u2026",
-                    v -> steamOtherEdition()));
-            col.addView(text("If your Steam account has it: downloads that edition and builds the game for it. "
-                    + "Your saves stay.", 13, DIM));
+            final String cur = install.edition(), oth = GameInstall.other(cur);
+            col.addView(space(14));
+            col.addView(heading("Editions"));
+            if (install.has(oth)) {
+                boolean othBuilt = new GameBuild(this, oth).built();
+                col.addView(text("Both editions are on this device and share your saves. Play starts the "
+                        + GameInstall.editionName(cur) + "." + (othBuilt ? "" : " The " + GameInstall.editionName(oth)
+                        + " still has to be built for this device."), 15, TEXT));
+                col.addView(space(8));
+                col.addView(button("Play the " + GameInstall.editionName(oth) + " instead", v -> switchEdition(oth)));
+                col.addView(text("Switches at once. Save states are kept for each edition by itself.", 13, DIM));
+                if (!othBuilt && build.built()) {
+                    col.addView(space(8));
+                    col.addView(button("Build the " + GameInstall.editionName(oth) + " too", v -> startBuild()));
+                }
+                col.addView(space(8));
+                col.addView(button("Remove the " + GameInstall.editionName(oth) + "\u2026", v -> removeEdition(oth)));
+            } else {
+                col.addView(text("This device has the " + GameInstall.editionName(cur) + ". The "
+                        + GameInstall.editionName(oth) + " can be installed beside it; both share your saves, and you "
+                        + "switch between them here without downloading or building again.", 15, TEXT));
+                col.addView(space(8));
+                col.addView(button("Add the " + GameInstall.editionName(oth) + " from Steam\u2026", v -> steamOtherEdition()));
+                col.addView(text((GameInstall.ED_REMASTERED.equals(oth) ? "About 2.8 GB" : "About 1.7 GB")
+                        + ", if your Steam account has it. Or pick its folder with Import again.", 13, DIM));
+            }
         }
         if (install.hasGame() && !GameBuild.running) {
             col.addView(space(14));
@@ -2108,6 +2157,44 @@ public class LauncherActivity extends Activity {
             requestPermissions(new String[] { android.Manifest.permission.POST_NOTIFICATIONS }, 9);
     }
 
+    /** Settings > Display: frame generation with the player's own Lossless Scaling (GitHub #8). */
+    private void frameGenSection(LinearLayout col) {
+        col.addView(heading("Frame generation"));
+        boolean have = FrameGen.dll(install.files).isFile();
+        CheckBox on = new CheckBox(this);
+        on.setText("Frame generation (Lossless Scaling)\nShows up to 60 frames a second by making frames between the game's own, "
+                + "which keeps its normal speed. Needs Lossless Scaling (bought on Steam) and Vulkan 1.3. It adds a little "
+                + "delay and uses more battery; fast scenes can look smeared");
+        on.setTextColor(have ? TEXT : DIM);
+        on.setTextSize(16);
+        on.setEnabled(have);
+        on.setChecked(have && prefs.getBoolean("framegen", false));
+        on.setOnCheckedChangeListener((b, x) -> prefs.edit().putBoolean("framegen", x).apply());
+        col.addView(on);
+        if (have && prefs.getInt("renderer", 0) == 1) col.addView(text("It works with the Vulkan renderer only: choose Vulkan above.", 14, DIM));
+        if (have && fpsMode() >= 3) col.addView(text("Frame rate is set to 60: there is nothing to make. Choose Original speed above to use it.", 14, DIM));
+        if (!have) col.addView(text("FF8Recomp does not include it: it uses Lossless.dll (7 MB) from your own copy, "
+                + "downloaded from your Steam account or chosen here.", 14, DIM));
+        if (steam().signedIn()) col.addView(button(have ? "Get Lossless.dll from Steam again" : "Get Lossless.dll from your Steam", v -> background(() -> {
+            File tmp = new File(FrameGen.dir(install.files), "steam");
+            GameBuild.deleteTree(tmp);
+            try {
+                String err = new SteamFiles(steam()).downloadGame(tmp, this::progress, new java.util.concurrent.atomic.AtomicBoolean(), FrameGen.STEAM);
+                if (err == null) try (java.io.InputStream in = new java.io.FileInputStream(new File(tmp, "Lossless.dll"))) { err = FrameGen.install(in, install.files); }
+                if (err != null) return "Not added: " + err;
+                return frameGenAdded();
+            } finally { GameBuild.deleteTree(tmp); }
+        })));
+        else col.addView(button("Sign in to Steam to get Lossless.dll…", v -> steamSignIn()));
+        col.addView(small("Choose a Lossless.dll on this device…", v -> pick(PICK_LOSSLESS)));
+    }
+
+    private String frameGenAdded() {
+        prefs.edit().putBoolean("framegen", true).apply();
+        runOnUiThread(() -> show("settings"));
+        return "Lossless.dll added. Frame generation is on.";
+    }
+
     /** The Steam download or the import, in JobService (GitHub #53: goes on in the background). */
     private void startJob(String kind, String arg) {
         if (busy || JobService.running != null || GameBuild.running) return;
@@ -2120,7 +2207,11 @@ public class LauncherActivity extends Activity {
     private void pick(int what) {
         if (busy) return;
         Intent i;
-        if (what == PICK_IRO || what == PICK_PSX) {
+        if (what == PICK_LOSSLESS) {
+            i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            i.addCategory(Intent.CATEGORY_OPENABLE);
+            i.setType("*/*");
+        } else if (what == PICK_IRO || what == PICK_PSX) {
             i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
             i.addCategory(Intent.CATEGORY_OPENABLE);
             i.setType("*/*");
@@ -2145,6 +2236,13 @@ public class LauncherActivity extends Activity {
             return;
         }
         background(() -> {
+            if (req == PICK_LOSSLESS) {
+                try (java.io.InputStream in = getContentResolver().openInputStream(data.getData())) {
+                    if (in == null) return "Not added: the file cannot be read";
+                    String err = FrameGen.install(in, install.files);
+                    return err != null ? "Not added: " + err : frameGenAdded();
+                }
+            }
             if (req == PICK_PSX) return importPsx(data);
             if (req == PICK_IRO) {
                 // .iro, .zip or .7z: Nexus Mods and other sites' downloads (unpacked like Get mods')
@@ -2312,7 +2410,7 @@ public class LauncherActivity extends Activity {
         if (!steam().signedIn()) { steamSignIn(this::steamDownload); return; }
         if (install.hasGame()) { startSteamJob(install.remastered() ? SteamFiles.EDITION_REMASTERED : SteamFiles.EDITION_2013); return; }
         String going = prefs.getString("steam_edition", null);
-        if (install.steamDownloading().exists() && going != null) { startSteamJob(going); return; }
+        if (install.downloadBegun() && going != null) { startSteamJob(going); return; }
         steamPickEdition(null);
     }
 
@@ -2321,6 +2419,30 @@ public class LauncherActivity extends Activity {
         if (busy) return;
         if (!steam().signedIn()) { steamSignIn(this::steamOtherEdition); return; }
         steamPickEdition(install.remastered() ? SteamFiles.EDITION_2013 : SteamFiles.EDITION_REMASTERED);
+    }
+
+    /** Play the other edition (both are here): a few renames, nothing is downloaded or built. */
+    private void switchEdition(String ed) {
+        if (busy || GameBuild.running || JobService.running != null) return;
+        if (TestControl.gamePid(this) > 0) { tell("The game is running: quit it first, then switch."); return; }
+        try { install.activate(ed); }
+        catch (Exception e) { tell("Not switched: " + e.getMessage()); return; }
+        build = new GameBuild(this);
+        show("game");
+    }
+
+    private void removeEdition(String ed) {
+        if (busy || GameBuild.running || JobService.running != null) return;
+        ff(new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setMessage("Remove the " + GameInstall.editionName(ed) + " from this device? Its game files ("
+                        + (GameInstall.ED_REMASTERED.equals(ed) ? "2.8 GB" : "1.7 GB") + "), its build and its save states go. "
+                        + "Your saves stay. You can add it again later.")
+                .setPositiveButton("Remove", (d, x) -> background(() -> {
+                    progress("Removing the " + GameInstall.editionName(ed));
+                    install.remove(ed);
+                    return null;
+                }))
+                .setNegativeButton("Cancel", null).show());
     }
 
     private void startSteamJob(String edition) {
@@ -2362,8 +2484,8 @@ public class LauncherActivity extends Activity {
         boolean[] owned = { hasRe, has13 };
         LinearLayout box = column();
         box.setPadding(dp(16), dp(8), dp(16), dp(4));
-        box.addView(text("Connected to Steam. Which one do you want to play? Mods work with both, and you can switch "
-                + "later under Game files.", 15, TEXT));
+        box.addView(text("Connected to Steam. Which one do you want to play? Mods work with both, and you can add "
+                + "the other one later under Game files.", 15, TEXT));
         AlertDialog[] dlg = new AlertDialog[1];
         for (int i = 0; i < 2; i++) {
             final String ed = i == 0 ? SteamFiles.EDITION_REMASTERED : SteamFiles.EDITION_2013;
@@ -2374,6 +2496,13 @@ public class LauncherActivity extends Activity {
             box.addView(b);
             box.addView(text(owned[i] ? notes[i] : "Not on this Steam account.", 13, DIM));
         }
+        box.addView(space(10));
+        View both = button("Download both", v -> { if (dlg[0] != null) dlg[0].dismiss(); startSteamJob(JobService.BOTH); });
+        both.setEnabled(has13 && hasRe);
+        both.setAlpha(has13 && hasRe ? 1f : 0.45f);
+        box.addView(both);
+        box.addView(text(has13 && hasRe ? "Installs both side by side, sharing your saves. Switch between them under Game files "
+                + "without downloading or building again. About 4.5 GB." : "Your Steam account has only one of them.", 13, DIM));
         android.widget.ScrollView scroll = new android.widget.ScrollView(this);
         scroll.addView(box);
         dlg[0] = ff(new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
@@ -2769,7 +2898,7 @@ public class LauncherActivity extends Activity {
             library.save();
             install.installRuntime();
             boolean steamOn = false;
-            if (ACHIEVEMENTS && steam().signedIn()) {
+            if ((ACHIEVEMENTS || STEAM_ACHIEVEMENTS) && steam().signedIn()) {
                 progress("Checking Steam achievements");
                 try { steam().sync(); } catch (Exception e) { android.util.Log.w("FF7Steam", "offline: " + SteamLink.message(e)); }
                 steamOn = steam().active();
@@ -2781,6 +2910,7 @@ public class LauncherActivity extends Activity {
                 cloudAfterGame = true;
             }
             install.crtFilter = prefs.getBoolean("crt_filter", false);
+            FrameGen.write(install.files, prefs.getBoolean("framegen", false) && FrameGen.dll(install.files).isFile());
             install.analogControls = FF7_CONTROLLER_EXTRAS && prefs.getBoolean("analog_controls", false);
             install.resolutionScale = prefs.getInt("resolution", 0);
             install.openGl = prefs.getInt("renderer", 0) == 1;

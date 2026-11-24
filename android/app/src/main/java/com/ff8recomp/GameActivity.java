@@ -216,7 +216,7 @@ public class GameActivity extends Activity implements SurfaceHolder.Callback {
         guideTab.show();
     }
 
-    /** libff7.so: built on this device from the player's exe (GameBuild.java), or bundled in a
+    /** libff8.so: built on this device from the player's exe (GameBuild.java), or bundled in a
      *  development APK. Loaded before the first native call (onCreate). */
     private static boolean loaded;
 
@@ -231,8 +231,8 @@ public class GameActivity extends Activity implements SurfaceHolder.Callback {
                     android.system.Os.setenv("FF7_SIMULATE_STATIC_TAKEN", "1", true);
         } catch (Exception ignored) {
         }
-        if (new java.io.File(ctx.getApplicationInfo().nativeLibraryDir, "libff7.so").isFile()) System.loadLibrary("ff7");
-        else System.load(new java.io.File(ctx.getFilesDir(), "game/libff7.so").getAbsolutePath());
+        if (new java.io.File(ctx.getApplicationInfo().nativeLibraryDir, "libff8.so").isFile()) System.loadLibrary("ff8");
+        else System.load(new GameBuild(ctx).lib.getAbsolutePath());
         loaded = true;
     }
 
@@ -751,7 +751,7 @@ public class GameActivity extends Activity implements SurfaceHolder.Callback {
     }
 
     // ---- leaving the game: Select+Start held, then Leave. The game closes as it does on
-    // Windows (WM_CLOSE, ff7_android_main.cpp), its process ends and the launcher is back.
+    // Windows (WM_CLOSE, ff8_android_main.cpp), its process ends and the launcher is back.
     private static native void nativeQuit();
     private final android.os.Handler ui = new android.os.Handler(android.os.Looper.getMainLooper());
     private final Runnable askQuit = this::askQuit;
@@ -924,31 +924,10 @@ public class GameActivity extends Activity implements SurfaceHolder.Callback {
             registerReceiver(testPad, padFilter, android.Manifest.permission.DUMP, null, Context.RECEIVER_EXPORTED);
         else
             registerReceiver(testPad, padFilter, android.Manifest.permission.DUMP, null);
-        startSteamSync();
-    }
-
-    /** Steam achievements the game unlocks (files/steam/pending.txt, src/ffnx_port/steam_android.cpp)
-     *  go to Steam while playing: checked every 20 s, sent when there are any (SteamLink.java). */
-    private volatile boolean steamSyncRunning;
-
-    private void startSteamSync() {
-        SteamLink steam = new SteamLink(this);
-        if (!steam.active()) return;
-        steamSyncRunning = true;
-        Thread t = new Thread(() -> {
-            while (steamSyncRunning) {
-                try { Thread.sleep(20_000); } catch (InterruptedException e) { return; }
-                if (steam.waiting() == 0) continue;
-                try {
-                    java.util.List<String> got = steam.sync();
-                    if (!got.isEmpty()) Log.i(TAG, "Steam achievements sent: " + got);
-                } catch (Exception e) {
-                    Log.w(TAG, "Steam achievements wait for the next try: " + SteamLink.message(e));
-                }
-            }
-        }, "steam-sync");
-        t.setDaemon(true);
-        t.start();
+        // Steam achievements the game unlocks wait in files/steam/pending.txt
+        // (src/ffnx_port/steam_android.cpp); the launcher sends them once the game has closed.
+        // FF8: no Steam connection from this process while the game runs: one every 20 s (the
+        // FF7Recomp way) corrupted game memory in battles, about one battle in three.
     }
 
     /** The display's fastest mode at its current resolution (the Thor's screens: 120 Hz;
@@ -1184,7 +1163,6 @@ public class GameActivity extends Activity implements SurfaceHolder.Callback {
         if (guideTab != null) guideTab.dismiss();
         if (companionHost != null) { companionHost.finish(); companionHost = null; }
         if (current == this) current = null;
-        steamSyncRunning = false;
         displayWatching = false;
         ui.removeCallbacks(displaySample);
         ((android.hardware.input.InputManager) getSystemService(Context.INPUT_SERVICE)).unregisterInputDeviceListener(deviceListener);

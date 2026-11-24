@@ -28,7 +28,7 @@
 #include "common.h"
 #include "globals.h"
 #include "renderer.h"
-#include "ff7_boot.h"
+#include "ff8_boot.h"
 
 namespace {
 

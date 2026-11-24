@@ -5,7 +5,7 @@
  * second running copy, and its process calls launch the Steam launcher, which Android has
  * not. The GDI drawing calls belong to the 2000 renderer's debug text and the software
  * path FFNx replaces; they answer "done" and draw nothing. The registry calls answer the
- * way the AF3DN.P ones do (ff7_af3dn.c): one configuration, FFNx's.
+ * way the AF3DN.P ones do (ff8_af3dn.c): one configuration, FFNx's.
  */
 #include <stdint.h>
 #include <stdio.h>
@@ -13,7 +13,7 @@
 #include <string.h>
 #include <time.h>
 #include "win32hle.h"
-#include "ff7_hle.h"
+#include "ff8_hle.h"
 
 #define W32(p) (*(uint32_t *)(uintptr_t)(p))
 
@@ -54,7 +54,7 @@ static void k_SetPriorityClass(void)   { RET(1, 2); }
 static void k_GetThreadPriority(void)  { RET(0, 1); }             /* THREAD_PRIORITY_NORMAL */
 static void k_SetThreadPriority(void)  { RET(1, 2); }
 
-/* ---- ADVAPI32: the same answers as AF3DN.P's dotemuReg* (ff7_af3dn.c) -------------------- */
+/* ---- ADVAPI32: the same answers as AF3DN.P's dotemuReg* (ff8_af3dn.c) -------------------- */
 extern const win32hle_shim ff7_af3dn[];
 static recomp_func_t af3dn(const char *name) {
     for (const win32hle_shim *s = ff7_af3dn; s->name; s++)

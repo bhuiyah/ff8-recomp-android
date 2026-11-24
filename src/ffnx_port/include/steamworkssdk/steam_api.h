@@ -22,11 +22,13 @@ public:
     bool GetAchievement(const char *name, bool *achieved);
     bool SetAchievement(const char *name);
     const char *GetAchievementDisplayAttribute(const char *name, const char *key);
-    bool GetStat(const char *, int32 *v) { if (v) *v = 0; return false; }   // FF7 (2013) has no stats
+    // integer stats (FF8 2013: enemies killed, magic drawn and stocked, card games won), from
+    // state.txt; a new value is queued in pending.txt like an unlock
+    bool GetStat(const char *name, int32 *v);
     bool GetStat(const char *, float *v) { if (v) *v = 0; return false; }
-    bool SetStat(const char *, int32) { return false; }
+    bool SetStat(const char *name, int32 v);
     bool SetStat(const char *, float) { return false; }
-    bool StoreStats() { return true; }                                      // unlocks are queued at once
+    bool StoreStats() { return true; }                                      // queued at once
     bool IndicateAchievementProgress(const char *, uint32, uint32) { return true; }
     bool RequestCurrentStats() { return true; }
 };

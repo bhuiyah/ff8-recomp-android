@@ -146,7 +146,7 @@ FF8_EDITS = [
 
     # ---- user data (FF8's saves, ff8input.cfg, temp files; Steam's save metadata): on Windows
     # Documents\Square Enix\FINAL FANTASY VIII Steam\user_<steam id>. Here the game folder's
-    # save/ (save/user_0 for save files, the same shape); src/hle/ff7_af3dn.c hands these host
+    # save/ (save/user_0 for save files, the same shape); src/hle/ff8_af3dn.c hands these host
     # paths back to the game as C:\FF8\... paths.
     ('common.cpp', 'void get_userdata_path(PCHAR buffer, size_t bufSize, bool isSavegameFile)\n{\n\tPWSTR outPath = NULL;\n',
      'void get_userdata_path(PCHAR buffer, size_t bufSize, bool isSavegameFile)\n{\n'
@@ -376,4 +376,11 @@ FF8_EDITS = [
      '\tfor (const auto &patch : patches)\n\t{\n\t\tconst bool valid =',
      '\tfor (auto patch : patches)\n\t{\n\t\tif (patch.classic_offset >= 0x1F9DC40 && patch.classic_offset < 0x279F000) patch.classic_offset += 0x69180000;   // FF8Recomp\n\t\tconst bool valid ='),
     ('overlay.cpp', '(void*)0x401000, 0x27A0000 - 0x401000, 0x401000);', '(void*)0x401000, 0x1F9E000 - 0x401000, 0x401000);   // FF8Recomp: the rest has moved (GitHub #2)'),
+    # The Remastered's enemies have more vertices than the original's: FFNx moves the buffer each
+    # "breaks apart" effect copies the enemy into, in five of the game's six copies of it. This is
+    # the sixth: the copy ran over the effect's task lists, and the battle crashed.
+    ('ff8_opengl.cpp',
+     '\t\t{ 0x81F4E9, 0x262B1E8, 0x400000, ff8_battle_effect_layout_patch_mode::effect_arena },\n',
+     '\t\t{ 0x81F4E9, 0x262B1E8, 0x400000, ff8_battle_effect_layout_patch_mode::effect_arena },\n'
+     '\t\t{ 0x821263, 0x263DA20, 0x400000, ff8_battle_effect_layout_patch_mode::effect_arena },   // FF8Recomp\n'),
 ]

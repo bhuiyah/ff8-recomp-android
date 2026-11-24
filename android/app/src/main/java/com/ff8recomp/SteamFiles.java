@@ -104,8 +104,9 @@ final class SteamFiles {
     /** The last downloadGame fetched the Remastered (FFVIII_EN.exe.dat, main.zzz, other.zzz). */
     boolean lastWasRemaster;
 
-    /** The exe as the depot has it (wrapped), under the game folder. */
-    static final String WRAPPED_EXE = "FF8_EN.exe";
+    /** The 2013 release's exe as the depot has it (wrapped), under the game folder. Not its own
+     *  name: the device's storage ignores case, and ff8_en.exe is the program being played. */
+    static final String WRAPPED_EXE = "FF8_EN.exe.steam";
 
     /** A file of the depot and where it goes under the game folder. */
     private static final class Want { FileData f; String to; }
@@ -145,10 +146,12 @@ final class SteamFiles {
     String downloadGame(File game, Progress p, AtomicBoolean cancel, String edition) throws Exception {
         p.update("Connecting to Steam");
         try (SteamLink.Session s = link.open()) {
-            final boolean remaster = EDITION_REMASTERED.equals(edition) || (edition == null && !SteamLink.owns(s, SteamLink.APP_2013));
-            if (!SteamLink.owns(s, remaster ? SteamLink.APP_REMASTERED : SteamLink.APP_2013))
+            final boolean lossless = FrameGen.STEAM.equals(edition);   // Lossless Scaling's Lossless.dll alone
+            if (lossless && !SteamLink.owns(s, FrameGen.APP)) return "this Steam account does not own Lossless Scaling";
+            final boolean remaster = !lossless && EDITION_REMASTERED.equals(edition) || (edition == null && !SteamLink.owns(s, SteamLink.APP_2013));
+            if (!lossless && !SteamLink.owns(s, remaster ? SteamLink.APP_REMASTERED : SteamLink.APP_2013))
                 return remaster ? "this Steam account does not own FINAL FANTASY VIII Remastered" : NEED_RERELEASE;
-            int app = remaster ? SteamLink.APP_REMASTERED : SteamLink.APP_2013;
+            int app = lossless ? FrameGen.APP : remaster ? SteamLink.APP_REMASTERED : SteamLink.APP_2013;
             lastWasRemaster = remaster;
             p.update("Reading the game's file list from Steam");
             KeyValue depots = appInfo(s, app).get("depots");
@@ -188,7 +191,8 @@ final class SteamFiles {
                     keys.put(id, k.getDepotKey());
                     for (FileData f : m.getFiles()) {
                         if (f.getFlags().contains(EDepotFileFlag.Directory)) continue;
-                        String to = remaster ? remasterTarget(f.getFileName()) : target(f.getFileName());
+                        String to = lossless ? (f.getFileName().replace('\\', '/').toLowerCase(Locale.ROOT).matches("(.*/)?lossless\\.dll") ? "Lossless.dll" : null)
+                                : remaster ? remasterTarget(f.getFileName()) : target(f.getFileName());
                         if (to == null || wants.containsKey(to.toLowerCase(Locale.ROOT))) continue;
                         Want w = new Want();
                         w.f = f;
@@ -197,7 +201,8 @@ final class SteamFiles {
                         depotOf.put(w, id);
                     }
                 }
-                if (!wants.containsKey(remaster ? "ffviii_en.exe.dat" : WRAPPED_EXE.toLowerCase(Locale.ROOT)))
+                if (lossless && wants.isEmpty()) throw new IOException("Steam's copy of Lossless Scaling has no Lossless.dll");
+                if (!lossless && !wants.containsKey(remaster ? "ffviii_en.exe.dat" : WRAPPED_EXE.toLowerCase(Locale.ROOT)))
                     throw new IOException("Steam's copy of the game has no " + (remaster ? "FFVIII_EN.exe.dat" : "FF8_EN.exe"));
 
                 // what is already here and intact stays

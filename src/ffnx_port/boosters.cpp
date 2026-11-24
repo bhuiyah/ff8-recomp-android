@@ -18,7 +18,7 @@
 #include "log.h"
 #include "cfg.h"
 #include "ff7.h"
-#include "ff7_savestate.h"
+#include "ff8_savestate.h"
 #include "patch.h"
 
 extern "C" {

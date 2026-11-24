@@ -595,7 +595,7 @@ EDITS = [
     ('ff7/japanese_text.cpp', '  struct _stat64 file_status;\n  if (_stat64(path, &file_status) != 0)',
      '  struct stat file_status;\n  if (stat(path, &file_status) != 0)'),
     ('input.cpp', '#include "input.h"',
-     '#include "input.h"\n#ifdef FFNX_ANDROID\n#include "ff7_boot.h"   // FF7Recomp: ff7_platform_keyboard_state\n#endif'),
+     '#include "input.h"\n#ifdef FFNX_ANDROID\n#include "ff8_boot.h"   // FF7Recomp: ff7_platform_keyboard_state\n#endif'),
     ('external_mesh.cpp', '\tcgltf_options options = {0};', '\tcgltf_options options = {};'),
     # The game writes a pointer through out_buffer (a guest cell from its caller).
     ('ff7/battle/battle.cpp',
@@ -759,11 +759,11 @@ EDITS = [
      'extern "C" void ffnx_ss_texture_set_created(uint32_t ts);     // FF7Recomp: src/ffnx_port/savestate_ffnx.cpp\n'
      'extern "C" void ffnx_ss_texture_set_destroyed(uint32_t ts);\n\n'
      'void common_unload_texture(struct texture_set *texture_set)\n{\n'),
-    # Save states (src/host/ff7_savestate.c): taken and applied as the driver flips a frame --
+    # Save states (src/host/ff8_savestate.c): taken and applied as the driver flips a frame --
     # once per frame, after the mode's loop has returned, so no game-mode code is on the host
-    # stack (ff7_savestate.c also checks the host stack depth).
+    # stack (ff8_savestate.c also checks the host stack depth).
     ('common.cpp', 'void common_flip(struct game_obj *game_object)\n{\n',
-     'extern "C" void ff7_savestate_frame(void);   // FF7Recomp: src/host/ff7_savestate.c\n\n'
+     'extern "C" void ff7_savestate_frame(void);   // FF7Recomp: src/host/ff8_savestate.c\n\n'
      'void common_flip(struct game_obj *game_object)\n{\n\tff7_savestate_frame();   // FF7Recomp: the save-state safe point\n'),
     ('ff7/misc.cpp', 'void ff7_limit_fps()\n{\n\tstatic time_t last_gametime;\n',
      'namespace ffnx_recomp { void step_code(); }   // FF7Recomp: src/ffnx_port/patch_recomp.cpp\n\n'
@@ -1681,7 +1681,7 @@ EDITS = [
      '\t\t\tmemcpy_code(reinterpret_cast<uint32_t>(time_args.data() + 6), const_cast<uint8_t *>(original + 3), 6);',
      '\t\t\tmemcpy(time_args.data() + 6, const_cast<uint8_t *>(original + 3), 6);   // FF7Recomp: host array'),
     # The device going to sleep (or the app to the background) destroys the game's surface.
-    # The renderer takes the window to draw into each frame (src/android/ff7_android_main.cpp:
+    # The renderer takes the window to draw into each frame (src/android/ff8_android_main.cpp:
     # it waits there, the game paused, while there is none) and moves bgfx to a new one when
     # the surface comes back; before, the game crashed on wake (GitHub #26).
     ('renderer.cpp',

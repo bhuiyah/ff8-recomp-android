@@ -1,4 +1,4 @@
-"""Guest memory out of an FF8Recomp save state (src/host/ff7_savestate.c), to look up game data
+"""Guest memory out of an FF8Recomp save state (src/host/ff8_savestate.c), to look up game data
 on the PC: the header, then a zlib stream of records {u32 id, u32 size, data}; memory records
 (id R_MEM) carry {u32 guest address} then the bytes.
 

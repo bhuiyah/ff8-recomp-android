@@ -2,7 +2,7 @@
 
 The APK carries no game code. On the player's device, BuildService.java lifts the player's own
 ff7_en.exe with the lifter below, compiles the C with the device clang and links it with the
-runtime's archives into libff7.so, the same way the PC build links it. This writes:
+runtime's archives into libff8.so, the same way the PC build links it. This writes:
 
   build/device-kit/jni/arm64-v8a/   executables and libraries the device runs (APK jniLibs):
       libllvm.so      clang + lld (tools/build_device_clang.sh), run as `libllvm.so clang ...`
@@ -10,7 +10,7 @@ runtime's archives into libff7.so, the same way the PC build links it. This writ
       libcapstone.so  the lifter's disassembler
   build/device-kit/assets/kit.zip   unpacked by the launcher into files/kit:
       VERSION                 hash of everything below (a new kit means a new build)
-      compile.args, link.args the PC build's guest compile flags and libff7.so link, one
+      compile.args, link.args the PC build's guest compile flags and libff8.so link, one
                               argument per line, paths as @KIT@ / @GEN@ / @OUT@ / @GUEST@
       sysroot/, clang/        the NDK headers, crt objects, stubs and static libraries the
                               compile and link use; device clang's builtin headers
@@ -46,7 +46,7 @@ def norm(p):
 
 def ninja_cmd(build, target_pred):
     ninja = os.path.join(os.environ['SDK_CMAKE_DIR'], 'ninja.exe')
-    out = subprocess.run([ninja, '-C', build, '-t', 'commands', 'libff7.so'], capture_output=True,
+    out = subprocess.run([ninja, '-C', build, '-t', 'commands', 'libff8.so'], capture_output=True,
                          text=True, check=True).stdout.splitlines()
     for line in out:
         if target_pred(line):
@@ -63,7 +63,7 @@ def split_cmd(line):
 
 
 def guest_compile_args(build):
-    line = ninja_cmd(build, lambda l: 'ff7_no_guest.c' in l and ' -c ' in l)
+    line = ninja_cmd(build, lambda l: 'ff8_no_guest.c' in l and ' -c ' in l)
     a = split_cmd(line)[1:]
     out, skip = [], 0
     for i, x in enumerate(a):
@@ -98,12 +98,12 @@ def guest_compile_args(build):
 
 
 def link_args(build, rt_files):
-    line = ninja_cmd(build, lambda l: '-soname,libff7.so' in l)
+    line = ninja_cmd(build, lambda l: '-soname,libff8.so' in l)
     a = split_cmd(line)
     clangxx, drv = a[0], a[1:]
-    # the JNI entry: ff7 is never built (EXCLUDE_FROM_ALL), ff7_main compiles the same file with
+    # the JNI entry: ff8 is never built (EXCLUDE_FROM_ALL), ff8_main compiles the same file with
     # the same flags; clang drops inputs that do not exist, so name the built one
-    drv = [x.replace('CMakeFiles/ff7.dir/', 'CMakeFiles/ff7_main.dir/') for x in drv]
+    drv = [x.replace('CMakeFiles/ff8.dir/', 'CMakeFiles/ff8_main.dir/') for x in drv]
     # the driver's own expansion to ld.lld, exactly as on the PC
     exp = subprocess.run([clangxx, '-###'] + drv, capture_output=True, text=True, cwd=build)
     lld = None
@@ -122,24 +122,24 @@ def link_args(build, rt_files):
             out.append('@OUT@')
             continue
         base = os.path.basename(y)
-        if y.endswith('ff7_android_main.cpp.o'):
-            y = '@KIT@/rt/ff7_android_main.o'
-            rt_files['ff7_android_main.o'] = os.path.join(build, x)
+        if y.endswith('ff8_android_main.cpp.o'):
+            y = '@KIT@/rt/ff8_android_main.o'
+            rt_files['ff8_android_main.o'] = os.path.join(build, x)
         elif y.endswith('.a') and not y.startswith('@KIT@') and not y.startswith('-'):
             src = x if os.path.isabs(x) else os.path.join(build, x)
             if not os.path.isfile(src):
                 die('archive not found: ' + src)
             rt_files[base] = src
-            if base == 'libff7_core.a' and '@GUEST@' not in out:
+            if base == 'libff8_core.a' and '@GUEST@' not in out:
                 out += ['--whole-archive', '@GUEST@', '--no-whole-archive']
             y = '@KIT@/rt/' + base
         if (('/' in y and not y.startswith('@KIT@')) or re.match(r'^[A-Za-z]:', y)) and not y.startswith('-'):
             die('unmapped path in link command: ' + x)
         out.append(y)
-    if '@KIT@/rt/ff7_android_main.o' not in out:
+    if '@KIT@/rt/ff8_android_main.o' not in out:
         die('the JNI entry object is not in the link')
     if '@GUEST@' not in out:
-        die('libff7_core.a not in the link')
+        die('libff8_core.a not in the link')
     return out
 
 

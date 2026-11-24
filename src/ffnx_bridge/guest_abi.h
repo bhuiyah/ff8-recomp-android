@@ -404,7 +404,7 @@ struct host_pool<R(A...)> {
 // cdecl thunk read `this` from the stack and every argument came one place off (GitHub #59:
 // the snowboard minigame crashed on its first frame). Like the cdecl thunks it pops only
 // the return address: the override runner pops the original's `ret N` bytes
-// (src/host/ff7_overrides.c), so popping them here too would unbalance the stack.
+// (src/host/ff8_overrides.c), so popping them here too would unbalance the stack.
 template <typename Sig> struct host_pool_this;
 template <typename R, typename T, typename... A>
 struct host_pool_this<R(T, A...)> {

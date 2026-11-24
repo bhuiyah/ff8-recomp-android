@@ -33,7 +33,7 @@ using std::distance;
 
 // FFNx opens files with the paths the game uses ("C:\FF7\data\sound\audio.fmt",
 // "data\movies\...", "shaders/..."): every file call goes through the game's own path
-// mapping (src/hle/ff7_paths.c: drive dropped, slashes, case-insensitive match).
+// mapping (src/hle/ff8_paths.c: drive dropped, slashes, case-insensitive match).
 // Function-like macros, so only calls are redirected (struct stat, members named access...).
 #ifdef __cplusplus
 extern "C" {
@@ -41,7 +41,7 @@ extern "C" {
 FILE *ffnx_fopen(const char *path, const char *mode);
 int ffnx_stat(const char *path, struct stat *st);
 int ffnx_access(const char *path, int mode);
-const char *hle_host_path(const char *guest, char *buf, unsigned n);   // src/hle/ff7_paths.c
+const char *hle_host_path(const char *guest, char *buf, unsigned n);   // src/hle/ff8_paths.c
 #ifdef __cplusplus
 }
 #endif

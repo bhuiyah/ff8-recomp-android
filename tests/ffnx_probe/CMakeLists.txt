@@ -4,6 +4,6 @@
 cmake_minimum_required(VERSION 3.20)
 project(FFNxProbe C CXX)
 get_filename_component(FF7_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
-include("${FF7_ROOT}/cmake/ff7core.cmake")
+include("${FF7_ROOT}/cmake/ff8core.cmake")
 include("${FF7_ROOT}/cmake/bgfx.cmake")
 include("${FF7_ROOT}/cmake/ffnx.cmake")

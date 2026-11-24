@@ -2,13 +2,13 @@
 //
 // FFNx patches the game's code to read some of its own variables (sfx volume table, the
 // widescreen viewport, 60 FPS swirl constants, ...): on Windows any address fits in 32
-// bits. Here those globals live in a 64 KB block below 2 GB, reserved when libff7.so loads
+// bits. Here those globals live in a 64 KB block below 2 GB, reserved when libff8.so loads
 // (static initialisation, before the guest heap exists). Its usual place is 0x6B000000, just
-// above the VirtualAlloc region and below ART's boot image (see src/hle/ff7_hle.h). Some
+// above the VirtualAlloc region and below ART's boot image (see src/hle/ff8_hle.h). Some
 // devices already have something mapped there (#36: a Retroid Pocket Classic, Android 14);
 // then it goes into a free gap /proc/self/maps shows, away from where the guest heap and the
 // VirtualAlloc region usually go. The patches take the address as it is, so any place below
-// 2 GB works; save states note a moved block (ff7_savestate.c).
+// 2 GB works; save states note a moved block (ff8_savestate.c).
 // ffnx_guest.h's ffnx_guest_static<T> / ffnx_guest_static_copy hand out its pieces.
 #include <sys/mman.h>
 #include <cerrno>

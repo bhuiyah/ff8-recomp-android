@@ -5,7 +5,7 @@
 //   files/quickboot.txt  (the launcher's Start setting)  "newgame", "continue" or "resume"
 //   FF7_QUICKBOOT=newgame|continue|resume                (env.txt, tests)
 // "resume [N]" loads save-state slot N (default: the current slot, savestates/current.txt;
-// src/host/ff7_savestate.c) once a game is running: it continues the first save (or starts a
+// src/host/ff8_savestate.c) once a game is running: it continues the first save (or starts a
 // new game when there is none) and loads the state in the field. A state cannot be loaded over
 // the title screen or the credits (#21: it crashed there).
 // Ticked once per frame from ffnx_recomp::step_code (ff7_limit_fps). Stops for good once the
@@ -23,7 +23,7 @@
 #include "log.h"
 #include "ff7/defs.h"
 #include "ff8.h"
-#include "ff7_savestate.h"
+#include "ff8_savestate.h"
 
 extern "C" void ff7_platform_pad_inject(unsigned short buttons);   // src/android (the pad the game reads)
 extern "C" int ff7_platform_pad_buttons(void);                    // the player's own buttons

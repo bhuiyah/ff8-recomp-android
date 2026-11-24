@@ -61,8 +61,8 @@ and I would rather you know before you install it.
 - Either edition you own on Steam: the 2013 release, or the Remastered with its HD models,
   portraits and menus, its own recording of the music, and five languages (English, French,
   German, Spanish, Italian).
-- The game running natively (no emulation, no Wine/FEX), with battles at 30 FPS (the game
-  shipped them at 15; the original timing and an experimental 60 FPS are in Settings).
+- The game running natively (no emulation, no Wine/FEX), at the game's own speed (battles
+  at 15 FPS, the rest at 30), and up to 60 FPS with frame generation if you own Lossless Scaling.
 - Its music: Android has no DirectMusic, so FF8Recomp carries a small DirectMusic player that
   plays the game's own segments with its own instrument set (`FF8.dls`), through FFNx's audio
   engine (crossfades, battle music, resume after battles).
@@ -153,7 +153,7 @@ has it (`tools/import_game.py`, `tools/run_lift.py catalog`, `tools/ff8_manifest
 ## Reporting problems
 
 Please open an issue with your device, Android version and what happened. **Report a problem** in
-the launcher collects the logs (`ff7.log`, `build.log`, `game/FFNx.log` under
+the launcher collects the logs (`ff8.log`, `build.log`, `game/FFNx.log` under
 `Android/data/com.ff8recomp/files/`).
 
 ## Known limitations

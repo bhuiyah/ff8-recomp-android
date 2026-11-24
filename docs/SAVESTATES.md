@@ -73,7 +73,7 @@ Scripts and tests:
 
 ## How it works
 
-`src/host/ff7_savestate.c`; the FFNx side in `src/ffnx_port/savestate_ffnx.cpp`.
+`src/host/ff8_savestate.c`; the FFNx side in `src/ffnx_port/savestate_ffnx.cpp`.
 
 - **When**: at the driver's flip (`common_flip`), once per frame after the mode's loop has
   returned, so no game-mode code is on the host stack. A state records the host stack depth

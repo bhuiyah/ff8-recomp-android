@@ -407,7 +407,7 @@ final class ModDownloader {
         }
     }
 
-    static { System.loadLibrary("ff7launcher"); }
+    static { System.loadLibrary("ff8launcher"); }
     private static native String nativeUn7z(String archive, String outDir);
     private static native void nativeUn7zCancel();
     private static native long[] nativeUn7zProgress();

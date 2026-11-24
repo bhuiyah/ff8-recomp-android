@@ -19,7 +19,7 @@
 #include "log.h"
 #include <algorithm>
 #include "ff7.h"
-#include "ff7_savestate.h"
+#include "ff8_savestate.h"
 
 extern "C" void ff7_ss_location(char *out, unsigned n, uint32_t *play_seconds);   // savestate_ffnx.cpp
 std::string ffnx_companion_layout_json();                                          // companion_render.cpp

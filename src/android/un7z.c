@@ -4,7 +4,7 @@
 // Why native: Java's 7z decoder (commons-compress + xz) holds the LZMA window in one Java array
 // at the size the packer chose, 256 MB for 7-Zip's Ultra preset (ChaOS), which is the whole
 // default Java heap. The app cannot ask for the large heap either: it moves ART's heap over the
-// game's fixed guest arena (0x33000000, src/host/ff7_boot.c). Each solid block ("folder") is
+// game's fixed guest arena (0x33000000, src/host/ff8_boot.c). Each solid block ("folder") is
 // decoded into a file; a block holding a single file (an .iro, the usual mod) becomes that file
 // by a rename.
 //

@@ -85,6 +85,7 @@
                 <action android:name="com.ff8recomp.test.STOP" />
                 <action android:name="com.ff8recomp.test.REPORT" />
                 <action android:name="com.ff8recomp.test.SCREEN" />
+                <action android:name="com.ff8recomp.test.EDITION" />
                 <action android:name="com.ff8recomp.test.STEAM_DOWNLOAD" />
                 <action android:name="com.ff8recomp.test.STEAM_CLOUD" />
             </intent-filter>

@@ -36,7 +36,7 @@ import java.util.zip.ZipInputStream;
  *   2. check the exe is the 1.02 US build
  *   3. lift it to C with the lifter on Python for Android (files/build/gen)
  *   4. compile the C with the device clang, several files at a time (files/build/obj)
- *   5. link the objects with the runtime's archives into files/game/libff7.so, the way the
+ *   5. link the objects with the runtime's archives into files/game/libff8.so, the way the
  *      PC build links it (kit link.args), which GameActivity loads
  * Each step's results stay until the kit or the exe changes, so an interrupted build carries
  * on where it stopped: also the lift, file by file (run_lift.py --resume, GitHub #53), whether
@@ -76,16 +76,77 @@ final class GameBuild {
     final File kit, work, gen, obj, lib, log;
     final String nativeDir;
 
-    GameBuild(Context ctx) {
+    /** The edition this build is of: each has its own objects and library, so switching editions
+     *  never builds again (GameInstall.activate). */
+    final String edition;
+
+    GameBuild(Context ctx) { this(ctx, new GameInstall(ctx).edition()); }
+
+    GameBuild(Context ctx, String edition) {
         this.ctx = ctx.getApplicationContext();
+        this.edition = edition;
         File files = this.ctx.getFilesDir();
+        migrate(files);
         kit = new File(files, "kit");
-        work = new File(files, "build");
+        work = new File(files, "build-" + edition);
         gen = new File(work, "gen");
         obj = new File(work, "obj");
-        lib = new File(files, "game/libff7.so");
+        lib = new File(files, "game/libff8-" + edition + ".so");
         log = new File(Storage.root(this.ctx), "build.log");
         nativeDir = this.ctx.getApplicationInfo().nativeLibraryDir;
+    }
+
+    /** Before both editions could be installed there was one build (files/build, game/libff8.so;
+     *  0.1.x: libff7.so): it is the edition its stamp names, the program it was lifted from. */
+    private static synchronized void migrate(File files) {
+        File work = new File(files, "build"), lib = new File(files, "game/libff8.so"), stamp = new File(files, "game/libff8.stamp");
+        File l7 = new File(files, "game/libff7.so");
+        if (l7.isFile() && !lib.isFile()) {
+            l7.renameTo(lib);
+            new File(files, "game/libff7.stamp").renameTo(stamp);
+        }
+        if (!work.isDirectory() && !lib.isFile()) return;
+        String[] o = readText(new File(work, "stamp")).trim().split(" ", 2);
+        String ed = o.length < 2 ? null : REMASTER_SHA1.equals(o[1]) ? GameInstall.ED_REMASTERED
+                : EXE_SHA1.equals(o[1]) ? GameInstall.ED_2013 : null;
+        File to = ed == null ? null : new File(files, "build-" + ed);
+        if (ed == null || to.exists()) {          // which program it was is not known: built again
+            deleteTree(work);
+            lib.delete();
+            stamp.delete();
+            return;
+        }
+        work.renameTo(to);
+        lib.renameTo(new File(files, "game/libff8-" + ed + ".so"));
+        stamp.renameTo(new File(files, "game/libff8-" + ed + ".stamp"));
+    }
+
+    /** An edition the player removed: its build goes too. */
+    static void forget(Context ctx, String edition) {
+        GameBuild b = new GameBuild(ctx, edition);
+        deleteTree(b.work);
+        b.lib.delete();
+        b.stampFile().delete();
+    }
+
+    private File stampFile() { return new File(lib.getParentFile(), "libff8-" + edition + ".stamp"); }
+
+    /**
+     * Builds the edition Play starts, then the other one when it is here and not built (an app
+     * update links both; "Download both" builds both). The second takes most of its objects from
+     * the first. Returns null, or what went wrong with the edition Play starts.
+     */
+    String runAll() {
+        GameInstall gi = new GameInstall(ctx);
+        String err = run(gi.program(edition));
+        if (err != null || paused) return err;
+        String ed = GameInstall.other(edition);
+        GameBuild b = new GameBuild(ctx, ed);
+        if (!gi.has(ed) || b.built()) return null;
+        running = true;
+        String e2 = b.run(gi.program(ed));
+        if (e2 != null) Log.w(TAG, "the other edition: " + e2);
+        return e2;
     }
 
     /** The kit this APK carries (assets/kit.version). */
@@ -113,10 +174,10 @@ final class GameBuild {
             "78bd54ab776e925f", "4fccebb48f648461",     // 0.1.0, 0.1.1
             "649a801537249bde", "3527d294d7b85123");           // 1.1.12: run_lift.py --resume, the same C
 
-    /** The game is built for this APK's kit (or a dev APK bundles libff7.so itself). */
+    /** The game is built for this APK's kit (or a dev APK bundles libff8.so itself). */
     boolean built() {
-        if (new File(nativeDir, "libff7.so").isFile()) return true;
-        return lib.isFile() && kitVersion().equals(readText(new File(lib.getParentFile(), "libff7.stamp")));
+        if (new File(nativeDir, "libff8.so").isFile()) return true;
+        return lib.isFile() && kitVersion().equals(readText(stampFile()));
     }
 
     /** Not built for this kit, but the lifted game is still good: only the link runs (an app
@@ -125,7 +186,8 @@ final class GameBuild {
         if (built() || !new File(work, "lifted").isFile() || gen.isDirectory()) return false;
         String[] o = readText(new File(work, "stamp")).split(" ", 2);
         String lift = liftVersion();
-        return o.length == 2 && (lift.equals(o[0]) || lift.equals(LEGACY_LIFT.get(o[0])));
+        return o.length == 2 && (lift.equals(o[0]) || lift.equals(LEGACY_LIFT.get(o[0])))
+                && o[1].trim().equals(GameInstall.ED_REMASTERED.equals(edition) ? REMASTER_SHA1 : EXE_SHA1);
     }
 
     private void set(String what, int pct) {
@@ -147,12 +209,13 @@ final class GameBuild {
             if (ver.isEmpty()) throw new IOException("this APK has no build kit");
             lw.println("kit " + ver);
 
-            set("Checking your FF8", 1);
+            lw.println("edition " + edition);
+            set("Checking your FF8 (" + GameInstall.editionName(edition) + ")", 1);
             if (!exe.isFile()) throw new IOException("ff8_en.exe is missing: import your game files first");
             String sha = sha1(exe);
             lw.println("exe " + sha);
             if (!EXE_SHA1.equals(sha) && !REMASTER_SHA1.equals(sha))
-                throw new IOException("this ff8_en.exe is not the one the game is built from: import again. " + GameInstall.WHICH_FOLDER);
+                throw new IOException("this program is not the one the game is built from: import again. " + GameInstall.WHICH_FOLDER);
 
             unpackKit(ver);
 
@@ -603,7 +666,7 @@ final class GameBuild {
     private Map<String, File> known;   // what it was compiled from -> the object
     private void findKnown() {
         known = new java.util.HashMap<>();
-        for (File d : new File[] { oldObj() }) {
+        for (File d : new File[] { new File(ctx.getFilesDir(), "build-" + GameInstall.other(edition) + "/obj"), oldObj() }) {
             File[] os = d.listFiles((x, n) -> n.endsWith(".o"));
             if (os != null) for (File o : os) { String k = readText(keyFile(o)); if (!k.isEmpty()) known.put(k, o); }
         }
@@ -675,7 +738,7 @@ final class GameBuild {
     // ------------------------------------------------------------------ 5. link
     private void link(String ver) throws IOException, InterruptedException {
         set("Linking", 96);
-        File out = new File(work, "libff7.so");
+        File out = new File(work, "libff8.so");
         StringBuilder rsp = new StringBuilder();
         for (String a : readText(new File(kit, "link.args")).split("\n")) {
             if (a.isEmpty()) continue;
@@ -694,10 +757,10 @@ final class GameBuild {
         pb.environment().put("LD_LIBRARY_PATH", nativeDir);
         run(pb, null);
         lib.getParentFile().mkdirs();
-        File stampF = new File(lib.getParentFile(), "libff7.stamp");
+        File stampF = stampFile();
         stampF.delete();
         lib.delete();
-        if (!out.renameTo(lib)) throw new IOException("cannot install libff7.so");
+        if (!out.renameTo(lib)) throw new IOException("cannot install libff8.so");
         lib.setWritable(false);
         writeText(stampF, ver);
     }

@@ -88,7 +88,7 @@ uint32_t replace_function_va(uint32_t offset, uint32_t host_va, const char *what
     return record_hook(what, offset, host_va, installed);
 }
 // Call-site replacements: every direct call of the lift is RECOMP_CALL_AT(site, f), so a
-// hook at a call instruction is a run-time table entry (src/host/ff7_overrides.c).
+// hook at a call instruction is a run-time table entry (src/host/ff8_overrides.c).
 // replace_call_function over a non-call instruction writes the call (E8 rel32) into the
 // image as FFNx does; the re-lift's patched-code variant for that site (from the manifest)
 // then reaches the same hook.
@@ -249,7 +249,7 @@ static void verify_code_writes_locked() {
         if (!std::memcmp(w.before.data(), (const void *)(uintptr_t)w.offset, w.size)) continue;   // nothing changed
         int rc = ff7_code_runnable(w.offset, w.size);
         if (rc == 1) continue;
-        // every lifted function holding the bytes (inline copies too: src/host/ff7_hext.cpp)
+        // every lifted function holding the bytes (inline copies too: src/host/ff8_hext.cpp)
         uint32_t fns[64];
         const int nf = ff7_functions_covering(w.offset, w.size, fns, 64);
         if (!fallback_enabled() || !nf) {

@@ -173,7 +173,7 @@ index 82414655..ee987a72 100644
  #include "renderer.h"
  #include "video/ntscj.h"
 +#ifdef FFNX_ANDROID
-+#include "ff7_boot.h"   // FF7Recomp: ff7_platform_window()
++#include "ff8_boot.h"   // FF7Recomp: ff7_platform_window()
 +#endif
  
  CMRC_DECLARE(FFNx);

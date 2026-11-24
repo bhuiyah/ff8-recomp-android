@@ -14,7 +14,7 @@ import java.util.Date;
 
 /**
  * The game's save-state slots (files/savestates/slotNN.ff7s, written by
- * src/host/ff7_savestate.c) as the launcher lists them: the header says where in the game each
+ * src/host/ff8_savestate.c) as the launcher lists them: the header says where in the game each
  * was saved, the play time and when. current.txt is the slot the in-game buttons use.
  */
 final class SaveStates {
@@ -34,7 +34,7 @@ final class SaveStates {
 
     File file(int n) { return new File(dir, String.format(java.util.Locale.ROOT, "slot%02d.ff7s", n)); }
 
-    /* ss_header in ff7_savestate.c: magic[8], version u32, header_size u32, build[64],
+    /* ss_header in ff8_savestate.c: magic[8], version u32, header_size u32, build[64],
      * saved_at i64, mode i32, raw_size u32, label[64], location[48], play_seconds u32 (216 bytes; version 3). */
     Slot read(int n) {
         Slot s = new Slot();

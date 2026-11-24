@@ -7,7 +7,7 @@ repository.
 
 - Forked FF7Recomp at `54897c5` (v1.1.37) with fresh history. Renamed the app to
   `com.ff8recomp` (package, JNI names, test intents, label, update repository, keystore path).
-  Source file names (`ff7_*.c`, `libff7.so`) are unchanged for now. Not built yet.
+  Source file names (`ff7_*.c`, `libff7.so`) kept FF7Recomp's names until 2026-11-22 (now `ff8_*`, `libff8.so`). Not built yet.
 - The user owns both Steam editions and wants both supported. Remastered route: lift its own DLL
   (not Remastered assets on FFNx). See `ROADMAP.md`.
 - Both editions carry the same original 2000 game program: `FF8_EN.exe` and the header of
@@ -200,9 +200,10 @@ repository.
   Remastered's main.zzz (textures/hires/face_b00/b01.tex.png, its HD sheets). Both sheets are
   4 x 2 faces of 64 x 96 (b00: Squall, Zell, Irvine, Quistis / Laguna, Kiros, Ward; b01:
   Rinoa, Selphie, Seifer, Edea). The bottom screen is drawn in the launcher's orange.
-- Frame rate default: FFNx's 30 FPS battles (ff8_fps_limiter 2). The game shipped its battles
-  at 15 FPS (fields and the world map at 30), which looked slow next to the world map; the
-  Thor holds 30 in battles (show_fps).
+- Frame rate: the game counts frames and FFNx's FF8 limiter scales nothing. ff8_fps_limiter 2
+  ("30 FPS battles", the default until 0.1.2) runs battles at twice their speed and 3 (60 FPS) at
+  four times. The default is 1 (battles 15, the rest 30); smooth motion comes from frame generation
+  (src/ffnx_port/framegen.cpp).
 - The 2013 edition after all of the above: SkipIntro, Force high res models (d000/d009/d024/
   d027 from the mod), a battle, the bottom screen. A folder import of the 2013 release deletes
   the Remastered's copies (main.zzz, other.zzz, FFVIII_EN.exe.dat; 2.8 GB).
@@ -240,3 +241,44 @@ repository.
   37 MB program): it writes one array of the exact size now, and the app has a large heap.
 - French on the Remastered (game_language 2): the game's menus and text, and the bottom
   screen's place names and spell names (Brasier, Foudre ...: the kernel's), no fault.
+
+## 2026-11-22 Steam achievements; 60 FPS
+- FFNx's FF8 achievement code (SteamAchievementsFF8: 45 achievements, the 2013 release's
+  counters nmy_kill / mag_draw / mag_stck / won_card) installs its hooks only with
+  enable_steam_achievements on, and both manifests were recorded with it off.
+- Open: battles sometimes stop on "ICALL to unlifted VA 0x008D0017 from func 0x00508420"
+  (0x508420 walks the battle task list and calls each task's [esi+8]). The STOP report now dumps
+  guest memory at the registers: the list head [ebp] points at 0x02643E30, and what is there is
+  not a task but model-like data (FD15FFE2, FD2AFFEF: pairs of small negative shorts), so
+  something wrote over the list or the head points into the wrong buffer. Measured with
+  scripted battles (world map, block 27, 30 FPS battles): achievements on with FFNx's
+  achievement hooks 5 of 10, with every hook group skipped (temporary switch) 2 of 21; with
+  "Force high res models" off still 1 of 6. Not the in-game Steam sync (it is gone, below,
+  and the stops stayed). Achievements off: 0 of 3 so far, too few to call.
+- The game's process makes no Steam connection now: unlocks wait in pending.txt (the companion
+  shows them at once) and the launcher sends them when the game has closed, and at Play.
+- The Remastered manifest is recorded again with achievements on (files/ffnx_debug.toml
+  enable_steam_achievements = true, tools/ff8_manifest.sh remaster): 353 hooks, 26 of them the
+  achievement hooks (Triple Triad, GF unlock, SeeD rank, Gil, level, kills, junk shop, Chocobo
+  World, magazines, Obel Lake...), 339 code writes, 0 lift failures. The two programs share the
+  hooked code, and the lift takes every manifest, so it serves the 2013 release too.
+- manage_time_engine (FFNx finds it at WinMain+0x23) is not hooked on the Remastered: Dotemu's
+  patch at 0x5699B7 puts NOPs over that call, so FFNx resolves junk (0x90E72A62, installed 0).
+  The 2013 manifest keeps the hook at 0x569971. Expected, not a fault.
+- Each edition is its own Steam app with its own list: 39150 (UNLOCK_GF_QUEZACOTL, ...) and
+  1026680 (NEW_ACHIEVEMENT_1_x). The sync now uses the edition installed (SteamLink
+  installedApp), not the first the account owns, and the game only uses a cached state of that
+  app. Stats: steam_android.cpp keeps them (state.txt "stat", pending.txt "stat\t<name>\t<value>"),
+  SteamLink sends the larger of the game's and Steam's value with the unlocks; the in-game sync
+  only connects for unlocks (stats go with the next unlock or Play).
+- files/steam/dry-run: the sync logs what it would send and sends nothing (testing with saves
+  that are not the player's: the 100% test set would unlock achievements nobody earned).
+- 60 FPS (ff8_fps_limiter 3, FFNx's frame limiter at 60 in fields, the world map, battles and
+  swirls; no interpolation): measured on the Thor with SurfaceFlinger, 59.6-59.7 fps in the
+  field and in battle. Walking covers the same ground in the same time as at 30 (the field
+  moves by elapsed time), and a GF summon plays.
+- Files named after FF7 (kept from the FF7Recomp fork) are renamed: src/{host,hle,android}/ff7_*
+  -> ff8_*, cmake/ff7core.cmake -> ff8core.cmake, the run log ff7.log -> ff8.log (and
+  ff8.prev.log), the game library libff7.so -> libff8.so (GameBuild renames a 0.1.0 build once,
+  so no rebuild), libff7launcher.so -> libff8launcher.so, the ff7_core / ff7_rcheevos archives.
+  Function and macro names (ff7_*, FF7_*) are unchanged; FFNx's own ff7/ code is FFNx's.

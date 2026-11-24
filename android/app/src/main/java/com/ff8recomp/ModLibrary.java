@@ -27,7 +27,7 @@ import org.w3c.dom.NodeList;
 final class ModLibrary {
     private static final String TAG = "FF7Recomp";
 
-    static { System.loadLibrary("ff7launcher"); }
+    static { System.loadLibrary("ff8launcher"); }
     private static native String nativeModInfo(String path);
     private static native String nativeConflicts(String profilePath);
 
@@ -55,7 +55,7 @@ final class ModLibrary {
         // <OrderConstraints>: mod ids this one must be above / below (lower case)
         final List<String> orderBefore = new ArrayList<>(), orderAfter = new ArrayList<>();
         // hext patches as the last game run applied them (mods/hext_status.txt, written by
-        // src/host/ff7_hext.cpp); null if the mod had none or the game has not run with it
+        // src/host/ff8_hext.cpp); null if the mod had none or the game has not run with it
         String hext;
         boolean hextProblem;
         // mod.xml not read yet: load(true) left it for the background read (GitHub #57)

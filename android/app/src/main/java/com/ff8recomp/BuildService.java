@@ -78,7 +78,7 @@ public class BuildService extends Service {
                 } catch (InterruptedException ignored) { }
             });
             ticker.start();
-            String err = b.run(new File(new GameInstall(this).game, "ff8_en.exe"));
+            String err = b.runAll();
             ticker.interrupt();
             if (wl.isHeld()) wl.release();
             stopForeground(STOP_FOREGROUND_REMOVE);

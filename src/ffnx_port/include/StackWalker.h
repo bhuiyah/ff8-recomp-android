@@ -1,6 +1,6 @@
 // StackWalker.h - the StackWalker base class FFNx derives FFNxStackWalker from (crashdump.h).
 // Windows-only (dbghelp). Here call stacks come from the host crash handler
-// (src/host/ff7_crash.c: lifted-function entry ring, guest registers), so ShowCallstack
+// (src/host/ff8_crash.c: lifted-function entry ring, guest registers), so ShowCallstack
 // just says where to look; LoadModules reports the guest image bounds.
 #pragma once
 #include <windows.h>
