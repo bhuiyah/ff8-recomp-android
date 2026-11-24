@@ -246,7 +246,8 @@ repository.
 - FFNx's FF8 achievement code (SteamAchievementsFF8: 45 achievements, the 2013 release's
   counters nmy_kill / mag_draw / mag_stck / won_card) installs its hooks only with
   enable_steam_achievements on, and both manifests were recorded with it off.
-- Open: battles sometimes stop on "ICALL to unlifted VA 0x008D0017 from func 0x00508420"
+- Fixed in 0.2.0 (the sixth copy of the "breaks apart" effect, tools/ffnx_edit_ff8.py; the overwrite
+  was reproduced at the same place by forcing that effect): battles sometimes stopped on "ICALL to unlifted VA 0x008D0017 from func 0x00508420"
   (0x508420 walks the battle task list and calls each task's [esi+8]). The STOP report now dumps
   guest memory at the registers: the list head [ebp] points at 0x02643E30, and what is there is
   not a task but model-like data (FD15FFE2, FD2AFFEF: pairs of small negative shorts), so

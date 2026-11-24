@@ -929,8 +929,8 @@ public class GameActivity extends Activity implements SurfaceHolder.Callback {
             registerReceiver(testPad, padFilter, android.Manifest.permission.DUMP, null);
         // Steam achievements the game unlocks wait in files/steam/pending.txt
         // (src/ffnx_port/steam_android.cpp); the launcher sends them once the game has closed.
-        // FF8: no Steam connection from this process while the game runs: one every 20 s (the
-        // FF7Recomp way) corrupted game memory in battles, about one battle in three.
+        // FF8: no Steam connection from this process while the game runs. (It was taken out as the
+        // suspect in a battle crash, which went on without it: docs/NOTES.md, 2026-11-22.)
     }
 
     /** The display's fastest mode at its current resolution (the Thor's screens: 120 Hz;
