@@ -283,3 +283,13 @@ repository.
   ff8.prev.log), the game library libff7.so -> libff8.so (GameBuild renames a 0.1.0 build once,
   so no rebuild), libff7launcher.so -> libff8launcher.so, the ff7_core / ff7_rcheevos archives.
   Function and macro names (ff7_*, FF7_*) are unchanged; FFNx's own ff7/ code is FFNx's.
+
+## 2026-11-24 Mod textures of different sizes on one page (#8; 0.2.2)
+- octom6 (Remastered, 0.2.1): Lunar Cry Plus closed at the start of a battle, Horizon Pack Plus in Dollet.
+  Both faults at the same address, the load in ModdedTexture::drawImage's unequal-scale branch:
+  scaleRatio = targetScale / sourceScale was cut to a whole number, so a 7x texture on an 8x page
+  read rows past its image (FFNx's own code; fixed in tools/ffnx_edit_ff8.py).
+- Test: tests/texture_scale/run.sh (every pair of scales 1..16; 86 pairs fail with the old code).
+  On the Thor: solid PNGs game/mods/Textures/world/esk/chara_one/model0-0 (20x64) at 7x and
+  model0-1 (44x64) at 8x, _00.png, crash 0.2.1 on loading a world map save with the reporter's
+  backtrace; 0.2.2 loads it. The sizes come from FFNx's "must be scaled" warnings with 1x1 PNGs.

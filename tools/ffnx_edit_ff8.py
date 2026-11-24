@@ -211,6 +211,15 @@ FF8_EDITS = [
     # ---- texture_packer.cpp: tells a small id from a name pointer
     ('ff8/texture_packer.cpp', 'if ((uint32_t)textureName > 32)', 'if ((uintptr_t)textureName > 32)'),
 
+    # ---- mod.cpp: a texture drawn at a larger scale that is not a multiple of its own (two mod
+    # textures of different sizes on one page, 2x next to 3x): the ratio was cut to a whole number,
+    # so each pixel block read past its source, the last one past the end of the image (#8)
+    ('ff8/mod.cpp', '\tconst uint8_t scaleRatio = targetScale / sourceScale;\n',
+     '\t// FF8Recomp: targetScale need not be a multiple of sourceScale\n'),
+    ('ff8/mod.cpp',
+     '*(sourceRgbaCur + xPix / scaleRatio + yPix / scaleRatio * sourceRgbaW),',
+     '*(sourceRgbaCur + xPix * sourceScale / targetScale + yPix * sourceScale / targetScale * sourceRgbaW),   // FF8Recomp: stays inside the source'),
+
     # ---- uv_patch.cpp: the world map's polygon condition, a game function pointer in game memory
     ('ff8/uv_patch.cpp',
      '\t*(void **)ff8_externals.worldmap_polygon_condition_2045C8C = current_polygon_condition_old;',
