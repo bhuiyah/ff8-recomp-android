@@ -15,6 +15,7 @@
 #include <thread>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include "iro.hpp"
 #include "modinfo.hpp"
@@ -152,6 +153,7 @@ struct State {
     std::mutex lock;
     std::vector<std::unique_ptr<Mod>> mods;
     std::unordered_map<std::string, std::vector<Override>> map;   // key -> overrides, priority order
+    std::unordered_set<std::string> dirs;   // every folder of those keys
     std::string cache, language = "en";
     RuntimeVars vars;                       // 7thHeaven.var + the mods' <Variable> aliases
     // mods the profile listed against their <OrderConstraints>: `who` was moved below / above `other`
@@ -392,6 +394,7 @@ extern "C" int ff7_mods_load(const char *profile_path, const char *cache_dir) {
     std::lock_guard<std::mutex> lk(g.lock);
     g.mods.clear();
     g.map.clear();
+    g.dirs.clear();
     g.order_moves.clear();
     g.setting_changes.clear();
     g.vars = RuntimeVars();
@@ -621,6 +624,9 @@ extern "C" int ff7_mods_load(const char *profile_path, const char *cache_dir) {
     }
     // The mod.xml at a mod's root is metadata, never a game file.
     g.map.erase("mod.xml");
+    for (const auto &kv : g.map)
+        for (size_t s = kv.first.rfind('/'); s != std::string::npos && s > 0; s = kv.first.rfind('/', s - 1))
+            if (!g.dirs.insert(kv.first.substr(0, s)).second) break;
     std::fprintf(stderr, "[mods] %zu mod(s), %zu game paths replaced\n", g.mods.size(), g.map.size());
     prune_cache(g.cache, keep);
     return 0;
@@ -788,21 +794,25 @@ static bool other_editions(const std::string &key, const Override &o, const Mod 
     return false;
 }
 
-extern "C" const char *ff7_mods_redirect(const char *rel_in, char *buf, unsigned n) {
-    if (!rel_in || !n) return nullptr;
-    std::lock_guard<std::mutex> lk(g.lock);
-    if (g.map.empty()) return nullptr;
-    const std::string rel = norm_key(rel_in);
-    // The folders 7th Heaven watches, most specific first (GameLauncher MonitorPaths: the
-    // data folder and FFNx's texture folder, then Settings.ExtraFolders -- FFNx's direct/
-    // (LGP entries: a mod's char/x.hrc is read as direct/char/x.hrc), music/, sfx/, ... --
-    // then the game root).
+// The folders 7th Heaven watches, most specific first (GameLauncher MonitorPaths: the
+// data folder and FFNx's texture folder, then Settings.ExtraFolders -- FFNx's direct/
+// (LGP entries: a mod's char/x.hrc is read as direct/char/x.hrc), music/, sfx/, ... --
+// then the game root).
+static std::vector<std::string> watched_prefixes() {
     static const char *const kExtra[] = { "ambient/", "direct/", "lighting/", "mesh/", "music/", "override/",
                                           "save/", "sfx/", "shaders/", "time/", "voice/", "widescreen/" };
     std::vector<std::string> prefixes = { "data/lang-" + g.language + "/", "data/", "mods/textures/" };
     for (const char *e : kExtra) prefixes.push_back(e);
     prefixes.push_back("");
-    for (const std::string &p : prefixes) {
+    return prefixes;
+}
+
+extern "C" const char *ff7_mods_redirect(const char *rel_in, char *buf, unsigned n) {
+    if (!rel_in || !n) return nullptr;
+    std::lock_guard<std::mutex> lk(g.lock);
+    if (g.map.empty()) return nullptr;
+    const std::string rel = norm_key(rel_in);
+    for (const std::string &p : watched_prefixes()) {
         if (rel.compare(0, p.size(), p) != 0) continue;
         auto it = g.map.find(rel.substr(p.size()));
         if (it == g.map.end()) continue;
@@ -820,4 +830,16 @@ extern "C" const char *ff7_mods_redirect(const char *rel_in, char *buf, unsigned
         return buf;
     }
     return nullptr;
+}
+
+extern "C" int ff7_mods_has_dir(const char *rel_in) {
+    if (!rel_in) return 0;
+    std::lock_guard<std::mutex> lk(g.lock);
+    if (g.dirs.empty()) return 0;
+    std::string rel = norm_key(rel_in);
+    while (!rel.empty() && rel.back() == '/') rel.pop_back();
+    if (rel.empty()) return 0;
+    for (const std::string &p : watched_prefixes())
+        if (rel.compare(0, p.size(), p) == 0 && g.dirs.count(rel.substr(p.size()))) return 1;
+    return 0;
 }

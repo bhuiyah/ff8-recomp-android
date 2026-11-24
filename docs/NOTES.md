@@ -293,3 +293,13 @@ repository.
   On the Thor: solid PNGs game/mods/Textures/world/esk/chara_one/model0-0 (20x64) at 7x and
   model0-1 (44x64) at 8x, _00.png, crash 0.2.1 on loading a world map save with the reporter's
   backtrace; 0.2.2 loads it. The sizes come from FFNx's "must be scaled" warnings with 1x1 PNGs.
+
+## 2026-11-24 A mod's field backgrounds (#13; 0.2.3)
+- AxlRose's WIP (field/mapdata/<field>/<field>.dds, BC7): its menu textures loaded, none of its 303
+  backgrounds. FFNx looks for that layout only when dirExists("<mods/Textures>/field/mapdata/<field>"),
+  else it falls back to Tonberry's names; the overlay resolves files, so the folder was missing.
+  Both editions. ff7_mods_has_dir (src/mods) answers for folders; asked only there (ffnx_edit_ff8.py).
+- Not in ffnx_stat: FFNx then finds a mod's hext/ folder and lists it with std::filesystem, which
+  throws (the game stopped at boot).
+- Test: a folder mod with the mod's mod.xml and a magenta BC7 bvtr_3.dds (2752x1024, block 02 Train),
+  Remastered: 0.2.2 logs "Directory does not exist, fallback" and draws the game's own, 0.2.3 draws it.

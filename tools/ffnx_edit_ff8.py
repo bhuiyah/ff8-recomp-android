@@ -237,6 +237,15 @@ FF8_EDITS = [
      'ff8_externals.ssigpu_callbacks_1[52] = ffnx_va(ssigpu_callback_sub_461E00);'),
 
     # ---- vram.cpp
+    # A field's new-style background is only looked for when its folder exists, and a mod's folder is
+    # not on disk under mods/Textures (AxlRose's WIP: 303 backgrounds never loaded, #13). Only here, not
+    # in stat(): FFNx lists other folders it finds (hext/) with std::filesystem.
+    ('ff8/vram.cpp', 'uint32_t ff8_field_read_map_data(char *filename, uint8_t *map_data)\n{\n',
+     'extern "C" int ff7_mods_has_dir(const char *rel);   // FF8Recomp: src/mods/mods.cpp\n\n'
+     'uint32_t ff8_field_read_map_data(char *filename, uint8_t *map_data)\n{\n'),
+    ('ff8/vram.cpp', '\tbool has_dir = dirExists(tex_abs_directory);\n',
+     '\tbool has_dir = dirExists(tex_abs_directory)\n'
+     '\t\t|| ff7_mods_has_dir((mod_path + "/" + tex_directory).c_str());   // FF8Recomp: a mod has the folder\n'),
     ('ff8/vram.cpp', 'effect_id, uint32_t(data), ret);', 'effect_id, ffnx_trace_ptr(data), ret);'),
     ('ff8/vram.cpp', '\t\t\t\tuint32_t(data));', '\t\t\t\tffnx_trace_ptr(data));'),
     ('ff8/vram.cpp', 'int(target)', 'int(ffnx_trace_ptr(target))', 'all'),

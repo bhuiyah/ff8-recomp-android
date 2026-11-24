@@ -34,6 +34,10 @@ int ff7_mods_load(const char *profile_path, const char *cache_dir);
  * replaces it, write the host path of the replacement into buf and return buf; else NULL. */
 const char *ff7_mods_redirect(const char *rel, char *buf, unsigned n);
 
+/* 1 if an active mod has files in the folder `rel` (as above). The folder itself is nowhere on
+ * disk; FFNx asks for a field's texture folder before it looks for the files in it. */
+int ff7_mods_has_dir(const char *rel);
+
 /* Load the profile and report, as JSON (malloc'd; free it), the game files two enabled mods
  * both replace (the one earlier in the profile wins) and the mods' <Compatibility> Forbid /
  * Require entries: {"mods":[{file,id,name}], "overlaps":[{winner,loser,files,conditional,

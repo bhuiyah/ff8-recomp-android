@@ -233,8 +233,15 @@ int main(int argc, char **argv) {
         CHECK(redirect("data/field/raw.bin") == "alt contents");
     }
 
+    // ---- folders only mods have (issue #13: FFNx's dirExists on a field's texture folder)
+    CHECK(ff7_mods_load((dir + "/profile_default.xml").c_str(), cache.c_str()) == 0);
+    CHECK(redirect("data/field/raw.bin") != "<none>");
+    CHECK(ff7_mods_has_dir("data/field") && ff7_mods_has_dir("data/lang-en/FIELD/") && ff7_mods_has_dir("mods/Textures/field"));
+    CHECK(!ff7_mods_has_dir("data/fiel") && !ff7_mods_has_dir("data/field/raw.bin") && !ff7_mods_has_dir("data/nope") && !ff7_mods_has_dir(""));
+
     // ---- no profile: nothing redirected
     CHECK(ff7_mods_load((dir + "/missing.xml").c_str(), cache.c_str()) == 0);
+    CHECK(!ff7_mods_has_dir("data/field"));
     CHECK(ff7_mods_count() == 0 && redirect("data/field/raw.bin") == "<none>");
 
     std::printf("%d passed, %d failed\n", g_pass, g_fail);
