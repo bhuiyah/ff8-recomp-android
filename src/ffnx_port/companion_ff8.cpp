@@ -2,6 +2,8 @@
 // companion.cpp's snapshot: the party (HP, level, junctions, magic stock), the GFs, items and
 // Triple Triad cards, gil, play time and where the party is. Read from the game's own savemap
 // (FFNx ff8/save_data.h, the game keeps it live) and its kernel.bin text (ff8/kernel.h).
+#include <sys/uio.h>
+#include <unistd.h>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -53,7 +55,8 @@ std::string magic_name(unsigned id) {
 std::string item_name(unsigned id) {
     const ff8_kernel_vanilla_data *k = kernel();
     if (!k || id == 0) return "";
-    if (id <= 32) return text(ktext(ff8_kernel_section::battle_item_text, k->battle_items[id - 1].offset_item_name));
+    // battle_items[0] is "no item"; the others begin with Tent (id 33)
+    if (id <= 32) return text(ktext(ff8_kernel_section::battle_item_text, k->battle_items[id].offset_item_name));
     if (id - 33 < 166) return text(ktext(ff8_kernel_section::non_battle_item_text, k->non_battle_items[id - 33].offset_to_item_name));
     return "";
 }
@@ -96,6 +99,12 @@ struct battle_slot {
     uint8_t com_id() const { return p[0xBB]; }           // 0xFF: an empty slot
     uint8_t level() const { return p[0xBC]; }
 };
+// Guest memory that may not be there: false instead of a fault.
+bool safe_read(uint32_t va, void *out, size_t n) {
+    if (va < 0x10000) return false;
+    struct iovec l = { out, n }, r = { (void *)(uintptr_t)va, n };
+    return process_vm_readv(getpid(), &l, 1, &r, 1, 0) == (ssize_t)n;
+}
 battle_slot slot_at(unsigned i) {
     return { (const uint8_t *)ff8_externals.battle_char_struct_dword_1D27B10 + i * SLOT_SIZE };
 }
@@ -371,10 +380,14 @@ std::string ff8_companion_snapshot() {
             const battle_slot s = slot_at(i);
             if (s.com_id() == 0xFF || s.max_hp() == 0 || s.max_hp() > 10000000 || !s.info()) continue;
             if (s.status1() & 1) continue;                     // KO'd: gone from the battle
+            // a slot the game is still filling can hold anything here (0x10202 was seen): not a pointer yet
+            uint32_t name_va = 0;
+            char name[25] = {};
+            if (!safe_read(s.info(), &name_va, sizeof name_va) || !safe_read(name_va, name, sizeof name - 1)) continue;
             snprintf(b, sizeof b, "%s{\"slot\":%u,\"lv\":%u,\"hp\":%u,\"mhp\":%u,", first ? "" : ",", i - 3, (unsigned)s.level(),
                      s.hp(), s.max_hp());
             j += b;
-            kv(j, "name", text(guest::ptr_of<char>(*guest::ptr_of<uint32_t>(s.info())), 24));
+            kv(j, "name", text(name, 24));
             std::string weak, absorb, nul, half;
             auto add = [](std::string &l, const char *n) { l += l.empty() ? "\"" : ",\""; l += n; l += "\""; };
             for (int e = 0; e < 8; e++) {
