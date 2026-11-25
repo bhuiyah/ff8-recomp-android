@@ -56,7 +56,9 @@ final class FfnxOptions {
                 "Back on the world map (and other known areas) the music resumes instead of starting again", true),
         FF7_ONLY ? new Opt("mdef_fix", "Armor counts toward magic defense", "A fix to the original game's formula (FFNx's default)", true) : null,
         FF7_ONLY ? new Opt("ff7_field_autosize_text_box", "Text boxes fit their text", "In fields, dialogue boxes are sized to the text", false) : null,
-        new Opt("enable_bilinear", "Smooth 3D textures", "Bilinear filtering on models' and menus' textures (the original is sharp pixels)", false)
+        new Opt("enable_bilinear", "Smooth 3D textures", "Bilinear filtering on models' and menus' textures (the original is sharp pixels)", false),
+        new Opt("ff8_use_gamepad_icons", "Gamepad button icons",
+                "Button pictures instead of B1, B2 and so on. Button icon mods need this (Junction VIII calls it UseGamePadIcons)", false)
     );
 
     /** The options that are on offer (the nulls are the ones switched off above). */
