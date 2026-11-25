@@ -311,3 +311,18 @@ repository.
   where Demaster's comment says "moon texture + fx": open. Not tried: a real Demaster mod, the 2013 release.
 - Save-state buttons: ButtonMap.STATE_*, nativeStateButtons, ff7_platform_state_buttons (L2/R2 are triggers).
   Thor: the defaults, save on R1 with load on L2, Select+L1 then does nothing; the swap and a choice in Settings.
+
+## 2026-11-25 Shops in 16:9 (#19); music mods (#17; 0.2.6)
+- 16:9, both editions: opening a shop closed the game (host pc 0x4ED5B0). FFNx's widescreen shop panels kept three
+  game functions as native pointers (`using X = int (*)(...)` with reinterpret_cast, which the casts pass does not
+  see). tools/ffnx_edit_ff8.py makes them guest::gfn. The other FF8 files have no more of these in what is built
+  (kernel_command and kernel_magic do, and are not built).
+- Junction VIII sets external_music_path to data/music (FFNxConfigManager.OverrideInternalKeys); FFNx's default is
+  data/music/dmusic/ogg, so OST-RF's music/<name>.ogg was never asked for. GameInstall sets it; audio.cpp tries FFNx's
+  own folder after it.
+- Thor, 16:9: Remastered, Call Shop (a save edited to have it): Buy and Sell draw, no fault; a field's menu. Music: a
+  folder mod with OST-RF's mod.xml and layout, data/music/field.ogg loaded in both editions, the Remastered's own
+  058s-garbadia.ogg where the mod has none. The full OST-RF was not run.
+- Seen in #19's log, not looked into: a fault while leaving the game after a save state was loaded
+  (0x4A28C0 -> free -> 0x561169).
+- Save checksum: CRC-16 0x1021, 255-entry table (entry 255 is 0), 0x1350 bytes from 0x1D0, inverted; at 0x180 and 0x1520.

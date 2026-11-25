@@ -261,6 +261,10 @@ FF8_EDITS = [
     ('ff8/widescreen.cpp', 'static int (*ff8_worldmap_model_store_depths)(uint32_t *, uint32_t *, uint32_t *);',
      'static guest::gfn<int(uint32_t *, uint32_t *, uint32_t *)> ff8_worldmap_model_store_depths;   // FF8Recomp: a game function'),
     ('ff8/widescreen.cpp', 'reinterpret_cast<uint32_t>(', 'ffnx_va(', 'all'),
+    # the shop's panels, 16:9 only: the host jumped to the game's addresses (#19)
+    ('ff8/widescreen.cpp', 'using ff8_shop_draw_panel = int (*)(int, int *, int, int, int);',
+     'using ff8_shop_draw_panel = guest::gfn<int(int, int *, int, int, int)>;   // FF8Recomp: game functions'),
+    ('ff8/widescreen.cpp', 'reinterpret_cast<ff8_shop_draw_panel>(', 'ff8_shop_draw_panel::from_va(', 'all'),
 
     # ---- world/wmset.cpp: size_t is 64-bit here
     ('ff8/world/wmset.cpp', 'max = std::min(max, pos / 4);', 'max = std::min<size_t>(max, pos / 4);', 'all'),
@@ -312,6 +316,12 @@ FF8_EDITS = [
      '\t\t\t\tuse_external_music = true;\n\n\t\t\t\t// Eyes on me patch\n'),
     ('audio.cpp', '\t\tif (fileExists(_out)) {\n\t\t\treturn true;\n\t\t}\n\t}\n',
      '\t\tif (fileExists(_out)) {\n\t\t\treturn true;\n\t\t}\n\t}\n\n'
+     '\t// FF8Recomp: external_music_path is Junction VIII\'s data/music (GameInstall.java, #17); FFNx\'s own folder after it\n'
+     '\tif (ff8 && _type == NxAudioEngineLayer::NXAUDIOENGINE_MUSIC)\n'
+     '\t\tfor (const std::string &extension: extensions) {\n'
+     '\t\t\tsnprintf(_out, MAX_PATH, "%s/data/music/dmusic/ogg/%s.%s", basedir, _key, extension.c_str());\n'
+     '\t\t\tif (fileExists(_out)) return true;\n'
+     '\t\t}\n\n'
      '\t// FF8Recomp: the 2013 release\'s own music files by name (src/ffnx_port/dmusic/sgt_source.cpp)\n'
      '\tif (ff8 && !ff8_remastered_edition && _type == NxAudioEngineLayer::NXAUDIOENGINE_MUSIC && ffnx_ff8_music_file(_out, MAX_PATH, _key)) return true;\n'),
     ('audio.cpp', '\t\tif (_openpsf_loaded && SoLoud::OpenPsf::is_our_path(filename)) {',

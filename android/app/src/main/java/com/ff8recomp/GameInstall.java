@@ -600,6 +600,9 @@ final class GameInstall {
             toml = set(toml, "enable_analogue_controls", "true");
             toml = set(toml, "enable_auto_run", "true");
         }
+        // Junction VIII's music folder (its FFNxConfigManager): music mods carry music/<name>.ogg, read as
+        // data/music/<name>.ogg; FFNx's own default is data/music/dmusic/ogg (GitHub #17)
+        toml = set(toml, "external_music_path", "\"data/music\"");
         for (int i = mods.size() - 1; i >= 0; i--) {
             ModLibrary.Mod m = mods.get(i);
             if (!m.enabled || m.error != null) continue;
