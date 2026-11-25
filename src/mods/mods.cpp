@@ -170,6 +170,14 @@ void add_override(const std::string &key, int mod, const std::string &file, cons
     // FF8: a Demaster mod's files (its DEMASTER_EXP folder), whatever folder it was unpacked in
     const size_t d = k.find("/demaster_exp/");
     if (d != std::string::npos) g.map[k.substr(d + 1)].push_back({ mod, file, cond });
+    // its world map textures (texl_001_0 is the first) under FFNx's name (texture0_00)
+    static const std::string texl = "textures/world/dat/texl/texl_";
+    const size_t t = k.find(texl);
+    if (t == std::string::npos || (t != 0 && k[t - 1] != '/')) return;
+    int no = 0, pal = -1, used = 0;
+    const char *tail = k.c_str() + t + texl.size();
+    if (std::sscanf(tail, "%3d_%d%n", &no, &pal, &used) != 2 || pal != 0 || no < 1 || no > 20 || tail[used] != '.') return;
+    g.map["world/dat/texl/texture" + std::to_string(no - 1) + "_00" + (tail + used)].push_back({ mod, file, cond });
 }
 
 // ConditionalFolder.IsActive(path): the condition for this file, else the folder-wide one

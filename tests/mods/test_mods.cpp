@@ -11,6 +11,7 @@
 #include "iro.hpp"
 #include "modinfo.hpp"
 #include "mods.h"
+#include "../../src/ffnx_port/include/demaster.h"
 #include "runtimevar.hpp"
 #include "hext.hpp"
 #include <map>
@@ -238,6 +239,29 @@ int main(int argc, char **argv) {
     CHECK(redirect("data/field/raw.bin") != "<none>");
     CHECK(ff7_mods_has_dir("data/field") && ff7_mods_has_dir("data/lang-en/FIELD/") && ff7_mods_has_dir("mods/Textures/field"));
     CHECK(!ff7_mods_has_dir("data/fiel") && !ff7_mods_has_dir("data/field/raw.bin") && !ff7_mods_has_dir("data/nope") && !ff7_mods_has_dir(""));
+
+    // ---- Demaster mods (src/ffnx_port/demaster.cpp)
+    CHECK(ff7_mods_load((dir + "/profile_demaster.xml").c_str(), cache.c_str()) == 0);
+    auto page = [](const char *name, int p, unsigned pal, int want_paletted) {
+        char buf[1024];
+        int paletted = -1;
+        const char *r = ff8_demaster_page(name, p, pal, &paletted, buf, sizeof buf);
+        return std::string(!r ? "<none>" : paletted == want_paletted ? slurp(r) : std::string("wrong paletted"));
+    };
+    CHECK(page("field/mapdata/bc/bcgate_1/bcgate_1_0", 16, 0, 0) == "bcgate_1_0.dds");
+    CHECK(page("field/mapdata/bc/bcgate_1/bcgate_1_0", 16, 2, 1) == "bcgate_1_0_2.png");
+    CHECK(page("field/mapdata/bc/bcgate_1/bcgate_1_13", 16, 0, 0) == "bcgate_1_0.dds");
+    CHECK(page("field/mapdata/bc/bcgate_1/bcgate_1_1", 17, 0, 0) == "<none>");
+    CHECK(page("field/mapdata/bcgate_1/bcgate_1_0", 16, 0, 0) == "<none>");
+    CHECK(page("battle/A0STG003.X-0_0", 16, 4, 0) == "a0stg003_16.png");
+    CHECK(page("battle/A0STG004.X-0_1", 17, 0, 0) == "A0STG004_17_0.dds");
+    CHECK(page("battle/A0STG004.X-0_0", 16, 0, 0) == "<none>" && page("battle/A0STG003.X-0_0", 22, 0, 0) == "<none>");
+    CHECK(page("world/dat/wmset/section42/texture14_14", 14, 1, 0) == "wmset_014_0.png" && page("world/dat/wmset/section42/texture14_14", 20, 0, 0) == "<none>");
+    CHECK(page("menu/x", -1, 0, 0) == "<none>");
+    CHECK(redirect("mods/Textures/world/dat/texl/texture0_00.dds") == "texl_001_0.dds" && redirect("mods/Textures/world/dat/texl/texture19_00.png") == "texl_020_0.png");
+    char dds[1024];
+    CHECK(ff8_demaster_dds("textures/battle.fs/hd_new/D0C000_0.png", dds, sizeof dds) && slurp(dds) == "d0c000_0.dds");
+    CHECK(!ff8_demaster_dds("textures/battle.fs/hd_new/d0c000_1.png", dds, sizeof dds) && !ff8_demaster_dds("data/x.png", dds, sizeof dds));
 
     // ---- no profile: nothing redirected
     CHECK(ff7_mods_load((dir + "/missing.xml").c_str(), cache.c_str()) == 0);

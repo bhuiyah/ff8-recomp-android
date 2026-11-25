@@ -137,6 +137,20 @@ def main():
         open(os.path.join(out, name, "mod.xml"), "w").write(
             f"<ModInfo><ID>{ident}</ID><Name>{name}</Name>{compat}</ModInfo>\n")
         open(os.path.join(out, name, "hext", "p.txt"), "wb").write(hext)
+    # Demaster mods: one with its DEMASTER_EXP folder deeper in, one with textures/ at its root
+    for path in ("dm_mod/Some Pack/DEMASTER_EXP/textures/field_bg/bc/bcgate_1/bcgate_1_0.dds",
+                 "dm_mod/Some Pack/DEMASTER_EXP/textures/field_bg/bc/bcgate_1/bcgate_1_0_2.png",
+                 "dm_mod/Some Pack/DEMASTER_EXP/textures/battle.fs/hd_new/a0stg003_16.png",
+                 "dm_mod/Some Pack/DEMASTER_EXP/textures/battle.fs/hd_new/d0c000_0.dds",
+                 "dm_mod/Some Pack/DEMASTER_EXP/textures/world/dat/texl/texl_001_0.dds",
+                 "dm_mod2/textures/battle.fs/hd_new/A0STG004_17_0.dds",
+                 "dm_mod2/textures/world/dat/wmset/wmset_014_0.png",
+                 "dm_mod2/textures/world/dat/texl/texl_020_0.png"):
+        p = os.path.join(out, path)
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        open(p, "wb").write(os.path.basename(path).encode())
+    open(os.path.join(out, "profile_demaster.xml"), "w").write(
+        '<Profile><Mod Path="dm_mod"/><Mod Path="dm_mod2"/></Profile>')
     open(os.path.join(out, "profile_compat.xml"), "w").write(
         '<Profile Language="en">\n  <Mod Path="base_ui"/>\n  <Mod Path="theme_mod"/>\n</Profile>\n')
     open(os.path.join(out, "lzma_expected.bin"), "wb").write(LZMA_TEXT)

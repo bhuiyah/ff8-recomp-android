@@ -406,7 +406,8 @@ FF8_EDITS = [
     # DEMASTER_EXP/ above) is read instead (FFVIII Crystal's Remastered version and others).
     ('ff8/zzz_archive.cpp',
      'bool Zzz::lookup(const char *fileName, ZzzTocEntry *tocEntry) const\n{\n',
-     '// FF8Recomp: src/mods/mods.cpp\n'
+     '// FF8Recomp: src/ffnx_port/demaster.cpp, src/mods/mods.cpp\n'
+     'extern "C" const char *ff8_demaster_dds(const char *archived, char *buf, unsigned n);\n'
      'extern "C" const char *ff7_mods_redirect(const char *rel, char *buf, unsigned n);\n'
      'static const char *zzz_mod_file(const char *fileName, char *buf, unsigned n)\n{\n'
      '\tchar rel[ZZZ_FILENAME_MAX_SIZE + 16] = "demaster_exp/";\n\tchar *name = rel + 13;\n\tint i = 0;\n'
@@ -418,7 +419,8 @@ FF8_EDITS = [
     ('ff8/zzz_archive.cpp',
      '\tif (it == _toc.end()) {\n\t\tif (trace_all || trace_files) ffnx_error("Zzz::%s: file %s not found in %s\\n"',
      '\tif (it == _toc.end()) {\n\t\tchar modFile[MAX_PATH * 4];   // FF8Recomp: a file only a mod has\n'
-     '\t\tif (tocEntry == nullptr && zzz_mod_file(fileName, modFile, sizeof(modFile)) != nullptr) return true;\n\n'
+     '\t\tif (tocEntry == nullptr && (zzz_mod_file(fileName, modFile, sizeof(modFile)) != nullptr\n'
+     '\t\t\t|| ff8_demaster_dds(fileName, modFile, sizeof(modFile)) != nullptr)) return true;\n\n'
      '\t\tif (trace_all || trace_files) ffnx_error("Zzz::%s: file %s not found in %s\\n"'),
     ('ff8/zzz_archive.cpp',
      '\terrno_t err = _sopen_s(&fd, _fileName, _O_BINARY, _SH_DENYNO, _S_IREAD);\n\tif (err != 0)\n\t{\n\t\treturn nullptr;\n\t}\n\n\tZzzTocEntry tocEntry;\n',
@@ -432,4 +434,41 @@ FF8_EDITS = [
      '\t\t\tmodEntry.fileNameSize = uint32_t(strlen(modEntry.fileName));\n'
      '\t\t\treturn new File(modEntry, fd);\n\t\t}\n\t\t_close(fd);\n\t}\n\n'
      '\terrno_t err = _sopen_s(&fd, _fileName, _O_BINARY, _SH_DENYNO, _S_IREAD);\n\tif (err != 0)\n\t{\n\t\treturn nullptr;\n\t}\n\n\tZzzTocEntry tocEntry;\n'),
+    # Demaster mods (src/ffnx_port/demaster.cpp): the page of a texture is kept with its name, a .dds of
+    # a mod's goes before the archive's .png, and a whole page comes from the mod's file.
+    ('image/image.cpp', '        Zzz::File *zzzFile = g_FF8ZzzArchiveMain.openFile(filename + 6);\n',
+     '        char modDds[MAX_PATH * 4];   // FF8Recomp: a Demaster mod\'s .dds\n'
+     '        if (ff8_demaster_dds(filename + 6, modDds, sizeof(modDds)) != nullptr) {\n'
+     '            ret = loadImageContainer(allocator, modDds, targetFormat);\n'
+     '            if (ret != nullptr) return ret;\n'
+     '            ffnx_warning("%s: cannot read %s\\n", __func__, modDds);\n'
+     '        }\n\n'
+     '        Zzz::File *zzzFile = g_FF8ZzzArchiveMain.openFile(filename + 6);\n'),
+    ('image/image.cpp', '#include "../ff8/remaster.h"\n',
+     '#include "../ff8/remaster.h"\n#include "demaster.h"   // FF8Recomp: src/ffnx_port\n'),
+    ('ff8/vram.cpp', '\t\t\tstrncpy(tex_header->file.pc_name, filename.c_str(), 511);\n',
+     '\t\t\tstrncpy(tex_header->file.pc_name, filename.c_str(), 511);\n'
+     '\t\t\ttex_header->file.pc_name[1023] = char(next_psxvram_x / TEXTURE_WIDTH_BPP16 + (next_psxvram_y >= TEXTURE_HEIGHT ? 16 : 0) + 1);   // FF8Recomp: the page (demaster.cpp)\n'),
+    ('common.cpp', '\t\tif (hasRemasteredName && ModdedTexture::hasRemasteredArchiveTextureOverride(remasteredFilename + 6))\n',
+     '\t\tif (ff8)   // FF8Recomp: a Demaster mod\'s file for the whole page\n'
+     '\t\t{\n'
+     '\t\t\tconst char *pageName = VREF(tex_header, file.pc_name);\n'
+     '\t\t\tif (_strnicmp(pageName, "field/mapdata/", 14) == 0 || _strnicmp(pageName, "battle/a0stg", 12) == 0 || _strnicmp(pageName, "world/dat/", 10) == 0)\n'
+     '\t\t\t{\n'
+     '\t\t\t\tchar pageFile[MAX_PATH * 4];\n'
+     '\t\t\t\tint paletted = 0;\n'
+     '\t\t\t\tif (ff8_demaster_page(pageName, int((unsigned char)pageName[1023]) - 1, VREF(tex_header, palette_index), &paletted, pageFile, sizeof(pageFile)) != nullptr)\n'
+     '\t\t\t\t{\n'
+     '\t\t\t\t\t// one file for every palette is loaded once, as load_normal_texture does\n'
+     '\t\t\t\t\tif (!paletted) texture = gl_set->default_texture_id;\n'
+     '\t\t\t\t\tif (texture == 0) texture = load_texture_helper(pageFile, VREFP(texture_set, ogl.width), VREFP(texture_set, ogl.height), _stricmp(pageFile + strlen(pageFile) - 4, ".png") == 0, true);\n'
+     '\t\t\t\t\tif (texture != 0 && !paletted) gl_set->default_texture_id = texture;\n'
+     '\t\t\t\t}\n'
+     '\t\t\t}\n'
+     '\t\t}\n\n'
+     '\t\tif (texture == 0 && hasRemasteredName && ModdedTexture::hasRemasteredArchiveTextureOverride(remasteredFilename + 6))\n'),
+    ('common.cpp', '// load modpath texture for tex file, returns true if successful\n',
+     '#include "demaster.h"   // FF8Recomp: src/ffnx_port\n'
+     'uint32_t load_texture_helper(char* name, uint32_t* width, uint32_t* height, bool useLibPng, bool isSrgb);   // saveload.cpp\n\n'
+     '// load modpath texture for tex file, returns true if successful\n'),
 ]

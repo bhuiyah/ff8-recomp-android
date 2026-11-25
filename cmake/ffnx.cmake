@@ -87,6 +87,7 @@ add_library(ffnx STATIC ${FFNX_SOURCES}
   "${FF7_ROOT}/src/ffnx_port/savestate_ffnx.cpp"
   "${FF7_ROOT}/src/ffnx_port/companion.cpp"
   "${FF7_ROOT}/src/ffnx_port/companion_ff8.cpp"
+  "${FF7_ROOT}/src/ffnx_port/demaster.cpp"
   "${FF7_ROOT}/src/ffnx_port/companion_render.cpp"
   "${FF7_ROOT}/src/ffnx_port/boosters.cpp"
   "${FF7_ROOT}/src/ffnx_port/rumble.cpp"
