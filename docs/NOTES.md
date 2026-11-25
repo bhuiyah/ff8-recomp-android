@@ -326,3 +326,13 @@ repository.
 - Seen in #19's log, not looked into: a fault while leaving the game after a save state was loaded
   (0x4A28C0 -> free -> 0x561169).
 - Save checksum: CRC-16 0x1021, 255-entry table (entry 255 is 0), 0x1350 bytes from 0x1D0, inverted; at 0x180 and 0x1520.
+
+## 2026-11-25 Panels over the game on one screen; on-screen buttons can be hidden (0.2.8)
+- From FF7Recomp 1.1.50, 1.1.51 and 1.1.54 (its #87, #88): PanelButton, GameActivity.panelKey, "panel_button", "panel_key",
+  "touch_hidden". Start is FF8's pause, L3 starts FFNx's shortcuts (both lost to the panels when chosen), R3 is free.
+- FF8 only: before a game is loaded the panels are black; the hide arrow is drawn there too (also in Side by side).
+- Thor, `wm size 1600x2560`, Remastered: button tap, drag (opens on its half), arrow at the title screen, tap beside, drag and
+  on-screen X beside do not close; R3 and Start toggle, Select+R3 passes, Select+Start asks to leave; Side by side; with the
+  second screen on no button and Start pauses. L2 and the D-pad hidden: not drawn, not pressed. Not tested: the Buttons shown
+  list on the Thor, the kept place after a restart, L3, a bar that stays visible. Java only: no kit change.
+- 0.2.7 was a test build of the local branch fix/catalog-race, never released.

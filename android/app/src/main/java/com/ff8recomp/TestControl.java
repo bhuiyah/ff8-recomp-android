@@ -52,13 +52,14 @@ public class TestControl extends BroadcastReceiver {
     // The launcher's settings and their types (LauncherActivity)
     private static final Map<String, Class<?>> TYPES = new HashMap<>();
     static {
-        for (String k : new String[] { "fps", "renderer", "aspect", "perf", "speed", "touch_controls", "game_language", "gil", "resolution", "exp", "ap", "rumble" })
+        for (String k : new String[] { "fps", "renderer", "aspect", "perf", "speed", "touch_controls", "game_language", "gil", "resolution", "exp", "ap", "rumble", "panel_key" })
             TYPES.put(k, Integer.class);
         for (String k : new String[] { "crt_filter", "framegen", "show_fps", "no_encounters", "battle_plus", "bottom_screen", "portrait", "split", "side", "side_left",
                                        "menu_sounds", "quiet_build", "turbo", "analog_controls", "save_anywhere", "bottom_buttons", "autofire", "swap_screens",
-                                       "touch_extra" })
+                                       "touch_extra", "panel_button" })
             TYPES.put(k, Boolean.class);
         TYPES.put("quickboot", String.class);
+        TYPES.put("touch_hidden", String.class);          // Buttons shown: "L2,R2,DPAD" hides these (FF7Recomp #88)
         TYPES.put("touch_layout", String.class);
         TYPES.put("touch_layout_square", String.class);   // a foldable's inner screen (#66)
         // Settings > Storage > Custom folder's path ("" = the app's own folder), switched without moving anything

@@ -1765,7 +1765,8 @@ public class LauncherActivity extends Activity {
             second.setOnCheckedChangeListener((b, on) -> prefs.edit().putBoolean("bottom_screen", on).apply());
             col.addView(second);
             CheckBox deckBox = new CheckBox(this);
-            deckBox.setText("Second screen buttons\nMenu, Save, Load, Speed, Battles and Battle+ along the bottom. "
+            deckBox.setText("Second screen buttons\nMenu, Save, Load, Speed, Battles and Battle+ along the bottom of the panels, "
+                    + "also where they are on the only screen. "
                     + "Off: the panels fill the screen and the controller does everything");
             deckBox.setTextColor(TEXT);
             deckBox.setTextSize(16);
@@ -1813,6 +1814,15 @@ public class LauncherActivity extends Activity {
             sideLeftBox.setChecked(prefs.getBoolean("side_left", false));
             sideLeftBox.setOnCheckedChangeListener((b, on) -> prefs.edit().putBoolean("side_left", on).apply());
             col.addView(sideLeftBox);
+            CheckBox panelBox = new CheckBox(this);   // FF7Recomp #87
+            panelBox.setText("Button for the panels (one screen)\nA small button over the game, in the Landscape layout, opens the second screen's "
+                    + "panels (party, junctions, GFs, items, cards, save/load state, speed) and closes them again (or tap the game beside them). Drag it to move it. "
+                    + "A controller button can do it too: Controller > Open the panels with");
+            panelBox.setTextColor(TEXT);
+            panelBox.setTextSize(16);
+            panelBox.setChecked(prefs.getBoolean("panel_button", false));
+            panelBox.setOnCheckedChangeListener((b, on) -> prefs.edit().putBoolean("panel_button", on).apply());
+            col.addView(panelBox);
             col.addView(space(16));
         }
         col.addView(heading("On-screen controls"));
@@ -1836,6 +1846,8 @@ public class LauncherActivity extends Activity {
         }
         col.addView(tc);
         col.addView(button("Size and layout…", v -> startActivity(new Intent(this, TouchLayoutActivity.class))));
+        col.addView(space(8));
+        col.addView(button("Buttons shown…", v -> TouchLayoutActivity.buttonsShown(this, prefs, () -> { })));   // FF7Recomp #88
         if (!FF7_CONTROLLER_EXTRAS) {
             col.addView(space(16));
             col.addView(heading("Controller"));
@@ -1843,6 +1855,28 @@ public class LauncherActivity extends Activity {
                     + "speed on and off, Y for random battles on or off, X to skip a movie. Faster needs a Frame rate other than "
                     + "Original, and is limited by the screen's refresh rate. Select+Left / Right change the save-state slot; Select+Start "
                     + "held for a second leaves the game. On-screen controls: switch on the L3 button in Size and layout.", 14, DIM));
+            TextView keyLabel = new TextView(this);   // FF7Recomp #87
+            keyLabel.setText("Open the panels with\nOn one screen this button opens and closes the panels over the game (Landscape layout), or hides and "
+                    + "shows Side by side's. The game then does not get it: Start is the game's pause, L3 starts the shortcuts above, R3 is free");
+            keyLabel.setTextColor(TEXT);
+            keyLabel.setTextSize(16);
+            keyLabel.setPadding(0, Math.round(8 * getResources().getDisplayMetrics().density), 0, 0);
+            col.addView(keyLabel);
+            RadioGroup keyGroup = new RadioGroup(this);
+            keyGroup.setOrientation(RadioGroup.HORIZONTAL);
+            String[] panelKeys = { "Off", "Start", "L3", "R3" };
+            for (int i = 0; i < panelKeys.length; i++) {
+                RadioButton rb = new RadioButton(this);
+                rb.setId(View.generateViewId());
+                rb.setText(panelKeys[i]);
+                rb.setTextColor(TEXT);
+                rb.setTextSize(16);
+                final int v = i;
+                rb.setOnClickListener(x -> prefs.edit().putInt("panel_key", v).apply());
+                keyGroup.addView(rb);
+                if (v == prefs.getInt("panel_key", 0)) rb.setChecked(true);
+            }
+            col.addView(keyGroup);
             col.addView(text("What each button of a controller or keyboard does. Choosing one that is in use swaps the two.", 14, DIM));
             final LinearLayout maps = new LinearLayout(this);
             maps.setOrientation(LinearLayout.VERTICAL);
@@ -2955,11 +2989,14 @@ public class LauncherActivity extends Activity {
                     .putExtra("touch_controls", prefs.getInt("touch_controls", 0))
                     .putExtra("touch_layout", prefs.getString("touch_layout", ""))
                     .putExtra("touch_layout_square", TouchControls.savedLayout(prefs, "touch_layout_square"))   // #66
+                    .putExtra("touch_hidden", prefs.getString("touch_hidden", ""))   // FF7Recomp #88
                     .putExtra("touch_extra", prefs.getBoolean("touch_extra", false))
                     .putExtra("portrait", panels && prefs.getBoolean("portrait", false))
                     .putExtra("split", panels && prefs.getBoolean("split", false))
                     .putExtra("side", panels && prefs.getBoolean("side", false))
                     .putExtra("side_left", prefs.getBoolean("side_left", false))
+                    .putExtra("panel_button", panels && prefs.getBoolean("panel_button", false))
+                    .putExtra("panel_key", panels ? prefs.getInt("panel_key", 0) : 0)   // FF7Recomp #87
                     .putExtra("bottom_screen", panels && prefs.getBoolean("bottom_screen", true))
                     .putExtra("bottom_buttons", prefs.getBoolean("bottom_buttons", true))
                     .putExtra("crt_filter", prefs.getBoolean("crt_filter", false))

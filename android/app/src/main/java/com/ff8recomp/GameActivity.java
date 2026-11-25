@@ -348,6 +348,9 @@ public class GameActivity extends Activity implements SurfaceHolder.Callback {
      *  tab at the screen's edge brings them back. Kept between games ("companion" prefs). */
     private boolean panelsHidden;
     private android.view.View showTab;
+    /** Settings > Screen (FF7Recomp #87): a button over the game opens the panels, in the landscape layout. */
+    private boolean panelsButton;
+    private PanelButton.Layer panelLayer;
     private android.widget.FrameLayout bottom;      // split: the panels, the on-screen pad over them
 
     private android.widget.FrameLayout gameFrame;   // the game's SurfaceView and the booster icons
@@ -421,6 +424,13 @@ public class GameActivity extends Activity implements SurfaceHolder.Callback {
      */
     private void arrange(boolean tall) {
         arrangedTall = tall;
+        if (panelLayer != null) {          // its game view and panels go to the new layout
+            panelLayer.setOpen(false);
+            panelLayer.removeAllViews();
+            panelLayer = null;
+            panel.setLayoutParams(new android.widget.FrameLayout.LayoutParams(   // not the overlay's size
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT));
+        }
         for (android.view.View v : new android.view.View[] { gameFrame, panel, touch })
             if (v != null && v.getParent() != null) ((android.view.ViewGroup) v.getParent()).removeView(v);
         if (bottom != null && bottom.getParent() != null) ((android.view.ViewGroup) bottom.getParent()).removeView(bottom);
@@ -437,7 +447,11 @@ public class GameActivity extends Activity implements SurfaceHolder.Callback {
             if (touch != null)
                 gameFrame.addView(touch, new android.widget.FrameLayout.LayoutParams(
                         android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT));
-            setContentView(gameFrame);
+            if (panelsButton || panelKeyBit != 0) {
+                panelLayer = new PanelButton.Layer(this, gameFrame, panel, touch, panelsButton);
+                updatePanelButton();
+                setContentView(panelLayer);
+            } else setContentView(gameFrame);
             return;
         }
         android.widget.LinearLayout col = new android.widget.LinearLayout(this);
@@ -611,6 +625,11 @@ public class GameActivity extends Activity implements SurfaceHolder.Callback {
         fitPanels();
     }
 
+    /** The panels' button only while no second screen shows them. */
+    private void updatePanelButton() {
+        if (panelLayer != null) panelLayer.setUsable(companion == null && companionHost == null);
+    }
+
     private String touchLayoutKey = "touch_layout";
 
     /** The on-screen controls' layout for this screen's shape (#66; the launcher sends both). */
@@ -669,15 +688,41 @@ public class GameActivity extends Activity implements SurfaceHolder.Callback {
 
     private int[] buttonMap = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };   // ButtonMap, read in onCreate
 
+    /** Settings > Controller > Open the panels with (FF7Recomp #87): that button (Start, L3 or R3)
+     *  opens and closes the panels over the game, or hides and shows Side by side's; the game does not
+     *  get it then. With Select or the other stick's button held it stays the game's (combinations;
+     *  Select + Start leaves the game), as where no
+     *  panels can open (a second screen shows them). */
+    private int panelKeyBit;
+    private boolean panelKeyDown, panelKeyAlone;
+
+    private int panelKey(int buttons) {
+        int bit = panelKeyBit;
+        boolean over = panelLayer != null && panelLayer.usable();
+        if (bit == 0 || !(over || arrangedSide)) { panelKeyDown = false; return buttons; }
+        boolean down = (buttons & bit) != 0;
+        boolean combo = (buttons & (0x00E0 & ~bit)) != 0;
+        if (down && !panelKeyDown) panelKeyAlone = !combo;
+        if (down && combo) panelKeyAlone = false;
+        boolean act = !down && panelKeyDown && panelKeyAlone;
+        panelKeyDown = down;
+        if (act) {
+            if (over) panelLayer.setOpen(!panelLayer.open());
+            else setPanelsHidden(!panelsHidden);
+        }
+        return combo ? buttons : buttons & ~bit;
+    }
+
     private void sendPad() {
         int[] pad = ButtonMap.apply(buttonMap, padButtons, padLt, padRt);
-        int buttons = pad[0] | hatButtons | touchButtons | testButtons;
+        int held = pad[0] | hatButtons | touchButtons | testButtons;
+        int buttons = panelKey(held);
         // the on-screen right stick (#62) when the real one is centred
         boolean real = padRx != 0 || padRy != 0;
         nativePad(buttons, Math.max(pad[1], touchLt), Math.max(pad[2], touchRt),
                   padLx, padLy, real ? padRx : touchRx, real ? padRy : touchRy);
         // Select+Start held for a second: leave the game (GitHub #42)
-        boolean combo = (buttons & 0x0030) == 0x0030;
+        boolean combo = (held & 0x0030) == 0x0030;
         if (combo != quitHeld) {
             quitHeld = combo;
             if (combo) ui.postDelayed(askQuit, 1000);
@@ -826,6 +871,7 @@ public class GameActivity extends Activity implements SurfaceHolder.Callback {
 
     /** Shows or hides the on-screen pad: always, never, or (auto) on one screen with no controller. */
     private void updateTouch() {
+        updatePanelButton();
         if (touch == null) return;
         boolean show = touchMode == 1 || (touchMode == 0 && companion == null && companionHost == null && !gamepadConnected());
         setTouchVisible(show);
@@ -934,11 +980,16 @@ public class GameActivity extends Activity implements SurfaceHolder.Callback {
                 sendPad();
             });
             touch.setExtra(getIntent().getBooleanExtra("touch_extra", false));   // right stick, L3, R3 (#62)
+            touch.setHidden(getIntent().getStringExtra("touch_hidden"));   // Buttons shown (FF7Recomp #88)
             touchLayoutKey = TouchControls.layoutKey(this);
             touch.setLayout(touchLayout());   // size, opacity, positions (#28), this screen's (#66)
         }
-        if (portrait || split) panel = new CompanionView(this);
-        if (split) panel.setDeck(getIntent().getBooleanExtra("bottom_buttons", true));
+        panelsButton = getIntent().getBooleanExtra("panel_button", false);
+        int key = getIntent().getIntExtra("panel_key", 0);   // Off, Start, L3, R3
+        panelKeyBit = key == 1 ? 0x0010 : key == 2 ? 0x0040 : key == 3 ? 0x0080 : 0;
+        boolean overlay = panelsButton || panelKeyBit != 0;
+        if (portrait || split || overlay) panel = new CompanionView(this);
+        if (split || (overlay && !portrait)) panel.setDeck(getIntent().getBooleanExtra("bottom_buttons", true));
         arrange(wantStacked());
         preferHighestRefreshRate(getWindow(), Compat.display(this));
         startDisplayWatch();

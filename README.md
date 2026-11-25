@@ -75,6 +75,8 @@ and I would rather you know before you install it.
 - Dual-screen devices (the Thor's lower screen): the party's HP, junctions, magic, GFs, items
   and Triple Triad cards, enemy HP in battles, and buttons for 2x speed, random battles off,
   save states and the menu.
+- One screen: the same panels below or beside the game, or over part of it with a small button
+  over the game or a controller button (Start, L3 or R3).
 - A launcher: import or download your game files, build the game for your device, settings,
   save states, problem reports.
 

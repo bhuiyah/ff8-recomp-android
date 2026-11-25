@@ -8,8 +8,8 @@ android {
         applicationId 'com.ff8recomp'
         minSdk 29
         targetSdk 35
-        versionCode 116
-        versionName '0.2.6'
+        versionCode 118
+        versionName '0.2.8'
         ndk { abiFilters 'arm64-v8a' }
         externalNativeBuild { cmake { arguments '-DANDROID_STL=c++_static', "-DFF7_BUNDLE_GAME=${project.findProperty('bundleGame') ?: 'OFF'}" } }
     }
