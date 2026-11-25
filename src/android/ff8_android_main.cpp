@@ -158,6 +158,14 @@ std::mutex g_pad_lock;
 ff7_pad_state g_pad{};
 unsigned short g_inject;               // buttons src/ffnx_port/quickboot.cpp presses
 
+// With Select: the save-state buttons (Settings > Controller, #14; 0: none). 0x10000 is L2, 0x20000 R2.
+int g_state_save = 0x0100, g_state_load = 0x0200;
+bool pad_down(const ff7_pad_state &p, int bit) {
+    if (bit == 0x10000) return p.left_trigger >= 60;
+    if (bit == 0x20000) return p.right_trigger >= 60;
+    return (p.buttons & bit) != 0;
+}
+
 // Hold confirm to repeat (GitHub #33; Settings > Controller, battles only, set each frame by
 // src/ffnx_port/boosters.cpp): while Circle (confirm, 0x2000) is held, the game sees it pressed
 // for k_fire_ms, released for k_fire_ms, and so on -- about five presses a second. The first
@@ -195,9 +203,14 @@ extern "C" int ff7_platform_pad_state(unsigned index, ff7_pad_state *out) {
     if (index != 0) return 0;          // the Thor's built-in controls (and any paired pad) are pad 0
     std::lock_guard<std::mutex> lk(g_pad_lock);
     *out = g_pad;
-    // Select+L1 / Select+R1 / Select+Left / Select+Right are the save-state buttons
+    // Select+save / Select+load / Select+Left / Select+Right are the save-state buttons
     // (src/host/ff8_savestate.c): the game does not see those combinations.
-    if ((out->buttons & 0x0020) && (out->buttons & 0x030C)) out->buttons &= (unsigned short)~0x032C;
+    if ((out->buttons & 0x0020) && ((out->buttons & 0x000C) || pad_down(*out, g_state_save) || pad_down(*out, g_state_load))) {
+        const int keys = g_state_save | g_state_load;
+        out->buttons &= (unsigned short)~(0x002C | keys);
+        if (keys & 0x10000) out->left_trigger = 0;
+        if (keys & 0x20000) out->right_trigger = 0;
+    }
     if (g_autofire.load(std::memory_order_relaxed) && (out->buttons & 0x2000)) {
         const auto now = std::chrono::steady_clock::now();
         if (!g_fire_held) { g_fire_held = true; g_fire_since = now; }
@@ -262,6 +275,18 @@ extern "C" void ff7_platform_pad_inject(unsigned short buttons) {
 extern "C" int ff7_platform_pad_buttons(void) {
     std::lock_guard<std::mutex> lk(g_pad_lock);
     return g_pad.buttons;
+}
+
+extern "C" int ff7_platform_state_buttons(void) {
+    std::lock_guard<std::mutex> lk(g_pad_lock);
+    return (pad_down(g_pad, g_state_save) ? 1 : 0) | (pad_down(g_pad, g_state_load) ? 2 : 0);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_ff8recomp_GameActivity_nativeStateButtons(JNIEnv *, jclass, jint save, jint load) {
+    std::lock_guard<std::mutex> lk(g_pad_lock);
+    g_state_save = save;
+    g_state_load = load;
 }
 
 extern "C" void ff7_platform_pad_rumble(unsigned, unsigned short, unsigned short) {}

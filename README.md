@@ -68,7 +68,7 @@ and I would rather you know before you install it.
   engine (crossfades, battle music, resume after battles).
 - Movies (FFmpeg), 16:9 widescreen, controller support, keyboard support, on-screen touch
   controls for devices without a controller.
-- Save states (Select+L1 saves, Select+R1 loads), on top of the game's own saves.
+- Save states (Select+L1 saves, Select+R1 loads; the buttons can be changed), on top of the game's own saves.
 - Mods: Junction VIII's catalogs (the Tsunamods catalog is subscribed to by default) and
   `.iro`/`.iroj` files, installed and switched on in the launcher. Mods that patch the game's
   code (`.hext`) work; mods that carry Windows DLLs are skipped.

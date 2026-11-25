@@ -303,3 +303,11 @@ repository.
   throws (the game stopped at boot).
 - Test: a folder mod with the mod's mod.xml and a magenta BC7 bvtr_3.dds (2752x1024, block 02 Train),
   Remastered: 0.2.2 logs "Directory does not exist, fallback" and draws the game's own, 0.2.3 draws it.
+
+## 2026-11-25 Demaster texture pages; the save-state buttons (#14)
+- src/ffnx_port/demaster.cpp. Thor, Remastered, a mod of numbered pages (PNG and DXT5 DDS): world map (texl 11, 12;
+  wmset 13, 14, 28), a battle's stage (a0stg pages 16, 18, 20) and the train (field_bg bvtr_3) all draw from it; the
+  minimap stays the game's own. Water is 28 and sky 14, as Demaster's comments say. wmset_013 covers the Garden,
+  where Demaster's comment says "moon texture + fx": open. Not tried: a real Demaster mod, the 2013 release.
+- Save-state buttons: ButtonMap.STATE_*, nativeStateButtons, ff7_platform_state_buttons (L2/R2 are triggers).
+  Thor: the defaults, save on R1 with load on L2, Select+L1 then does nothing; the swap and a choice in Settings.

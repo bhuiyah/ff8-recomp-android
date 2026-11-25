@@ -15,7 +15,8 @@
  * Saving copies all of it at the safe point and compresses/writes it on a worker thread;
  * loading reads/decompresses on a worker and applies it at the next safe point.
  *
- * Buttons: Select+L1 quick save, Select+R1 quick load (src/android keeps those from the game).
+ * Buttons: Select+L1 quick save, Select+R1 quick load unless Settings > Controller says otherwise
+ * (src/android keeps those from the game).
  * Files: <files>/savestates/quick.ff7s (+ .bak of the previous one).
  */
 #define _GNU_SOURCE
@@ -573,18 +574,20 @@ void ff7_savestate_request(int load, const char *slot) {
     start(load_worker, j);
 }
 
-/* Buttons: Select+L1 save, Select+R1 load, Select+Left / Select+Right the previous / next slot
- * (XInput BACK 0x20, LB 0x100, RB 0x200, DPAD_LEFT 0x4, DPAD_RIGHT 0x8). */
+/* Buttons, with Select (XInput BACK 0x20): save and load (src/android: L1 and R1, or the ones chosen in
+ * Settings > Controller, #14), Select+Left / Select+Right the previous / next slot (DPAD_LEFT 0x4,
+ * DPAD_RIGHT 0x8). */
 extern int ff7_platform_pad_buttons(void);
+extern int ff7_platform_state_buttons(void);   /* 1: save's button is down, 2: load's */
 static void poll_buttons(void) {
     static int prev;
-    int b = ff7_platform_pad_buttons();
+    int b = (ff7_platform_pad_buttons() & 0xFFFF) | ff7_platform_state_buttons() << 16;
     int pressed = b & ~prev;
     prev = b;
     if (!(b & 0x0020)) return;
     slots_init();
-    if (pressed & 0x0100) ff7_savestate_request(0, "current");
-    else if (pressed & 0x0200) ff7_savestate_request(1, "current");
+    if (pressed & 0x10000) ff7_savestate_request(0, "current");
+    else if (pressed & 0x20000) ff7_savestate_request(1, "current");
     else if (pressed & (0x0004 | 0x0008)) {
         g_cur += (pressed & 0x0008) ? 1 : -1;
         if (g_cur < 1) g_cur = SS_SLOTS;

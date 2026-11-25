@@ -262,6 +262,7 @@ public class GameActivity extends Activity implements SurfaceHolder.Callback {
     private static native void nativeSetSurface(Surface surface, int width, int height);
     private static native void nativeSetCompanionSurface(Surface surface, int width, int height);
     private static native void nativeStart(String gameDir, String logDir);
+    private static native void nativeStateButtons(int save, int load);
     private static native void nativePad(int buttons, int lt, int rt, int lx, int ly, int rx, int ry);
     private static native int nativeRumbleWait(int timeoutMs);
 
@@ -921,6 +922,8 @@ public class GameActivity extends Activity implements SurfaceHolder.Callback {
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT));
         touchMode = getIntent().getIntExtra("touch_controls", 0);
         buttonMap = ButtonMap.read(getSharedPreferences("launcher", MODE_PRIVATE));
+        nativeStateButtons(ButtonMap.stateBits(getSharedPreferences("launcher", MODE_PRIVATE), false),
+                           ButtonMap.stateBits(getSharedPreferences("launcher", MODE_PRIVATE), true));
         if (touchMode != 2) {
             touch = new TouchControls(this, (buttons, lt, rt, rx, ry) -> {
                 touchButtons = buttons;

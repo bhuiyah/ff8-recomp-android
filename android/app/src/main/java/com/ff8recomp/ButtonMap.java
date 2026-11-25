@@ -39,6 +39,45 @@ final class ButtonMap {
 
     static void reset(SharedPreferences prefs) { prefs.edit().remove("button_map").apply(); }
 
+    // ---- the save-state buttons, pressed with Select (issue #14): an index into STATE_NAMES each ----
+    static final String[] STATE_NAMES = { "A", "B", "X", "Y", "L1", "R1", "L2", "R2", "None" };
+    private static final int STATE_NONE = 8;
+    /** The bits nativeStateButtons takes. */
+    private static final int[] STATE_BITS = { 0x1000, 0x8000, 0x4000, 0x2000, 0x0100, 0x0200, 0x10000, 0x20000, 0 };
+
+    static int stateButton(SharedPreferences prefs, boolean load) {
+        int v = prefs.getInt(load ? "state_load_button" : "state_save_button", load ? 5 : 4);
+        return v >= 0 && v < STATE_NAMES.length ? v : load ? 5 : 4;
+    }
+
+    static int stateBits(SharedPreferences prefs, boolean load) { return STATE_BITS[stateButton(prefs, load)]; }
+
+    /** Choosing the other one's button swaps the two. */
+    static void chooseState(SharedPreferences prefs, boolean load, int button) {
+        int was = stateButton(prefs, load), other = stateButton(prefs, !load);
+        SharedPreferences.Editor e = prefs.edit().putInt(load ? "state_load_button" : "state_save_button", button);
+        if (button == other && button != STATE_NONE) e.putInt(load ? "state_save_button" : "state_load_button", was);
+        e.apply();
+    }
+
+    static void swapState(SharedPreferences prefs) {
+        int s = stateButton(prefs, false), l = stateButton(prefs, true);
+        prefs.edit().putInt("state_save_button", l).putInt("state_load_button", s).apply();
+    }
+
+    /** "Select+L1", or null when there is none. */
+    static String stateCombo(SharedPreferences prefs, boolean load) {
+        int b = stateButton(prefs, load);
+        return b == STATE_NONE ? null : "Select+" + STATE_NAMES[b];
+    }
+
+    /** "Select+L1 saves a state, Select+R1 loads it" */
+    static String stateHelp(SharedPreferences prefs) {
+        String s = stateCombo(prefs, false), l = stateCombo(prefs, true);
+        return (s == null ? "no button saves a state" : s + " saves a state") + ", "
+                + (l == null ? "no button loads it" : l + " loads it");
+    }
+
     /** The pad's buttons and triggers as the game gets them: { buttons, lt, rt }. */
     static int[] apply(int[] map, int buttons, int lt, int rt) {
         int[] out = { buttons & ~MAPPED, 0, 0 };

@@ -7,6 +7,8 @@ states: mid-battle, mid-scene, in a menu. They are separate from the game's own 
 
 There are 10 slots. The in-game buttons use the *current* slot.
 
+The save and load buttons can be changed in Settings > Controller (#14); these are the defaults.
+
 | | Thor buttons | Launcher |
 |---|---|---|
 | Save to the current slot | **Select + L1** | |
@@ -35,7 +37,7 @@ There are 10 slots. The in-game buttons use the *current* slot.
   Save it again in the current version.
 - The launcher's *Save states* page lists every slot with its location, play time and save
   date.
-- The game does not see Select+L1 / R1 / Left / Right. Those combinations are reserved for
+- The game does not see Select with the save or load button, or with Left / Right. Those combinations are reserved for
   save states.
 - Saving is refused while a movie plays and between scenes (`Cannot save now: ...`).
 - A state only loads under the graphics settings it was saved with (frame rate, battle frame

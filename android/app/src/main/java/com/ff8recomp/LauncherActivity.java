@@ -1841,13 +1841,19 @@ public class LauncherActivity extends Activity {
             col.addView(heading("Controller"));
             col.addView(text("In the game: press L3 (click the left stick), then R1 or L1 for faster or slower, L2 or R2 to switch that "
                     + "speed on and off, Y for random battles on or off, X to skip a movie. Faster needs a Frame rate other than "
-                    + "Original, and is limited by the screen's refresh rate. Select+L1 saves a state, Select+R1 loads it; Select+Start "
+                    + "Original, and is limited by the screen's refresh rate. Select+Left / Right change the save-state slot; Select+Start "
                     + "held for a second leaves the game. On-screen controls: switch on the L3 button in Size and layout.", 14, DIM));
             col.addView(text("What each button of a controller or keyboard does. Choosing one that is in use swaps the two.", 14, DIM));
             final LinearLayout maps = new LinearLayout(this);
             maps.setOrientation(LinearLayout.VERTICAL);
             fillButtonMap(maps);
             col.addView(maps);
+            col.addView(space(8));
+            col.addView(text("Save states: the buttons pressed together with Select. They go by what a button works as (above).", 14, DIM));
+            final LinearLayout stateKeys = new LinearLayout(this);
+            stateKeys.setOrientation(LinearLayout.VERTICAL);
+            fillStateButtons(stateKeys);
+            col.addView(stateKeys);
         }
         if (FF7_CONTROLLER_EXTRAS) {
             col.addView(space(16));
@@ -1914,8 +1920,8 @@ public class LauncherActivity extends Activity {
         col.addView(st);
         col.addView(text("Any button stops the automatic start.", 14, DIM));
         col.addView(space(16));
-        col.addView(text("In game: press Start during a movie to skip it. Select+L1 / Select+R1 save and load the game's whole state, "
-                + "Select+Left / Right change the slot. Hold Select+Start to leave the game.", 14, DIM));
+        col.addView(text("In game: press Start during a movie to skip it. Save states keep the game's whole state: "
+                + ButtonMap.stateHelp(prefs) + ". Select+Left / Right change the slot. Hold Select+Start to leave the game.", 14, DIM));
         if (MODS) {
             col.addView(space(16));
             col.addView(catalogSettings());
@@ -2843,7 +2849,7 @@ public class LauncherActivity extends Activity {
         if (states == null) states = new SaveStates(install.files);
         LinearLayout col = column();
         col.addView(heading("Save states"));
-        col.addView(text("In game: Select+L1 saves to the current slot, Select+R1 loads it, Select+Left / Right "
+        col.addView(text("In game, with the current slot: " + ButtonMap.stateHelp(prefs) + ". Select+Left / Right "
                 + "picks another slot. \"Play from here\" starts the game at that moment.", 14, DIM));
         col.addView(space(10));
         if (SAVE_IMPORT) {
@@ -3009,9 +3015,28 @@ public class LauncherActivity extends Activity {
                                 ButtonMap.choose(prefs, b, which);
                                 d.dismiss();
                                 fillButtonMap(maps);
+                                maps.getChildAt(b).requestFocus();
                             }).setNegativeButton("Cancel", null).show()));
         }
         maps.addView(button("Reset the buttons", v -> { ButtonMap.reset(prefs); fillButtonMap(maps); }));
+    }
+
+    /** Settings > Controller: which buttons save and load a state (issue #14). */
+    private void fillStateButtons(LinearLayout rows) {
+        rows.removeAllViews();
+        for (int i = 0; i < 2; i++) {
+            final boolean load = i == 1;
+            final String name = load ? "Load state" : "Save state", combo = ButtonMap.stateCombo(prefs, load);
+            rows.addView(button(name + ": " + (combo == null ? "no button" : combo), v ->
+                    new android.app.AlertDialog.Builder(this).setTitle(name + ": Select and")
+                            .setSingleChoiceItems(ButtonMap.STATE_NAMES, ButtonMap.stateButton(prefs, load), (d, which) -> {
+                                ButtonMap.chooseState(prefs, load, which);
+                                d.dismiss();
+                                fillStateButtons(rows);
+                                rows.getChildAt(load ? 1 : 0).requestFocus();   // the rows are new: the pad's place
+                            }).setNegativeButton("Cancel", null).show()));
+        }
+        rows.addView(button("Swap save and load", v -> { ButtonMap.swapState(prefs); fillStateButtons(rows); rows.getChildAt(2).requestFocus(); }));
     }
 
     private int boosterSpeed() {
