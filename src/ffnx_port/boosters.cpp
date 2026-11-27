@@ -69,6 +69,25 @@ void spoils_hook() {
     callee();   // what the call did
 }
 
+// FF8 (GitHub #20; boosters.txt exp=N, 0 for none). When a battle is won the game (0x494D40,
+// called at 0x486370 and 0x486566) adds up the EXP and puts each party member's share at
+// 0x1CFF574 (3 u16) and their killing-blow bonus at 0x1CFF57A (3 u16); the GFs' shares are worked
+// out there from the same total. The results screen shows the two added together and pays them out
+// (0x4A4461 calls 0x496CB0). The calls are hooked: the party's EXP is multiplied after the game
+// has worked it out, so the results screen shows what is paid, and the GFs' EXP stays as it was.
+// The game caps each at 60,000.
+constexpr uint32_t k_ff8_exp_calls[] = { 0x486370, 0x486566 };
+constexpr uint32_t k_ff8_exp_callee = 0x494D40, k_ff8_exp = 0x1CFF574;
+
+void ff8_exp_hook() {
+    const gfn<void()> callee(k_ff8_exp_callee);
+    callee();   // what the call did
+    uint16_t *e = reinterpret_cast<uint16_t *>(static_cast<uintptr_t>(k_ff8_exp));
+    std::fprintf(stderr, "[boosters] battle EXP x%d: %u+%u %u+%u %u+%u", g_exp_mult, e[0], e[3], e[1], e[4], e[2], e[5]);
+    for (int i = 0; i < 6; i++) e[i] = (uint16_t)scaled(e[i], g_exp_mult, 60000u);
+    std::fprintf(stderr, " -> %u+%u %u+%u %u+%u\n", e[0], e[3], e[1], e[4], e[2], e[5]);
+}
+
 // The battle's party records (1.02 US): the 0x44-byte ones beside the ATB gauge, and the
 // 0x440-byte character records (HP +0x10, Limit gauge +0x1B).
 constexpr uint32_t k_atb = 0x9A8B14, k_atb_stride = 0x44;
@@ -123,6 +142,32 @@ void read_defaults() {
     std::fprintf(stderr, "[boosters] defaults: speed %.0fx, random battles %s, battle enhancement %s, frame skipping %s\n",
                  gamehacks.getCurrentSpeedhack(), gamehacks.companionBattlesWanted() ? "on" : "off",
                  ff7_booster_battle ? "on" : "off", g_frameskip ? "on" : "off");
+}
+
+// FF8: only the EXP setting (#20) for now; once, at the first frame (companion.cpp).
+void ff8_read_defaults() {
+    char cwd[512], path[600];
+    if (!getcwd(cwd, sizeof cwd)) return;
+    std::snprintf(path, sizeof path, "%s/../boosters.txt", cwd);
+    FILE *f = fopen(path, "rb");
+    if (!f) return;
+    char line[64];
+    while (std::fgets(line, sizeof line, f)) {
+        char key[32] = "", val[32] = "";
+        if (std::sscanf(line, " %31[^= ] = %31s", key, val) == 2 && !std::strcmp(key, "exp")) {
+            const int g = std::atoi(val);
+            if (g >= 0 && g <= 100) g_exp_mult = g;   // 0: none
+        }
+    }
+    std::fclose(f);
+    std::fprintf(stderr, "[boosters] FF8: EXP from battles x%d\n", g_exp_mult);
+    if (g_exp_mult == 1) return;
+    for (uint32_t call : k_ff8_exp_calls) {
+        const uint8_t *site = reinterpret_cast<const uint8_t *>(static_cast<uintptr_t>(call));
+        int32_t rel; std::memcpy(&rel, site + 1, 4);
+        if (site[0] == 0xE8 && call + 5 + (uint32_t)rel == k_ff8_exp_callee) replace_call(call, &ff8_exp_hook);
+        else std::fprintf(stderr, "[boosters] battle EXP code at 0x%X changed (a mod?): EXP x%d off there\n", call, g_exp_mult);
+    }
 }
 
 // The rate the game asks for at 1x in the current mode (FFNx's ff7_limit_fps).
@@ -186,6 +231,11 @@ extern "C" bool ffnx_frame_skip_next(bool movie) {
 
 extern "C" int ff7_booster_speed() { return (int)(gamehacks.getCurrentSpeedhack() + 0.5); }
 extern "C" int ff7_booster_no_encounters() { return gamehacks.companionBattlesWanted() ? 0 : 1; }
+
+// FF8, once per frame on the game thread (companion.cpp).
+extern "C" void ff8_boosters_frame() {
+    if (!g_inited) { g_inited = true; ff8_read_defaults(); }
+}
 
 // Once per frame on the game thread (companion.cpp).
 extern "C" void ff7_boosters_frame() {

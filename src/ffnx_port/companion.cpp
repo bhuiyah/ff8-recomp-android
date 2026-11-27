@@ -261,6 +261,7 @@ void savemap_json(std::string &j, const savemap *sm) {
 extern "C" void ff7_companion_command(int cmd) { g_command = cmd; }
 extern "C" void ff7_companion_battle_tick();                    // companion_render.cpp
 extern "C" void ff7_boosters_frame();                           // boosters.cpp
+extern "C" void ff8_boosters_frame();
 extern "C" void ff7_achievements_frame();                       // achievements.cpp
 extern "C" unsigned ff7_achievements_last(char *title, unsigned size, unsigned *points);
 extern "C" void ff7_boosters_command(int cmd);
@@ -388,6 +389,7 @@ std::string ff8_companion_snapshot();                           // companion_ff8
 
 extern "C" void ff7_companion_frame() {
     if (ff8) {
+        ff8_boosters_frame();   // EXP from battles (#20)
         // FF8: its own snapshot; the buttons that apply (2x speed, random battles off, save and load state)
         switch (g_command.exchange(0)) {
         case 1: gamehacks.companionToggleSpeedhack(); break;

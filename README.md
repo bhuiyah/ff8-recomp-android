@@ -77,6 +77,7 @@ and I would rather you know before you install it.
   save states and the menu.
 - One screen: the same panels below or beside the game, or over part of it with a small button
   over the game or a controller button (Start, L3 or R3).
+- EXP from battles: none (for low-level play), normal, 2x, 5x or 10x (Settings > Battles).
 - A launcher: import or download your game files, build the game for your device, settings,
   save states, problem reports.
 

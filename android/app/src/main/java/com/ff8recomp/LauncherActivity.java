@@ -1670,6 +1670,13 @@ public class LauncherActivity extends Activity {
             multiplierRow(col, "Gil from battles", "gil");
             multiplierRow(col, "EXP from battles", "exp");    // GitHub #32
             multiplierRow(col, "AP from battles (materia growth)", "ap");
+        } else {
+            // FF8 (#20): the party's EXP from battles, with none for low-level play (src/ffnx_port/boosters.cpp)
+            col.addView(space(16));
+            col.addView(heading("Battles"));
+            multiplierRow(col, "EXP from battles", "exp", new int[] { 0, 1, 2, 5, 10 });
+            col.addView(text("For the party; GFs get their usual EXP. 0×: no EXP, so the party and the enemies "
+                    + "(whose levels follow the party's) stay at their level. The results screen shows what is given.", 14, DIM));
         }
         col.addView(space(16));
         col.addView(heading("Display"));
@@ -2979,7 +2986,7 @@ public class LauncherActivity extends Activity {
             install.writeBoosters(boosterSpeed(), BOOSTERS && prefs.getBoolean("no_encounters", false),
                                   BOOSTERS && prefs.getBoolean("battle_plus", false),
                                   prefs.getInt("perf", 1) != 2, BOOSTERS && prefs.getBoolean("save_anywhere", false),
-                                  BOOSTERS ? prefs.getInt("gil", 1) : 1, BOOSTERS ? prefs.getInt("exp", 1) : 1, BOOSTERS ? prefs.getInt("ap", 1) : 1,
+                                  BOOSTERS ? prefs.getInt("gil", 1) : 1, expSetting(), BOOSTERS ? prefs.getInt("ap", 1) : 1,
                                   FF7_CONTROLLER_EXTRAS && prefs.getBoolean("autofire", false),
                                   FF7_CONTROLLER_EXTRAS ? prefs.getInt("rumble", 0) : 0);
             install.writeCompanion("off");   // battle windows stay on the top screen
@@ -3544,13 +3551,23 @@ public class LauncherActivity extends Activity {
         return v;
     }
 
+    /** EXP from battles: Game boosters' (FF7) or Settings > Battles' (FF8, 0x allowed, #20). */
+    private int expSetting() {
+        int e = prefs.getInt("exp", 1);
+        return e >= 0 && e <= 10 ? e : 1;
+    }
+
     /** A Game boosters row: 1x / 2x / 5x / 10x, kept in the launcher setting `key`. */
     private void multiplierRow(LinearLayout col, String title, String key) {
+        multiplierRow(col, title, key, new int[] { 1, 2, 5, 10 });
+    }
+
+    private void multiplierRow(LinearLayout col, String title, String key, int[] choices) {
         col.addView(text(title, 16, TEXT));
         RadioGroup gg = new RadioGroup(this);
         gg.setOrientation(LinearLayout.HORIZONTAL);
         int cur = prefs.getInt(key, 1);
-        for (int gm : new int[] { 1, 2, 5, 10 }) {
+        for (int gm : choices) {
             RadioButton rb = new RadioButton(this);
             rb.setText(gm + "×   ");
             rb.setTextColor(TEXT);

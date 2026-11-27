@@ -336,3 +336,14 @@ repository.
   second screen on no button and Start pauses. L2 and the D-pad hidden: not drawn, not pressed. Not tested: the Buttons shown
   list on the Thor, the kept place after a restart, L3, a bar that stays visible. Java only: no kit change.
 - 0.2.7 was a test build of the local branch fix/catalog-race, never released.
+
+## 2026-11-26 EXP from battles, 0x to 10x (#20, 0.2.9)
+- When a battle is won, 0x494D40 (called at 0x486370 and 0x486566) adds up the EXP: each party member's share at
+  0x1CFF574 (3 u16), the killing-blow bonus at 0x1CFF57A (3 u16), each capped at 60,000; the GFs' shares are worked out
+  there from the same total (0x1CFF580). The results screen shows share + bonus and pays it (0x4A4461 -> 0x496CB0).
+  boosters.cpp hooks both calls and multiplies the six values afterwards, so the screen shows what is paid; GF EXP is
+  not changed. Read once from boosters.txt `exp=` (FF8: ff8_boosters_frame from companion.cpp, which never called
+  ff7_boosters_frame); hooked only when it is not 1. Settings > Battles (FF8, BOOSTERS off).
+- Thor, Remastered, Esthar world map (Slot 1 block 11): x0 239+0 -> 0, "EXP Acquired 0P" and the game's own "Didn't
+  receive EXP"; x2 92+13 -> 184+26, paid (41155 + 210 = 41365). Not tested: 5x, 10x, a level-up, the 2013 release,
+  GF EXP in game (unchanged by reading the code).
