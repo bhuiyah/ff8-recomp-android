@@ -345,5 +345,6 @@ repository.
   not changed. Read once from boosters.txt `exp=` (FF8: ff8_boosters_frame from companion.cpp, which never called
   ff7_boosters_frame); hooked only when it is not 1. Settings > Battles (FF8, BOOSTERS off).
 - Thor, Remastered, Esthar world map (Slot 1 block 11): x0 239+0 -> 0, "EXP Acquired 0P" and the game's own "Didn't
-  receive EXP"; x2 92+13 -> 184+26, paid (41155 + 210 = 41365). Not tested: 5x, 10x, a level-up, the 2013 release,
-  GF EXP in game (unchanged by reading the code).
+  receive EXP"; x2 92+13 -> 184+26, paid (41155 + 210 = 41365); x5 92 -> 460, paid; x10 92+11 -> 920+110, all three
+  level up (42->43, 47->48, 25->26). x0: the GFs still gain (bottom screen: Shiva +92, Ifrit +46, Quezacotl +23).
+  The 2013 release, x0: 0 and "Didn't receive EXP".
